@@ -9,13 +9,49 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorCode {
 
-	INVALID_INPUT(HttpStatus.BAD_REQUEST, "400", "잘못된 요청 형식 입니다."),
-	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "401", "잘못된 파라미터 형식 입니다."),
+	// ==================== 400 Bad Request ====================
+	INVALID_INPUT(HttpStatus.BAD_REQUEST, "C001", "잘못된 요청 형식입니다."),
+	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "C002", "잘못된 파라미터 형식입니다."),
+	MISSING_REQUIRED_FIELD(HttpStatus.BAD_REQUEST, "C003", "필수 입력값이 누락되었습니다."),
+	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "잘못된 타입의 값입니다."),
 
-	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "500", "서버 오류가 발생했습니다."),
+	// ==================== 401 Unauthorized ====================
+	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),
+	INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "유효하지 않은 토큰입니다."),
+	EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A003", "만료된 토큰입니다."),
+
+	// ==================== 403 Forbidden ====================
+	ACCESS_DENIED(HttpStatus.FORBIDDEN, "A010", "접근 권한이 없습니다."),
+	FORBIDDEN_RESOURCE(HttpStatus.FORBIDDEN, "A011", "해당 리소스에 대한 권한이 없습니다."),
+
+	// ==================== 404 Not Found ====================
+	RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "R001", "요청한 리소스를 찾을 수 없습니다."),
+	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "사용자를 찾을 수 없습니다."),
+
+	// ==================== 409 Conflict ====================
+	DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "D001", "이미 존재하는 리소스입니다."),
+	DUPLICATE_EMAIL(HttpStatus.CONFLICT, "D002", "이미 사용 중인 이메일입니다."),
+	RESOURCE_ALREADY_EXISTS(HttpStatus.CONFLICT, "D003", "리소스가 이미 존재합니다."),
+
+	// ==================== 422 Unprocessable Entity ====================
+	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
+	BUSINESS_RULE_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY, "U002", "비즈니스 규칙 위반입니다."),
+
+	// ==================== 429 Too Many Requests ====================
+	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "T001", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+
+	// ==================== 500 Internal Server Error ====================
+	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S001", "서버 오류가 발생했습니다."),
+	DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S002", "데이터베이스 오류가 발생했습니다."),
+
+	// ==================== 502 Bad Gateway ====================
+	EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "E001", "외부 서비스 연동 중 오류가 발생했습니다."),
+
+	// ==================== 503 Service Unavailable ====================
+	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E002", "서비스를 일시적으로 사용할 수 없습니다."),
 	;
 
 	private final HttpStatus httpStatus;
-	private final String title;
+	private final String code;
 	private final String detail;
 }

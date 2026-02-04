@@ -1,0 +1,12 @@
+#!/bin/sh
+# pre-push hook: verify 태스크를 통과해야 push 가능
+
+echo "🔍 Running verify before push..."
+./gradlew verify --quiet
+
+if [ $? -ne 0 ]; then
+  echo "❌ verify failed. Push rejected."
+  exit 1
+fi
+
+echo "✅ verify passed. Pushing..."
