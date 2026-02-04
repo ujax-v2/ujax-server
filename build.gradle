@@ -3,6 +3,10 @@ plugins {
     id 'org.springframework.boot' version '3.5.9'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.asciidoctor.jvm.convert' version '4.0.5'
+    id 'com.epages.restdocs-api-spec' version '0.19.2'
+    id 'org.ec4j.editorconfig' version '0.1.0'
+
+    id 'jacoco'
 }
 
 group = 'com.ujax'
@@ -19,7 +23,17 @@ configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
+    asciidoctorExt
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+editorconfig {
+    excludes = ['build', '.gradle', 'out', 'node_modules']
+}
+check.dependsOn editorconfigCheck
 
 repositories {
     mavenCentral()
@@ -32,31 +46,188 @@ ext {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'com.mysql:mysql-connector-j'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    runtimeOnly 'com.h2database:h2'
 
-    compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok'
 
     testCompileOnly "org.projectlombok:lombok"
     testAnnotationProcessor "org.projectlombok:lombok"
+
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    asciidoctorExt 'org.springframework.restdocs:spring-restdocs-asciidoctor:3.0.2'
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc:3.0.2'
+}
+
+ext {
+    snippetsDir = file('build/generated-snippets')
 }
 
 tasks.named('test') {
-    outputs.dir snippetsDir
     useJUnitPlatform()
+    //mokito 경고 무시
+    jvmArgs("-XX:+EnableDynamicAgentLoading",
+            "-Xshare:off"
+    )
+}
+
+//@Tag("restDocs")을 찾아서 문서화
+tasks.register("restDocsTest", Test) {
+    dependsOn tasks.named("test")
+    outputs.dir snippetsDir
+
+    useJUnitPlatform {
+        includeTags("restDocs")
+    }
+
+    finalizedBy "asciidoctor"
+    finalizedBy "openapi3"
 }
 
 tasks.named('asciidoctor') {
     inputs.dir snippetsDir
-    dependsOn test
+    configurations 'asciidoctorExt'
+    dependsOn tasks.named('test')
+    dependsOn tasks.named('restDocsTest')
 }
+
+openapi3 {
+    server = 'http://localhost:8080'
+    title = 'ujax API'
+    description = '백준 알고리즘 스터디 프로젝트 백엔드 API'
+    version = project.version.toString()
+    format = 'yaml'
+}
+
+
+bootJar {
+    dependsOn 'asciidoctor', 'openapi3'
+
+    from("swagger-ui") {
+        into "BOOT-INF/classes/static/swagger"
+    }
+
+    from("${asciidoctor.outputDir}") {
+        into 'BOOT-INF/classes/static/docs'
+    }
+
+    from(layout.buildDirectory.dir("api-spec")) {
+        into 'BOOT-INF/classes/static/swagger'
+    }
+}
+
+// git hooksPath 자동 설정 (clone 후 최초 빌드 시 자동 적용)
+tasks.register('installGitHooks') {
+    group = 'setup'
+    description = 'Set git hooksPath to .githooks'
+    doLast {
+        exec {
+            commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+        }
+        logger.lifecycle('Git hooksPath set to .githooks')
+    }
+}
+compileJava.dependsOn installGitHooks
+
+// 한 방 검증 파이프라인(이름: verify)
+tasks.register('verify') {
+    group = 'verification'
+    description = 'Run editorconfig, checkstyle, unit tests, JaCoCo report & coverage verification'
+    dependsOn 'editorconfigCheck',
+            'test',
+            'jacocoTestReport',
+            'jacocoTestCoverageVerification'
+}
+
+//check 시 커버리지 검증 포함
+check {
+    dependsOn jacocoTestCoverageVerification
+}
+
+
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+// === JaCoCo 공통 exclude 패턴 ===
+def jacocoExcludes = [
+        '**/Q*',                 // QueryDSL
+        '**/*Application*',      // 메인 애플리케이션 클래스
+        '**/*Config*',           // 설정 클래스
+        '**/dto/**',             // DTO
+        '**/external/**',        // API Client
+        '**/global/**',          // global 패키지 전체
+]
+
+// 리포트 생성
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco')
+    }
+
+    // 리포트 대상 클래스에서 공통 exclude 적용
+    classDirectories.setFrom(
+            files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: jacocoExcludes)
+            })
+    )
+}
+
+// 커버리지 검증
+jacocoTestCoverageVerification {
+    dependsOn test
+
+    // 검증 대상 클래스에서도 동일하게 공통 exclude 적용
+    classDirectories.setFrom(
+            files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: jacocoExcludes)
+            })
+    )
+
+    violationRules {
+/*
+          rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.70    // 라인 커버리지 최소 70%
+            }
+        }
+*/
+/*
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.70    // 브랜치 커버리지 최소 70%
+            }
+        }
+*/
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.70  // 전체 평균 70% 유지
+            }
+        }
+    }
+}
+
