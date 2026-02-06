@@ -58,6 +58,8 @@
 ## DTO
 - Request/Response는 `record` 사용
 - Response에 `from(Entity)` 정적 팩토리 메서드로 변환
+- Request는 `infrastructure/web/{도메인}/dto/request/`에 위치
+- Response는 `application/{도메인}/dto/response/`에 위치 — Service가 Response DTO를 직접 반환
 
 ## Validation 계층 분리
 - **Request DTO**: 파라미터 존재 여부만 검증 (`@NotNull`, `@NotBlank` 등 필수값 체크)
@@ -68,8 +70,11 @@
 - 클래스 레벨 `@Transactional(readOnly = true)`, 변경 메서드에만 `@Transactional`
 - `@RequiredArgsConstructor`로 생성자 주입
 - 조회 실패 시 커스텀 예외 사용 (예: `NotFoundException(ErrorCode.USER_NOT_FOUND)`)
+- Response DTO를 반환 — Controller가 도메인 엔티티를 직접 참조하지 않음
+- 엔티티 조회용 private 메서드 분리 (예: `findUserById`)
 
 ## Controller
 - `@RestController` + `@RequestMapping("/api/v1/{resource}")` 형식
 - `@RequiredArgsConstructor`로 생성자 주입
 - 공통 래퍼 `ApiResponse`, `PageResponse` 사용
+- 도메인 엔티티를 직접 참조하지 않음 — Service가 반환하는 Response DTO만 사용

@@ -6,9 +6,9 @@ Spring Boot 3.5 / Java 21 / Gradle 기반 백엔드 프로젝트
 ```
 com.ujax
 ├── domain/           # 엔티티, Repository 인터페이스, enum
-├── application/      # Service (비즈니스 로직)
+├── application/      # Service, Response DTO
 ├── infrastructure/
-│   ├── web/          # Controller, DTO (Request/Response)
+│   ├── web/          # Controller, Request DTO
 │   └── persistence/  # JPA 설정, AOP
 └── global/           # 예외, 공통 설정
 ```
