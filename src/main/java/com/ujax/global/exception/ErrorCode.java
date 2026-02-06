@@ -27,11 +27,14 @@ public enum ErrorCode {
 	// ==================== 404 Not Found ====================
 	RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "R001", "요청한 리소스를 찾을 수 없습니다."),
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "사용자를 찾을 수 없습니다."),
+	WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "R003", "워크스페이스를 찾을 수 없습니다."),
+	WORKSPACE_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "R004", "워크스페이스 멤버를 찾을 수 없습니다."),
 
 	// ==================== 409 Conflict ====================
 	DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "D001", "이미 존재하는 리소스입니다."),
 	DUPLICATE_EMAIL(HttpStatus.CONFLICT, "D002", "이미 사용 중인 이메일입니다."),
 	RESOURCE_ALREADY_EXISTS(HttpStatus.CONFLICT, "D003", "리소스가 이미 존재합니다."),
+	ALREADY_WORKSPACE_MEMBER(HttpStatus.CONFLICT, "D004", "이미 워크스페이스에 가입된 멤버입니다."),
 
 	// ==================== 422 Unprocessable Entity ====================
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
