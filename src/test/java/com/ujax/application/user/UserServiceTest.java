@@ -10,14 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.global.exception.common.NotFoundException;
 
-/**
- * UserService 통합 테스트
- */
 @SpringBootTest
 @ActiveProfiles("test")
 class UserServiceTest {
@@ -50,10 +48,10 @@ class UserServiceTest {
 			));
 
 			// when
-			User foundUser = userService.getUser(user.getId());
+			UserResponse response = userService.getUser(user.getId());
 
 			// then
-			assertThat(foundUser).extracting("email", "name")
+			assertThat(response).extracting("email", "name")
 				.containsExactly("test@example.com", "테스트유저");
 		}
 
@@ -83,10 +81,10 @@ class UserServiceTest {
 			));
 
 			// when
-			User updatedUser = userService.updateUser(user.getId(), "수정된이름", "https://new-image.com/profile.jpg");
+			UserResponse response = userService.updateUser(user.getId(), "수정된이름", "https://new-image.com/profile.jpg");
 
 			// then
-			assertThat(updatedUser).extracting("name", "profileImageUrl")
+			assertThat(response).extracting("name", "profileImageUrl")
 				.containsExactly("수정된이름", "https://new-image.com/profile.jpg");
 		}
 
@@ -103,10 +101,10 @@ class UserServiceTest {
 			));
 
 			// when
-			User updatedUser = userService.updateUser(user.getId(), "새이름", null);
+			UserResponse response = userService.updateUser(user.getId(), "새이름", null);
 
 			// then
-			assertThat(updatedUser).extracting("name", "profileImageUrl")
+			assertThat(response).extracting("name", "profileImageUrl")
 				.containsExactly("새이름", "https://example.com/profile.jpg");
 		}
 
