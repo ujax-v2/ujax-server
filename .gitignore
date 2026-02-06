@@ -39,6 +39,10 @@ out/
 ### Mac OS ###
 .DS_Store
 
+### generated ###
+api-spec/
+src/main/resources/static/swagger/openapi3.yaml
+
 ### secret ###
 *.pem
 .env
