@@ -7,6 +7,11 @@
 - Controller: `infrastructure/web/api/{도메인}/ControllerTest.java` — `@WebMvcTest` (동작 검증)
 - Controller Docs: `infrastructure/web/api/{도메인}/ControllerDocsTest.java` — `@WebMvcTest` + `@AutoConfigureRestDocs` + `@Tag("restDocs")` (API 문서 생성)
 
+## Repository 테스트 원칙
+- 성공 케이스만 검증 — JPA 프레임워크 동작(조회 결과 없음, `existsBy` false 등)은 테스트하지 않음
+- `@Nested` 사용하지 않음 — 메서드별 flat 구조로 작성
+- `@DataJpaTest` + `@ActiveProfiles("test")` + `@Import(JpaAuditingConfig.class)`
+
 ## Service 테스트 원칙
 - 기본: `@SpringBootTest` + `@Autowired` + `@BeforeEach`에서 `deleteAllInBatch()`로 데이터 정리
 - 실제 DB와 트랜잭션을 통해 동작을 검증 (Mockito 사용하지 않음)
