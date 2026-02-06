@@ -1,5 +1,8 @@
 package com.ujax.domain.workspace;
 
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.SQLDelete;
+
 import com.ujax.domain.common.BaseEntity;
 import com.ujax.domain.user.User;
 
@@ -25,6 +28,11 @@ import lombok.NoArgsConstructor;
 	name = "workspace_members",
 	uniqueConstraints = @UniqueConstraint(columnNames = {"workspace_id", "user_id"})
 )
+@Filter(
+	name = "softDeleteFilter",
+	condition = "deleted_at IS NULL"
+)
+@SQLDelete(sql = "UPDATE workspace_members SET deleted_at = now() WHERE id = ?")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WorkspaceMember extends BaseEntity {
 
