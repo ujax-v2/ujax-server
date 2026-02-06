@@ -1,19 +1,13 @@
-package com.ujax.global.response;
+package com.ujax.global.dto;
 
 import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-/**
- * 페이지네이션 응답 래퍼
- */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class PageResponse<T> {
 
 	private final List<T> content;
