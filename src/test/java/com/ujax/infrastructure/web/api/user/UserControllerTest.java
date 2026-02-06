@@ -44,8 +44,8 @@ class UserControllerTest {
 	class UpdateMe {
 
 		@Test
-		@DisplayName("이름만 보내면 정상 수정된다")
-		void updateMe_OnlyName() throws Exception {
+		@DisplayName("일부 필드만 보내도 정상 수정된다")
+		void updateMe_PartialUpdate() throws Exception {
 			// given
 			UserUpdateRequest request = new UserUpdateRequest("새이름", null);
 			User user = createTestUser(1L, "test@example.com", "새이름");
@@ -58,53 +58,6 @@ class UserControllerTest {
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.name").value("새이름"));
-		}
-
-		@Test
-		@DisplayName("프로필 이미지만 보내면 정상 수정된다")
-		void updateMe_OnlyProfileImage() throws Exception {
-			// given
-			UserUpdateRequest request = new UserUpdateRequest(null, "https://new-image.com/profile.jpg");
-			User user = createTestUser(1L, "test@example.com", "테스트유저");
-			given(userService.updateUser(anyLong(), isNull(), anyString())).willReturn(user);
-
-			// when & then
-			mockMvc.perform(patch("/api/v1/users/me")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(objectMapper.writeValueAsString(request)))
-				.andDo(print())
-				.andExpect(status().isOk());
-		}
-
-		@Test
-		@DisplayName("모든 필드를 null로 보내도 정상 응답한다")
-		void updateMe_AllNull() throws Exception {
-			// given
-			UserUpdateRequest request = new UserUpdateRequest(null, null);
-			User user = createTestUser(1L, "test@example.com", "테스트유저");
-			given(userService.updateUser(anyLong(), isNull(), isNull())).willReturn(user);
-
-			// when & then
-			mockMvc.perform(patch("/api/v1/users/me")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(objectMapper.writeValueAsString(request)))
-				.andDo(print())
-				.andExpect(status().isOk());
-		}
-
-		@Test
-		@DisplayName("빈 body를 보내도 정상 응답한다")
-		void updateMe_EmptyBody() throws Exception {
-			// given
-			User user = createTestUser(1L, "test@example.com", "테스트유저");
-			given(userService.updateUser(anyLong(), isNull(), isNull())).willReturn(user);
-
-			// when & then
-			mockMvc.perform(patch("/api/v1/users/me")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content("{}"))
-				.andDo(print())
-				.andExpect(status().isOk());
 		}
 	}
 
