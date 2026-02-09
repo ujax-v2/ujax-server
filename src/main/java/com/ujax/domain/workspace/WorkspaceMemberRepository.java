@@ -14,4 +14,6 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 	@NonNull
 	@Query("SELECT wm FROM WorkspaceMember wm WHERE wm.id = :id")
 	Optional<WorkspaceMember> findById(@Param("id") @NonNull Long id);
+
+	Optional<WorkspaceMember> findByWorkspace_IdAndUser_Id(Long workspaceId, Long userId);
 }
