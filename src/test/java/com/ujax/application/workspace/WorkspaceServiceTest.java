@@ -346,6 +346,15 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
+		@DisplayName("페이지 값이 잘못되면 오류가 발생한다")
+		void listWorkspacesInvalidPageable() {
+			// when & then
+			assertThatThrownBy(() -> workspaceService.listWorkspaces(-1, 0))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
+		}
+
+		@Test
 		@DisplayName("이름으로 워크스페이스를 검색한다")
 		void searchWorkspaces() {
 			// given
@@ -357,6 +366,15 @@ class WorkspaceServiceTest {
 			// then
 			assertThat(response.getContent()).extracting("id")
 				.containsExactly(workspace.getId());
+		}
+
+		@Test
+		@DisplayName("검색 페이지 값이 잘못되면 오류가 발생한다")
+		void searchWorkspacesInvalidPageable() {
+			// when & then
+			assertThatThrownBy(() -> workspaceService.searchWorkspaces("테스트", -1, 0))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
 		}
 	}
 

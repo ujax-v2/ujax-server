@@ -43,6 +43,7 @@ public class WorkspaceService {
 	private final WorkspaceInviteMailer workspaceInviteMailer;
 
 	public PageResponse<WorkspaceResponse> listWorkspaces(int page, int size) {
+		validatePageable(page, size);
 		Page<Workspace> workspaces = workspaceRepository.findAll(PageRequest.of(page, size));
 		return PageResponse.of(
 			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
@@ -64,6 +65,7 @@ public class WorkspaceService {
 		if (name == null || name.isBlank()) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
+		validatePageable(page, size);
 		Page<Workspace> workspaces = workspaceRepository.findByNameContaining(name, PageRequest.of(page, size));
 		return PageResponse.of(
 			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
@@ -245,6 +247,12 @@ public class WorkspaceService {
 		int length = name.length();
 		if (length < NAME_MIN || length > NAME_MAX) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
+		}
+	}
+
+	private void validatePageable(int page, int size) {
+		if (page < 0 || size <= 0) {
+			throw new BadRequestException(ErrorCode.INVALID_PARAMETER);
 		}
 	}
 
