@@ -714,7 +714,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional()
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Validation"))
-					.responseFields(problemDetailFieldsWithFieldErrors())
+					.responseFields(problemDetailFields())
 					.build()
 				)
 			));
