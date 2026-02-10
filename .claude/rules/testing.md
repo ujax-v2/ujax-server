@@ -32,6 +32,7 @@
 
 ## 테스트 스타일
 - `@Nested` + `@DisplayName`으로 기능별 그룹핑 (한글 DisplayName)
+- `@Nested` 안에 테스트가 1개뿐이면 `@Nested`를 사용하지 않고 flat 구조로 작성
 - `@DisplayName`에 구현 디테일(클래스명 등)을 넣지 않음 — 행위 중심으로 작성
   ```
   // Bad:  "존재하지 않는 유저를 조회하면 NotFoundException이 발생한다"
