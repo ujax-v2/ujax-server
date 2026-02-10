@@ -82,6 +82,11 @@ public class WorkspaceService {
 		return WorkspaceMemberListResponse.of(items);
 	}
 
+	public WorkspaceMemberResponse getMyWorkspaceMember(Long workspaceId, Long userId) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
+		return WorkspaceMemberResponse.from(member);
+	}
+
 	@Transactional
 	public void inviteWorkspaceMember(Long workspaceId, Long userId, String email) {
 		validateOwner(workspaceId, userId);
@@ -192,6 +197,15 @@ public class WorkspaceService {
 		}
 
 		workspaceMemberRepository.delete(target);
+	}
+
+	@Transactional
+	public void leaveWorkspace(Long workspaceId, Long userId) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
+		if (member.getRole() == WorkspaceMemberRole.OWNER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자는 워크스페이스를 탈퇴할 수 없습니다.");
+		}
+		workspaceMemberRepository.delete(member);
 	}
 
 	private Workspace findWorkspaceById(Long workspaceId) {

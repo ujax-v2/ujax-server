@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ujax.application.workspace.WorkspaceService;
 import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.global.dto.PageResponse;
@@ -73,6 +74,14 @@ public class WorkspaceController {
 		@RequestParam Long userId
 	) {
 		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, userId));
+	}
+
+	@GetMapping("/{workspaceId}/members/me")
+	public ApiResponse<WorkspaceMemberResponse> getMyWorkspaceMember(
+		@PathVariable Long workspaceId,
+		@RequestParam Long userId
+	) {
+		return ApiResponse.success(workspaceService.getMyWorkspaceMember(workspaceId, userId));
 	}
 
 	@PostMapping("/{workspaceId}/members/invite")
@@ -136,6 +145,15 @@ public class WorkspaceController {
 		@RequestParam Long userId
 	) {
 		workspaceService.removeWorkspaceMember(workspaceId, userId, workspaceMemberId);
+		return ApiResponse.success();
+	}
+
+	@DeleteMapping("/{workspaceId}/members/me")
+	public ApiResponse<Void> leaveWorkspace(
+		@PathVariable Long workspaceId,
+		@RequestParam Long userId
+	) {
+		workspaceService.leaveWorkspace(workspaceId, userId);
 		return ApiResponse.success();
 	}
 }

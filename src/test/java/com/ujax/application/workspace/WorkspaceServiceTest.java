@@ -361,17 +361,19 @@ class WorkspaceServiceTest {
 
 			// then
 			assertThat(response.items())
-				.extracting("workspaceMemberId", "nickname")
+				.extracting("workspaceMemberId", "nickname", "role")
 				.containsExactlyInAnyOrder(
 					tuple(
 						workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), owner.getId())
 							.orElseThrow().getId(),
-						owner.getName()
+						owner.getName(),
+						WorkspaceMemberRole.OWNER
 					),
 					tuple(
 						workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), memberUser.getId())
 							.orElseThrow().getId(),
-						memberUser.getName()
+						memberUser.getName(),
+						WorkspaceMemberRole.MEMBER
 					)
 				);
 		}
@@ -385,6 +387,42 @@ class WorkspaceServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> workspaceService.listWorkspaceMembers(workspace.getId(), outsider.getId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 멤버 조회")
+	class GetMyWorkspaceMember {
+
+		@Test
+		@DisplayName("멤버는 자신의 정보를 조회할 수 있다")
+		void getMyWorkspaceMember() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-self@example.com", "password", "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER)
+			);
+
+			// when
+			var response = workspaceService.getMyWorkspaceMember(workspace.getId(), owner.getId());
+
+			// then
+			assertThat(response).extracting("workspaceMemberId", "nickname", "role")
+				.containsExactly(member.getId(), owner.getName(), WorkspaceMemberRole.OWNER);
+		}
+
+		@Test
+		@DisplayName("멤버가 아니면 조회할 수 없다")
+		void getMyWorkspaceMemberForbidden() {
+			// given
+			User outsider = userRepository.save(User.createLocalUser("outsider-self@example.com", "password", "외부"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.getMyWorkspaceMember(workspace.getId(), outsider.getId()))
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
@@ -602,6 +640,58 @@ class WorkspaceServiceTest {
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), ownerUser.getId(), 999L))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_NOT_FOUND);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 탈퇴")
+	class LeaveWorkspace {
+
+		@Test
+		@DisplayName("멤버는 워크스페이스를 탈퇴할 수 있다")
+		void leaveWorkspace() {
+			// given
+			User ownerUser = userRepository.save(User.createLocalUser("owner-leave@example.com", "password", "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-leave@example.com", "password", "멤버"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER)
+			);
+
+			// when
+			workspaceService.leaveWorkspace(workspace.getId(), memberUser.getId());
+
+			// then
+			WorkspaceMember deleted = workspaceMemberRepository.findById(member.getId()).orElseThrow();
+			assertThat(deleted.isDeleted()).isTrue();
+		}
+
+		@Test
+		@DisplayName("소유자는 워크스페이스를 탈퇴할 수 없다")
+		void leaveWorkspaceOwnerForbidden() {
+			// given
+			User ownerUser = userRepository.save(User.createLocalUser("owner-leave2@example.com", "password", "소유자"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.leaveWorkspace(workspace.getId(), ownerUser.getId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+		}
+
+		@Test
+		@DisplayName("멤버가 아니면 탈퇴할 수 없다")
+		void leaveWorkspaceForbidden() {
+			// given
+			User outsider = userRepository.save(User.createLocalUser("outsider-leave@example.com", "password", "외부"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.leaveWorkspace(workspace.getId(), outsider.getId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
 	}
 
