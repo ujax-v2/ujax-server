@@ -195,6 +195,10 @@ public class WorkspaceService {
 		WorkspaceMember actor = validateMember(workspaceId, userId);
 		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
 
+		if (actor.getRole() == WorkspaceMemberRole.MEMBER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "멤버는 다른 사용자를 추방할 수 없습니다.");
+		}
+
 		if (target.getRole() == WorkspaceMemberRole.OWNER) {
 			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자는 추방할 수 없습니다.");
 		}

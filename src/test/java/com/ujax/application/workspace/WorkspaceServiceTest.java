@@ -629,6 +629,26 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
+		@DisplayName("일반 멤버는 다른 멤버를 추방할 수 없다")
+		void removeByMemberForbidden() {
+			// given
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove6@example.com", "password", "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-remove6@example.com", "password", "멤버"));
+			User targetUser = userRepository.save(User.createLocalUser("target-remove6@example.com", "password", "대상"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
+			WorkspaceMember target = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, targetUser, WorkspaceMemberRole.MEMBER)
+			);
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), memberUser.getId(), target.getId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+		}
+
+		@Test
 		@DisplayName("대상 멤버가 없으면 오류가 발생한다")
 		void removeMemberNotFound() {
 			// given
