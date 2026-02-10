@@ -65,4 +65,8 @@ public class WorkspaceMember extends BaseEntity {
 	public static WorkspaceMember create(Workspace workspace, User user, WorkspaceMemberRole role) {
 		return new WorkspaceMember(workspace, user, role, user.getName());
 	}
+
+	public void updateRole(WorkspaceMemberRole role) {
+		this.role = role;
+	}
 }

@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.workspace.WorkspaceService;
 import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +67,24 @@ public class WorkspaceController {
 		return ApiResponse.success(workspaceService.getWorkspaceSettings(workspaceId, userId));
 	}
 
+	@GetMapping("/{workspaceId}/members")
+	public ApiResponse<WorkspaceMemberListResponse> listWorkspaceMembers(
+		@PathVariable Long workspaceId,
+		@RequestParam Long userId
+	) {
+		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, userId));
+	}
+
+	@PostMapping("/{workspaceId}/members/invite")
+	public ApiResponse<Void> inviteWorkspaceMember(
+		@PathVariable Long workspaceId,
+		@RequestParam Long userId,
+		@Valid @RequestBody InviteWorkspaceMemberRequest request
+	) {
+		workspaceService.inviteWorkspaceMember(workspaceId, userId, request.email());
+		return ApiResponse.success();
+	}
+
 	@PostMapping
 	public ApiResponse<WorkspaceResponse> createWorkspace(@Valid @RequestBody CreateWorkspaceRequest request) {
 		return ApiResponse.success(
@@ -94,6 +115,27 @@ public class WorkspaceController {
 		@RequestParam Long userId
 	) {
 		workspaceService.deleteWorkspace(workspaceId, userId);
+		return ApiResponse.success();
+	}
+
+	@PatchMapping("/{workspaceId}/members/{workspaceMemberId}/role")
+	public ApiResponse<Void> updateWorkspaceMemberRole(
+		@PathVariable Long workspaceId,
+		@PathVariable Long workspaceMemberId,
+		@RequestParam Long userId,
+		@Valid @RequestBody UpdateWorkspaceMemberRoleRequest request
+	) {
+		workspaceService.updateWorkspaceMemberRole(workspaceId, userId, workspaceMemberId, request.role());
+		return ApiResponse.success();
+	}
+
+	@DeleteMapping("/{workspaceId}/members/{workspaceMemberId}")
+	public ApiResponse<Void> removeWorkspaceMember(
+		@PathVariable Long workspaceId,
+		@PathVariable Long workspaceMemberId,
+		@RequestParam Long userId
+	) {
+		workspaceService.removeWorkspaceMember(workspaceId, userId, workspaceMemberId);
 		return ApiResponse.success();
 	}
 }

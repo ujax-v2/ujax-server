@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.domain.user.User;
@@ -38,6 +40,7 @@ public class WorkspaceService {
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 	private final UserRepository userRepository;
+	private final WorkspaceInviteMailer workspaceInviteMailer;
 
 	public PageResponse<WorkspaceResponse> listWorkspaces(int page, int size) {
 		Page<Workspace> workspaces = workspaceRepository.findAll(PageRequest.of(page, size));
@@ -71,6 +74,31 @@ public class WorkspaceService {
 		);
 	}
 
+	public WorkspaceMemberListResponse listWorkspaceMembers(Long workspaceId, Long userId) {
+		validateMember(workspaceId, userId);
+		List<WorkspaceMemberResponse> items = workspaceMemberRepository.findByWorkspace_Id(workspaceId).stream()
+			.map(WorkspaceMemberResponse::from)
+			.toList();
+		return WorkspaceMemberListResponse.of(items);
+	}
+
+	@Transactional
+	public void inviteWorkspaceMember(Long workspaceId, Long userId, String email) {
+		validateOwner(workspaceId, userId);
+		Workspace workspace = findWorkspaceById(workspaceId);
+
+		User user = userRepository.findByEmail(email)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, user.getId()).isPresent()) {
+			throw new ConflictException(ErrorCode.DUPLICATE_RESOURCE, "이미 워크스페이스에 참여한 멤버입니다.");
+		}
+
+		WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);
+		workspaceMemberRepository.save(member);
+		workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
+	}
+
 	public WorkspaceResponse getWorkspace(Long workspaceId) {
 		return WorkspaceResponse.from(findWorkspaceById(workspaceId));
 	}
@@ -92,14 +120,16 @@ public class WorkspaceService {
 
 	@Transactional
 	public WorkspaceResponse updateWorkspace(Long workspaceId, Long userId, String name, String description, String mmWebhookUrl) {
-		Workspace workspace = findWorkspaceById(workspaceId);
 		validateOwner(workspaceId, userId);
+		Workspace workspace = findWorkspaceById(workspaceId);
 
-		if (name == null) {
+		if (name == null && description == null && mmWebhookUrl == null) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
-		validateName(name);
-		validateNameDuplicate(name, workspace.getName());
+		if (name != null) {
+			validateName(name);
+			validateNameDuplicate(name, workspace.getName());
+		}
 		if (description != null) {
 			validateDescription(description);
 		}
@@ -121,6 +151,47 @@ public class WorkspaceService {
 		return WorkspaceSettingsResponse.from(workspace);
 	}
 
+	@Transactional
+	public void updateWorkspaceMemberRole(Long workspaceId, Long userId, Long workspaceMemberId, WorkspaceMemberRole role) {
+		WorkspaceMember owner = validateOwner(workspaceId, userId);
+		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
+
+		if (target.getRole() == WorkspaceMemberRole.OWNER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자 권한은 변경할 수 없습니다.");
+		}
+
+		if (role == WorkspaceMemberRole.OWNER) {
+			if (owner.getId().equals(target.getId())) {
+				throw new BadRequestException(ErrorCode.INVALID_INPUT);
+			}
+			target.updateRole(WorkspaceMemberRole.OWNER);
+			owner.updateRole(WorkspaceMemberRole.MANAGER);
+			return;
+		}
+
+		target.updateRole(role);
+	}
+
+	@Transactional
+	public void removeWorkspaceMember(Long workspaceId, Long userId, Long workspaceMemberId) {
+		WorkspaceMember actor = validateMember(workspaceId, userId);
+		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
+
+		if (target.getRole() == WorkspaceMemberRole.OWNER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자는 추방할 수 없습니다.");
+		}
+
+		if (actor.getRole() == WorkspaceMemberRole.MANAGER && target.getRole() != WorkspaceMemberRole.MEMBER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "매니저는 멤버만 추방할 수 있습니다.");
+		}
+
+		if (actor.getId().equals(target.getId())) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "자기 자신은 추방할 수 없습니다.");
+		}
+
+		workspaceMemberRepository.delete(target);
+	}
+
 	private Workspace findWorkspaceById(Long workspaceId) {
 		return workspaceRepository.findById(workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_NOT_FOUND));
@@ -129,6 +200,11 @@ public class WorkspaceService {
 	private User findUserById(Long userId) {
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+	}
+
+	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long workspaceMemberId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_MEMBER_NOT_FOUND));
 	}
 
 	private void validateName(String name) {
@@ -159,12 +235,18 @@ public class WorkspaceService {
 		}
 	}
 
-	private void validateOwner(Long workspaceId, Long userId) {
+	private WorkspaceMember validateOwner(Long workspaceId, Long userId) {
 		WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 대한 권한이 없습니다."));
+			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
 
 		if (member.getRole() != WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 대한 권한이 없습니다.");
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자만 이 작업을 수행할 수 있습니다.");
 		}
+		return member;
+	}
+
+	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
+			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
 	}
 }

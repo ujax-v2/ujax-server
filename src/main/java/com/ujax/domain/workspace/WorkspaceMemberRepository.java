@@ -1,5 +1,6 @@
 package com.ujax.domain.workspace;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.jspecify.annotations.NonNull;
@@ -16,4 +17,8 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 	Optional<WorkspaceMember> findById(@Param("id") @NonNull Long id);
 
 	Optional<WorkspaceMember> findByWorkspace_IdAndUser_Id(Long workspaceId, Long userId);
+
+	Optional<WorkspaceMember> findByWorkspace_IdAndId(Long workspaceId, Long workspaceMemberId);
+
+	List<WorkspaceMember> findByWorkspace_Id(Long workspaceId);
 }
