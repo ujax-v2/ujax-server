@@ -880,6 +880,30 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
+		@DisplayName("탈퇴한 멤버는 다시 초대하면 복원된다")
+		void inviteWorkspaceMemberRestore() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner8@example.com", "password", "유저"));
+			User target = userRepository.save(User.createLocalUser("invite4@example.com", "password", "초대"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, target, WorkspaceMemberRole.MEMBER)
+			);
+			workspaceMemberRepository.delete(member);
+
+			// when
+			workspaceService.inviteWorkspaceMember(workspace.getId(), owner.getId(), target.getEmail());
+
+			// then
+			WorkspaceMember restored = workspaceMemberRepository
+				.findByWorkspaceIdAndUserIdIncludingDeleted(workspace.getId(), target.getId())
+				.orElseThrow();
+			assertThat(restored.isDeleted()).isFalse();
+			assertThat(restored.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
+		}
+
+		@Test
 		@DisplayName("유저가 없으면 오류가 발생한다")
 		void inviteWorkspaceMemberUserNotFound() {
 			// given

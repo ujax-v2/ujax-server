@@ -95,8 +95,19 @@ public class WorkspaceService {
 		User user = userRepository.findByEmail(email)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
+		workspaceMemberRepository.findByWorkspaceIdAndUserIdIncludingDeleted(workspaceId, user.getId())
+			.ifPresent(member -> {
+				if (!member.isDeleted()) {
+					throw new ConflictException(ErrorCode.DUPLICATE_RESOURCE, "이미 워크스페이스에 참여한 멤버입니다.");
+				}
+				member.restore();
+				member.updateRole(WorkspaceMemberRole.MEMBER);
+				member.updateNickname(user.getName());
+			});
+
 		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, user.getId()).isPresent()) {
-			throw new ConflictException(ErrorCode.DUPLICATE_RESOURCE, "이미 워크스페이스에 참여한 멤버입니다.");
+			workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
+			return;
 		}
 
 		WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);

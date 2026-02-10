@@ -69,4 +69,8 @@ public class WorkspaceMember extends BaseEntity {
 	public void updateRole(WorkspaceMemberRole role) {
 		this.role = role;
 	}
+
+	public void updateNickname(String nickname) {
+		this.nickname = nickname;
+	}
 }
