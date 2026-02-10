@@ -660,7 +660,7 @@ class WorkspaceControllerDocsTest {
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
-						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
+						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
 						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional()
 					)
@@ -683,6 +683,9 @@ class WorkspaceControllerDocsTest {
 	void updateWorkspaceValidationError() throws Exception {
 		// given
 		UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("", "새 소개", null);
+		willThrow(new com.ujax.global.exception.common.BadRequestException(ErrorCode.INVALID_INPUT))
+			.given(workspaceService)
+			.updateWorkspace(anyLong(), anyLong(), any(), any(), any());
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 1)
@@ -706,7 +709,7 @@ class WorkspaceControllerDocsTest {
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
-						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
+						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
 						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional()
 					)
