@@ -142,6 +142,8 @@ public class WorkspaceService {
 	public void deleteWorkspace(Long workspaceId, Long userId) {
 		Workspace workspace = findWorkspaceById(workspaceId);
 		validateOwner(workspaceId, userId);
+		workspaceMemberRepository.findByWorkspace_Id(workspaceId)
+			.forEach(workspaceMemberRepository::delete);
 		workspaceRepository.delete(workspace);
 	}
 
