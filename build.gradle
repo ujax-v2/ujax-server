@@ -172,9 +172,6 @@ def jacocoExcludes = [
         '**/dto/**',             // DTO
         '**/external/**',        // API Client
         '**/global/**',          // global 패키지 전체
-        '**/application/board/**',
-        '**/domain/board/**',
-        '**/infrastructure/web/**'
 ]
 
 // 리포트 생성
