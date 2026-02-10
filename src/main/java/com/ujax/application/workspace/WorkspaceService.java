@@ -136,8 +136,8 @@ public class WorkspaceService {
 
 	@Transactional
 	public WorkspaceResponse updateWorkspace(Long workspaceId, Long userId, String name, String description, String mmWebhookUrl) {
-		validateOwner(workspaceId, userId);
 		Workspace workspace = findWorkspaceById(workspaceId);
+		validateOwner(workspaceId, userId);
 
 		if (name == null && description == null && mmWebhookUrl == null) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);

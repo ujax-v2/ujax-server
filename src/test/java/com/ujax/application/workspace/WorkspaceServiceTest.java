@@ -162,6 +162,24 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
+		@DisplayName("워크스페이스가 없으면 오류가 발생한다")
+		void updateWorkspaceNotFound() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-missing@example.com", "password", "유저"));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.updateWorkspace(
+				999L,
+				owner.getId(),
+				"새 이름",
+				null,
+				null
+			))
+				.isInstanceOf(NotFoundException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_NOT_FOUND);
+		}
+
+		@Test
 		@DisplayName("이름과 소개를 수정할 수 있다")
 		void updateWorkspace() {
 			// given
