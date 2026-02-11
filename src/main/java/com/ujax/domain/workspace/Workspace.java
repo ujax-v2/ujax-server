@@ -47,4 +47,16 @@ public class Workspace extends BaseEntity {
 	public static Workspace create(String name, String description) {
 		return new Workspace(name, description);
 	}
+
+	public void update(String name, String description, String mmWebhookUrl) {
+		if (name != null) {
+			this.name = name;
+		}
+		if (description != null) {
+			this.description = description;
+		}
+		if (mmWebhookUrl != null) {
+			this.mmWebhookUrl = mmWebhookUrl;
+		}
+	}
 }
