@@ -22,6 +22,7 @@ import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberNicknameRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +83,17 @@ public class WorkspaceController {
 		@RequestParam Long userId
 	) {
 		return ApiResponse.success(workspaceService.getMyWorkspaceMember(workspaceId, userId));
+	}
+
+	@PatchMapping("/{workspaceId}/members/me/nickname")
+	public ApiResponse<WorkspaceMemberResponse> updateMyWorkspaceNickname(
+		@PathVariable Long workspaceId,
+		@RequestParam Long userId,
+		@Valid @RequestBody UpdateWorkspaceMemberNicknameRequest request
+	) {
+		return ApiResponse.success(
+			workspaceService.updateMyWorkspaceNickname(workspaceId, userId, request.nickname())
+		);
 	}
 
 	@PostMapping("/{workspaceId}/members/invite")

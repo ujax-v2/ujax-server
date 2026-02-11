@@ -465,6 +465,57 @@ class WorkspaceServiceTest {
 	}
 
 	@Nested
+	@DisplayName("워크스페이스 닉네임 수정")
+	class UpdateMyWorkspaceNickname {
+
+		@Test
+		@DisplayName("멤버는 닉네임을 수정할 수 있다")
+		void updateNickname() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-nick@example.com", "password", "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.MEMBER)
+			);
+
+			// when
+			var response = workspaceService.updateMyWorkspaceNickname(workspace.getId(), owner.getId(), "새닉네임");
+
+			// then
+			WorkspaceMember updated = workspaceMemberRepository.findById(member.getId()).orElseThrow();
+			assertThat(updated.getNickname()).isEqualTo("새닉네임");
+			assertThat(response.nickname()).isEqualTo("새닉네임");
+		}
+
+		@Test
+		@DisplayName("닉네임이 비어 있으면 오류가 발생한다")
+		void updateNicknameInvalid() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-nick2@example.com", "password", "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.MEMBER));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.updateMyWorkspaceNickname(workspace.getId(), owner.getId(), " "))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+		}
+
+		@Test
+		@DisplayName("멤버가 아니면 닉네임을 수정할 수 없다")
+		void updateNicknameForbidden() {
+			// given
+			User outsider = userRepository.save(User.createLocalUser("outsider-nick@example.com", "password", "외부"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.updateMyWorkspaceNickname(workspace.getId(), outsider.getId(), "새닉네임"))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+		}
+	}
+
+	@Nested
 	@DisplayName("워크스페이스 멤버 권한 변경")
 	class UpdateWorkspaceMemberRole {
 
