@@ -84,7 +84,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.createWorkspace("중복", "소개", user.getId()))
 				.isInstanceOf(ConflictException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_NAME_DUPLICATE);
 		}
 
 		@Test
@@ -158,7 +158,7 @@ class WorkspaceServiceTest {
 				null
 			))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 
 		@Test
@@ -245,7 +245,7 @@ class WorkspaceServiceTest {
 				null
 			))
 				.isInstanceOf(ConflictException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_NAME_DUPLICATE);
 		}
 
 		@Test
@@ -424,7 +424,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.listWorkspaceMembers(workspace.getId(), outsider.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
 		}
 	}
 
@@ -460,7 +460,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.getMyWorkspaceMember(workspace.getId(), outsider.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
 		}
 	}
 
@@ -511,7 +511,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.updateMyWorkspaceNickname(workspace.getId(), outsider.getId(), "새닉네임"))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
 		}
 	}
 
@@ -570,7 +570,7 @@ class WorkspaceServiceTest {
 				WorkspaceMemberRole.MANAGER
 			))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 
 		@Test
@@ -593,7 +593,7 @@ class WorkspaceServiceTest {
 				WorkspaceMemberRole.MANAGER
 			))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -659,7 +659,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), managerUser.getId(), target.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -677,7 +677,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), managerUser.getId(), owner.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -693,7 +693,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), ownerUser.getId(), owner.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -712,7 +712,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), outsider.getId(), member.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
 		}
 
 		@Test
@@ -732,7 +732,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.removeWorkspaceMember(workspace.getId(), memberUser.getId(), target.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -785,7 +785,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.leaveWorkspace(workspace.getId(), ownerUser.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_FORBIDDEN);
 		}
 
 		@Test
@@ -798,7 +798,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.leaveWorkspace(workspace.getId(), outsider.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
 		}
 	}
 
@@ -857,7 +857,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.getWorkspaceSettings(workspace.getId(), memberUser.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 
 		@Test
@@ -906,7 +906,7 @@ class WorkspaceServiceTest {
 			// when & then
 			assertThatThrownBy(() -> workspaceService.deleteWorkspace(workspace.getId(), memberUser.getId()))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 
 		@Test
@@ -963,7 +963,7 @@ class WorkspaceServiceTest {
 				target.getEmail()
 			))
 				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 
 		@Test
@@ -983,7 +983,7 @@ class WorkspaceServiceTest {
 				target.getEmail()
 			))
 				.isInstanceOf(ConflictException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_RESOURCE);
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_WORKSPACE_MEMBER);
 		}
 
 		@Test
