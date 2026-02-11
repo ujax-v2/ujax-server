@@ -36,6 +36,8 @@ public class WorkspaceService {
 	private static final int NAME_MIN = 1;
 	private static final int NAME_MAX = 50;
 	private static final int DESCRIPTION_MAX = 200;
+	private static final int NICKNAME_MIN = 1;
+	private static final int NICKNAME_MAX = 30;
 
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -225,6 +227,14 @@ public class WorkspaceService {
 		workspaceMemberRepository.delete(member);
 	}
 
+	@Transactional
+	public WorkspaceMemberResponse updateMyWorkspaceNickname(Long workspaceId, Long userId, String nickname) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
+		validateNickname(nickname);
+		member.updateNickname(nickname);
+		return WorkspaceMemberResponse.from(member);
+	}
+
 	private Workspace findWorkspaceById(Long workspaceId) {
 		return workspaceRepository.findById(workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_NOT_FOUND));
@@ -261,6 +271,16 @@ public class WorkspaceService {
 			return;
 		}
 		if (description.length() > DESCRIPTION_MAX) {
+			throw new BadRequestException(ErrorCode.INVALID_INPUT);
+		}
+	}
+
+	private void validateNickname(String nickname) {
+		if (nickname == null || nickname.isBlank()) {
+			throw new BadRequestException(ErrorCode.INVALID_INPUT);
+		}
+		int length = nickname.length();
+		if (length < NICKNAME_MIN || length > NICKNAME_MAX) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 	}

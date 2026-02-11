@@ -44,6 +44,7 @@ import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.web.workspace.WorkspaceController;
 import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberNicknameRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
 
@@ -552,6 +553,89 @@ class WorkspaceControllerDocsTest {
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("워크스페이스 닉네임 수정 API")
+	void updateMyWorkspaceNickname() throws Exception {
+		// given
+		UpdateWorkspaceMemberNicknameRequest request = new UpdateWorkspaceMemberNicknameRequest("새닉네임");
+		WorkspaceMemberResponse response = new WorkspaceMemberResponse(1L, "새닉네임", WorkspaceMemberRole.MEMBER);
+		given(workspaceService.updateMyWorkspaceNickname(anyLong(), anyLong(), anyString())).willReturn(response);
+
+		// when & then
+		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/me/nickname", 1)
+				.queryParam("userId", "1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("workspace-member-nickname-update",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("워크스페이스 닉네임 수정")
+					.description("워크스페이스 닉네임 수정")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.queryParameters(
+						parameterWithName("userId").description("요청자 유저 ID")
+					)
+					.requestSchema(Schema.schema("UpdateWorkspaceMemberNicknameRequest"))
+					.requestFields(
+						fieldWithPath("nickname").type(JsonFieldType.STRING).description("닉네임")
+					)
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceMemberResponse"))
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+						fieldWithPath("data.nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.role").type(JsonFieldType.STRING).description("권한"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("워크스페이스 닉네임 수정 API - 유효성 오류")
+	void updateMyWorkspaceNicknameValidationError() throws Exception {
+		// given
+		UpdateWorkspaceMemberNicknameRequest request = new UpdateWorkspaceMemberNicknameRequest("");
+
+		// when & then
+		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/me/nickname", 1)
+				.queryParam("userId", "1")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isBadRequest())
+			.andDo(document("workspace-member-nickname-update-error",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("워크스페이스 닉네임 수정")
+					.description("워크스페이스 닉네임 수정")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.queryParameters(
+						parameterWithName("userId").description("요청자 유저 ID")
+					)
+					.requestSchema(Schema.schema("UpdateWorkspaceMemberNicknameRequest"))
+					.requestFields(
+						fieldWithPath("nickname").type(JsonFieldType.STRING).description("닉네임")
+					)
+					.responseSchema(Schema.schema("ProblemDetail-Validation"))
+					.responseFields(problemDetailFieldsWithFieldErrors())
 					.build()
 				)
 			));
