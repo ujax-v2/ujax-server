@@ -36,6 +36,7 @@ services:
 
   redis:
     image: redis:7.2.4
+    container_name: judge0-redis
     command:
       [
         "bash",
