@@ -39,8 +39,8 @@ import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.GlobalExceptionHandler;
-import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.infrastructure.web.workspace.WorkspaceController;
 import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
@@ -382,7 +382,7 @@ class WorkspaceControllerDocsTest {
 	void getWorkspaceSettingsForbidden() throws Exception {
 		// given
 		given(workspaceService.getWorkspaceSettings(anyLong(), anyLong()))
-			.willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE));
+			.willThrow(new ForbiddenException(ErrorCode.WORKSPACE_OWNER_REQUIRED));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/settings", 1)
@@ -457,7 +457,7 @@ class WorkspaceControllerDocsTest {
 	void listWorkspaceMembersForbidden() throws Exception {
 		// given
 		given(workspaceService.listWorkspaceMembers(anyLong(), anyLong()))
-			.willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE));
+			.willThrow(new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
@@ -530,7 +530,7 @@ class WorkspaceControllerDocsTest {
 	void getMyWorkspaceMemberForbidden() throws Exception {
 		// given
 		given(workspaceService.getMyWorkspaceMember(anyLong(), anyLong()))
-			.willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE));
+			.willThrow(new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members/me", 1)
@@ -844,7 +844,7 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 삭제 API - 권한 없음")
 	void deleteWorkspaceForbidden() throws Exception {
 		// given
-		willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE))
+		willThrow(new ForbiddenException(ErrorCode.WORKSPACE_OWNER_REQUIRED))
 			.given(workspaceService).deleteWorkspace(anyLong(), anyLong());
 
 		// when & then
@@ -988,7 +988,7 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 멤버 추방 API - 권한 없음")
 	void removeWorkspaceMemberForbidden() throws Exception {
 		// given
-		willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE))
+		willThrow(new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN))
 			.given(workspaceService).removeWorkspaceMember(anyLong(), anyLong(), anyLong());
 
 		// when & then
@@ -1058,7 +1058,7 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 탈퇴 API - 권한 없음")
 	void leaveWorkspaceForbidden() throws Exception {
 		// given
-		willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE))
+		willThrow(new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN))
 			.given(workspaceService).leaveWorkspace(anyLong(), anyLong());
 
 		// when & then
