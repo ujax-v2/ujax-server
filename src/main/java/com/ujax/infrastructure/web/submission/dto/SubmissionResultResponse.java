@@ -14,7 +14,10 @@ public record SubmissionResultResponse(
             String stderr,
             String compileOutput,
             Float time,
-            Integer memory
+            Integer memory,
+            String input,
+            String expected,
+            Boolean isCorrect
     ) {
     }
 
