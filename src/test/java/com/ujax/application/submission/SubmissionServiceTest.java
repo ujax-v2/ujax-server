@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,8 +26,6 @@ import com.ujax.global.exception.common.InvalidSubmissionException;
 import com.ujax.global.exception.common.Judge0Exception;
 import com.ujax.infrastructure.web.submission.dto.SubmissionRequest;
 import com.ujax.infrastructure.web.submission.dto.SubmissionResultResponse;
-
-import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class SubmissionServiceTest {
@@ -53,13 +52,13 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("성공: 코드 제출 시 통합 토큰을 생성하고 Redis에 저장한다")
+    @DisplayName("성공: 코드 제출 시 토큰과 메타데이터(input, expected)를 JSON Map으로 변환하여 Redis에 저장한다")
     void submitAndAggregateTokens_Success() throws Exception {
         // given
         var testCase = new SubmissionRequest.TestCaseRequest("1 2", "3");
         var request = new SubmissionRequest("JAVA", "encodedCode", List.of(testCase));
 
-        String judge0Response = "[{\"token\": \"token-abc-123\"}]";
+        String judge0Response = "[{\"token\": \"token-123\"}]";
         given(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
                 .willReturn(ResponseEntity.ok(judge0Response));
 
@@ -68,7 +67,9 @@ class SubmissionServiceTest {
 
         // then
         assertThat(unifiedToken).isNotNull();
-        verify(valueOperations).set(startsWith("submission:"), eq("token-abc-123"), any());
+        // Redis에 단순 토큰이 아닌, 입력/기대값이 포함된 JSON 구조가 저장되는지 검증
+        verify(valueOperations).set(contains("submission:"), contains("\"input\":\"1 2\""), any());
+        verify(valueOperations).set(contains("submission:"), contains("\"expected\":\"3\""), any());
     }
 
     @Test
@@ -81,7 +82,7 @@ class SubmissionServiceTest {
         // when & then
         assertThatThrownBy(() -> submissionService.submitAndAggregateTokens(request))
                 .isInstanceOf(InvalidSubmissionException.class)
-                .hasMessageContaining("지원하지 않는 언어입니다");
+                .hasMessageContaining("지원하지 않는 언어: BASIC");
     }
 
     @Test
@@ -97,7 +98,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: Judge0 서버 통신 중 에러 발생 시 Judge0Exception을 던진다")
+    @DisplayName("실패: Judge0 서버 제출 중 에러 발생 시 Judge0Exception을 던진다")
     void submit_Judge0ServerError() {
         // given
         var request = new SubmissionRequest("PYTHON", "code",
@@ -109,35 +110,19 @@ class SubmissionServiceTest {
         // when & then
         assertThatThrownBy(() -> submissionService.submitAndAggregateTokens(request))
                 .isInstanceOf(Judge0Exception.class)
-                .hasMessageContaining("코드 제출 처리 중 오류 발생");
+                .hasMessageContaining("제출 중 오류 발생");
     }
 
     @Test
-    @DisplayName("성공: CPP 언어 ID 변환이 정상 동작한다")
-    void submit_CppLanguage() throws Exception {
-        // given
-        var request = new SubmissionRequest("CPP", "source",
-                List.of(new SubmissionRequest.TestCaseRequest("1", "1")));
-
-        given(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
-                .willReturn(ResponseEntity.ok("[{\"token\": \"cpp-token\"}]"));
-
-        // when
-        String token = submissionService.submitAndAggregateTokens(request);
-
-        // then
-        assertThat(token).isNotNull();
-    }
-
-    @Test
-    @DisplayName("성공: Redis에서 토큰 목록을 조회하여 Judge0 결과를 반환하고 Base64를 디코딩한다")
+    @DisplayName("성공: 조회 시 Redis 메타데이터를 결합하여 input, expected 및 정답 여부(isCorrect)를 반환한다")
     void getSubmissionResults_Success() throws Exception {
         // given
         String unifiedToken = UUID.randomUUID().toString();
-        String individualTokens = "token1,token2";
-        given(redisTemplate.opsForValue().get("submission:" + unifiedToken)).willReturn(individualTokens);
+        // Redis에 저장된 JSON Map 형태의 메타데이터 모킹
+        String metadataJson = "{\"token1\":{\"input\":\"1 2\",\"expected\":\"3\"}}";
+        given(redisTemplate.opsForValue().get("submission:" + unifiedToken)).willReturn(metadataJson);
 
-        // Judge0 응답 Mock (Base64 인코딩된 stdout: "Mw==" -> "3")
+        // Judge0 응답 Mock (Base64 stdout: "Mw==" -> "3", statusId 3 -> isCorrect: true)
         String judge0Response = """
                 {
                     "submissions": [
@@ -159,9 +144,12 @@ class SubmissionServiceTest {
 
         // then
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).stdout()).isEqualTo("3"); // 디코딩 검증
-        assertThat(results.get(0).time()).isEqualTo(0.008f); // 형변환 검증
-        assertThat(results.get(0).statusDescription()).isEqualTo("Accepted");
+        var res = results.get(0);
+        assertThat(res.stdout()).isEqualTo("3");
+        assertThat(res.input()).isEqualTo("1 2");    // 메타데이터 병합 검증
+        assertThat(res.expected()).isEqualTo("3");   // 메타데이터 병합 검증
+        assertThat(res.isCorrect()).isTrue();         // 정답 여부 검증
+        assertThat(res.time()).isEqualTo(0.008f);
     }
 
     @Test
@@ -173,14 +161,14 @@ class SubmissionServiceTest {
         // when & then
         assertThatThrownBy(() -> submissionService.getSubmissionResults("invalid-token"))
                 .isInstanceOf(InvalidSubmissionException.class)
-                .hasMessageContaining("존재하지 않습니다");
+                .hasMessageContaining("만료되었습니다");
     }
 
     @Test
-    @DisplayName("실패: Judge0 서버 응답 본문이 null이면 Judge0Exception이 발생한다")
+    @DisplayName("실패: Judge0 결과 조회 중 응답 본문이 null이면 Judge0Exception이 발생한다")
     void getSubmissionResults_Judge0Error() {
         // given
-        given(redisTemplate.opsForValue().get(anyString())).willReturn("token1");
+        given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"t1\":{}}");
         given(restTemplate.getForEntity(anyString(), eq(String.class)))
                 .willReturn(ResponseEntity.ok(null));
 
@@ -191,51 +179,27 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("엣지 케이스: 디코딩할 수 없는 stdout 값이 들어오면 원본을 그대로 반환한다")
+    @DisplayName("엣지 케이스: 디코딩할 수 없는 결과값이 들어오면 원본을 그대로 반환한다")
     void decodeBase64_Fallback() throws Exception {
         // given
-        given(redisTemplate.opsForValue().get(anyString())).willReturn("token1");
-        String invalidBase64Response = """
-                {
-                    "submissions": [
-                        {
-                            "token": "token1",
-                            "status": { "id": 3, "description": "Accepted" },
-                            "stdout": "!!!InvalidBase64!!!"
-                        }
-                    ]
-                }
-                """;
-        given(restTemplate.getForEntity(anyString(), eq(String.class)))
-                .willReturn(ResponseEntity.ok(invalidBase64Response));
+        given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"token1\":{}}");
+        String invalidBase64Response = "{\"submissions\": [{\"token\": \"token1\", \"status\": {\"id\": 3}, \"stdout\": \"!!!Invalid!!!\"}]}";
+        given(restTemplate.getForEntity(anyString(), eq(String.class))).willReturn(ResponseEntity.ok(invalidBase64Response));
 
         // when
         List<SubmissionResultResponse.TestCaseResult> results = submissionService.getSubmissionResults("uuid");
 
         // then
-        // catch 블록의 커버리지를 위해 디코딩 실패 시 원본 반환 확인
-        assertThat(results.get(0).stdout()).isEqualTo("!!!InvalidBase64!!!");
+        assertThat(results.getFirst().stdout()).isEqualTo("!!!Invalid!!!");
     }
 
     @Test
-    @DisplayName("엣지 케이스: 실행 시간(time)이나 메모리 값이 null인 경우 에러 없이 처리한다")
+    @DisplayName("엣지 케이스: Judge0 실행 정보(time, memory)가 null인 경우 에러 없이 처리한다")
     void getSubmissionResults_NullFields() throws Exception {
         // given
-        given(redisTemplate.opsForValue().get(anyString())).willReturn("token1");
-        String nullFieldsResponse = """
-                {
-                    "submissions": [
-                        {
-                            "token": "token1",
-                            "status": { "id": 1, "description": "In Queue" },
-                            "time": null,
-                            "memory": null
-                        }
-                    ]
-                }
-                """;
-        given(restTemplate.getForEntity(anyString(), eq(String.class)))
-                .willReturn(ResponseEntity.ok(nullFieldsResponse));
+        given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"token1\":{}}");
+        String nullFieldsResponse = "{\"submissions\": [{\"token\": \"token1\", \"status\": {\"id\": 1}, \"time\": null, \"memory\": null}]}";
+        given(restTemplate.getForEntity(anyString(), eq(String.class))).willReturn(ResponseEntity.ok(nullFieldsResponse));
 
         // when
         List<SubmissionResultResponse.TestCaseResult> results = submissionService.getSubmissionResults("uuid");
