@@ -52,7 +52,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("성공: 코드 제출 시 토큰과 메타데이터(input, expected)를 JSON Map으로 변환하여 Redis에 저장한다")
+    @DisplayName("코드 제출 시 토큰과 메타데이터(input, expected)를 JSON Map으로 변환하여 Redis에 저장한다")
     void submitAndAggregateTokens_Success() throws Exception {
         // given
         var testCase = new SubmissionRequest.TestCaseRequest("1 2", "3");
@@ -73,7 +73,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: 지원하지 않는 언어를 입력하면 InvalidSubmissionException이 발생한다")
+    @DisplayName("지원하지 않는 언어를 입력하면 InvalidSubmissionException이 발생한다")
     void submit_InvalidLanguage() {
         // given
         var request = new SubmissionRequest("BASIC", "code",
@@ -86,7 +86,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: 테스트 케이스가 비어있으면 InvalidSubmissionException이 발생한다")
+    @DisplayName("테스트 케이스가 비어있으면 InvalidSubmissionException이 발생한다")
     void submit_EmptyTestCases() {
         // given
         var request = new SubmissionRequest("JAVA", "code", List.of());
@@ -98,7 +98,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: Judge0 서버 제출 중 에러 발생 시 Judge0Exception을 던진다")
+    @DisplayName("Judge0 서버 제출 중 에러 발생 시 Judge0Exception을 던진다")
     void submit_Judge0ServerError() {
         // given
         var request = new SubmissionRequest("PYTHON", "code",
@@ -114,7 +114,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("성공: 조회 시 Redis 메타데이터를 결합하여 input, expected 및 정답 여부(isCorrect)를 반환한다")
+    @DisplayName("조회 시 Redis 메타데이터를 결합하여 input, expected 및 정답 여부(isCorrect)를 반환한다")
     void getSubmissionResults_Success() throws Exception {
         // given
         String unifiedToken = UUID.randomUUID().toString();
@@ -153,7 +153,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: Redis에 해당 통합 토큰 정보가 없으면 InvalidSubmissionException이 발생한다")
+    @DisplayName("Redis에 해당 통합 토큰 정보가 없으면 InvalidSubmissionException이 발생한다")
     void getSubmissionResults_NotFound() {
         // given
         given(redisTemplate.opsForValue().get(anyString())).willReturn(null);
@@ -165,7 +165,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("실패: Judge0 결과 조회 중 응답 본문이 null이면 Judge0Exception이 발생한다")
+    @DisplayName("Judge0 결과 조회 중 응답 본문이 null이면 Judge0Exception이 발생한다")
     void getSubmissionResults_Judge0Error() {
         // given
         given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"t1\":{}}");
@@ -179,7 +179,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("엣지 케이스: 디코딩할 수 없는 결과값이 들어오면 원본을 그대로 반환한다")
+    @DisplayName("디코딩할 수 없는 결과값이 들어오면 원본을 그대로 반환한다")
     void decodeBase64_Fallback() throws Exception {
         // given
         given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"token1\":{}}");
@@ -194,7 +194,7 @@ class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("엣지 케이스: Judge0 실행 정보(time, memory)가 null인 경우 에러 없이 처리한다")
+    @DisplayName("Judge0 실행 정보(time, memory)가 null인 경우 에러 없이 처리한다")
     void getSubmissionResults_NullFields() throws Exception {
         // given
         given(redisTemplate.opsForValue().get(anyString())).willReturn("{\"token1\":{}}");

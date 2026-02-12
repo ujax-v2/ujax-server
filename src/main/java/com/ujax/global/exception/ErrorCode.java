@@ -14,7 +14,7 @@ public enum ErrorCode {
 	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "C002", "잘못된 파라미터 형식입니다."),
 	MISSING_REQUIRED_FIELD(HttpStatus.BAD_REQUEST, "C003", "필수 입력값이 누락되었습니다."),
 	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "잘못된 타입의 값입니다."),
-	INVALID_SUBMISSION(HttpStatus.BAD_REQUEST, "C005", "유효하지 않은 제출 정보입니다."), // 추가
+	INVALID_SUBMISSION(HttpStatus.BAD_REQUEST, "C005", "유효하지 않은 제출 정보입니다."),
 
 	// ==================== 401 Unauthorized ====================
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),
@@ -50,7 +50,7 @@ public enum ErrorCode {
 
 	// ==================== 502 Bad Gateway ====================
 	EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "E001", "외부 서비스 연동 중 오류가 발생했습니다."),
-	JUDGE0_API_ERROR(HttpStatus.BAD_GATEWAY, "E003", "Judge0 서비스 연동 중 오류가 발생했습니다."), // 추가
+	JUDGE0_API_ERROR(HttpStatus.BAD_GATEWAY, "E003", "Judge0 서비스 연동 중 오류가 발생했습니다."),
 
 	// ==================== 503 Service Unavailable ====================
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E002", "서비스를 일시적으로 사용할 수 없습니다."),

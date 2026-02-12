@@ -32,7 +32,7 @@ class SubmissionControllerTest {
     private SubmissionService submissionService;
 
     @Test
-    @DisplayName("코드 제출 API가 정상적으로 호출된다")
+    @DisplayName("코드 제출 시 ApiResponse 규격에 맞춰 success와 토큰 데이터를 반환한다")
     void createSubmission_Success() throws Exception {
         // given
         var request = new SubmissionRequest("JAVA", "source",
@@ -46,17 +46,22 @@ class SubmissionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("OK"))
-                .andExpect(jsonPath("$.data.submissionToken").value(mockToken));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.submissionToken").value(mockToken))
+                .andExpect(jsonPath("$.message").isEmpty());
     }
 
     @Test
-    @DisplayName("결과 조회 API 호출 정상동작 확인")
+    @DisplayName("결과 조회 시 ApiResponse 규격에 맞춰 success와 결과 리스트를 반환한다")
     void getResults_ApiSuccess() throws Exception {
+        // given
         given(submissionService.getSubmissionResults(anyString())).willReturn(List.of());
 
+        // when & then
         mockMvc.perform(get("/api/v1/submissions/test-token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("OK"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.message").isEmpty());
     }
 }
