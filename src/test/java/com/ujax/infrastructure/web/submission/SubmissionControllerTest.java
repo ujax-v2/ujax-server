@@ -49,4 +49,14 @@ class SubmissionControllerTest {
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(jsonPath("$.data.submissionToken").value(mockToken));
     }
+
+    @Test
+    @DisplayName("결과 조회 API 호출 정상동작 확인")
+    void getResults_ApiSuccess() throws Exception {
+        given(submissionService.getSubmissionResults(anyString())).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/submissions/test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("OK"));
+    }
 }
