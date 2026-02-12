@@ -32,11 +32,13 @@ public class SubmissionService {
     @Value("${judge0.api.url}")
     private String judge0Url;
 
+    private record TestCaseMetadata(String input, String expected) {
+    }
+
     public String submitAndAggregateTokens(SubmissionRequest request) {
         if (request.testCases() == null || request.testCases().isEmpty()) {
             throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "테스트 케이스는 최소 1개 이상이어야 합니다.");
         }
-
         int languageId = getLanguageId(request.language());
 
         try {
@@ -51,73 +53,57 @@ public class SubmissionService {
                     })
                     .toList();
 
-            Map<String, Object> batchRequest = Map.of("submissions", submissions);
-            String jsonPayload = objectMapper.writeValueAsString(batchRequest);
-
-            //Judge0로 전송
+            String jsonPayload = objectMapper.writeValueAsString(Map.of("submissions", submissions));
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
 
-            String url = judge0Url + "/submissions/batch?base64_encoded=true";
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(judge0Url + "/submissions/batch?base64_encoded=true", entity, String.class);
 
-            if (response.getBody() == null) {
-                throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "Judge0 서버 응답이 비어있습니다.");
+            if (response.getBody() == null) throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "응답이 비어있습니다.");
+
+            List<Map<String, String>> responseBody = objectMapper.readValue(response.getBody(), new TypeReference<>() {
+            });
+
+            Map<String, TestCaseMetadata> metadataMap = new LinkedHashMap<>();
+            for (int i = 0; i < responseBody.size(); i++) {
+                String token = responseBody.get(i).get("token");
+                var originalTc = request.testCases().get(i);
+                metadataMap.put(token, new TestCaseMetadata(originalTc.input(), originalTc.expected()));
             }
 
-            //응답 파싱 및 Redis 저장
-            List<Map<String, String>> responseBody = objectMapper.readValue(
-                    response.getBody(),
-                    new TypeReference<>() {
-                    }
-            );
-
-            List<String> tokens = responseBody.stream()
-                    .map(res -> res.get("token"))
-                    .filter(Objects::nonNull)
-                    .toList();
-
             String unifiedToken = UUID.randomUUID().toString();
-            redisTemplate.opsForValue().set(
-                    "submission:" + unifiedToken,
-                    String.join(",", tokens),
-                    Duration.ofMinutes(5)
-            );
-            return unifiedToken;
+            redisTemplate.opsForValue().set("submission:" + unifiedToken, objectMapper.writeValueAsString(metadataMap), Duration.ofHours(1));
 
+            return unifiedToken;
         } catch (InvalidSubmissionException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Judge0 Submission Failed: ", e);
-            throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "코드 제출 처리 중 오류 발생: " + e.getMessage());
+            throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "제출 중 오류 발생: " + e.getMessage());
         }
     }
 
     public List<SubmissionResultResponse.TestCaseResult> getSubmissionResults(String submissionToken) {
-        // Redis 조회
-        String tokens = redisTemplate.opsForValue().get("submission:" + submissionToken);
-        if (tokens == null) {
-            throw new InvalidSubmissionException(ErrorCode.RESOURCE_NOT_FOUND, "제출 정보가 존재하지 않습니다.");
-        }
-
-        // Judge0 호출
-        String url = String.format("%s/submissions/batch?tokens=%s&base64_encoded=true&fields=token,status_id,status,stdout,stderr,compile_output,time,memory",
-                judge0Url, tokens);
+        String metadataJson = redisTemplate.opsForValue().get("submission:" + submissionToken);
+        if (metadataJson == null) throw new InvalidSubmissionException(ErrorCode.RESOURCE_NOT_FOUND, "제출 정보가 만료되었습니다.");
 
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            // 1. Redis에서 메타데이터 복원
+            Map<String, TestCaseMetadata> metadataMap = objectMapper.readValue(metadataJson, new TypeReference<>() {
+            });
+            String tokens = String.join(",", metadataMap.keySet());
 
-            if (response.getBody() == null) {
-                throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "Judge0 서버 응답이 비어있습니다.");
-            }
+            // 2. Judge0 결과 조회
+            String url = String.format("%s/submissions/batch?tokens=%s&base64_encoded=true&fields=token,status_id,status,stdout,stderr,compile_output,time,memory", judge0Url, tokens);
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            if (response.getBody() == null) throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "응답이 비어있습니다.");
 
             Judge0RawResponse rawResponse = objectMapper.readValue(response.getBody(), Judge0RawResponse.class);
 
-            // 데이터 변환 및 디코딩
+            // 3. 데이터 병합 및 반환
             return rawResponse.submissions().stream().map(item -> {
-                String timeStr = item.time() != null ? String.valueOf(item.time()) : null;
-                String memoryStr = item.memory() != null ? String.valueOf(item.memory()) : null;
+                TestCaseMetadata meta = metadataMap.get(item.token());
+                boolean isCorrect = item.status().id() == 3; // Accepted 상태(status_id == 3)인 경우 성공이므로
 
                 return new SubmissionResultResponse.TestCaseResult(
                         item.token(),
@@ -126,47 +112,38 @@ public class SubmissionService {
                         decodeBase64(item.stdout()),
                         decodeBase64(item.stderr()),
                         decodeBase64(item.compileOutput()),
-                        timeStr != null ? Float.parseFloat(timeStr) : null,
-                        memoryStr != null ? (int) Double.parseDouble(memoryStr) : null
+                        item.time() != null ? Float.parseFloat(item.time()) : null,
+                        item.memory() != null ? (int) Double.parseDouble(item.memory()) : null,
+                        meta.input(),
+                        meta.expected(),
+                        isCorrect
                 );
             }).toList();
-
-        } catch (Judge0Exception e) {
-            throw e;
         } catch (Exception e) {
-            log.error("Failed to fetch results from Judge0: ", e);
-            throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "결과 조회 중 오류 발생: " + e.getMessage());
-        }
-    }
-
-    // front에는 채점 결과를 다시 decoding해서 보내기
-    private String decodeBase64(String encoded) {
-        if (encoded == null || encoded.isEmpty()) {
-            return null;
-        }
-        try {
-            byte[] decodedBytes = Base64.getDecoder().decode(encoded.replaceAll("\\s", ""));
-            return new String(decodedBytes, StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException e) {
-            log.warn("Base64 decoding failed for: {}", encoded);
-            return encoded;
+            throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "조회 중 오류 발생: " + e.getMessage());
         }
     }
 
     private String encodeToBase64(String raw) {
-        if (raw == null || raw.isEmpty()) return "";
-        return Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        return (raw == null || raw.isEmpty()) ? "" : Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
-    private int getLanguageId(String language) {
-        if (language == null) {
-            throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "언어 정보가 누락되었습니다.");
+    private String decodeBase64(String encoded) {
+        if (encoded == null || encoded.isEmpty()) return null;
+        try {
+            return new String(Base64.getDecoder().decode(encoded.replaceAll("\\s", "")), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return encoded;
         }
-        return switch (language.toUpperCase()) {
+    }
+
+    // 추후에 enum 도입 검토
+    private int getLanguageId(String lang) {
+        return switch (lang.toUpperCase()) {
             case "JAVA" -> 62;
             case "PYTHON" -> 71;
             case "CPP" -> 54;
-            default -> throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "지원하지 않는 언어입니다: " + language);
+            default -> throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "지원하지 않는 언어: " + lang);
         };
     }
 }
