@@ -6,3 +6,25 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: none
+
+  mail:
+    host: ${SMTP_HOST:smtp.example.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:username}
+    password: ${SMTP_PASSWORD:password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        "[mail.smtp.connectiontimeout]": 5000
+        "[mail.smtp.timeout]": 3000
+        "[mail.smtp.writetimeout]": 5000
+
+app:
+  ujax:
+    base-url: ${UJAX_BASE_URL:https://ujax.site}
+    mail:
+      from: ${UJAX_MAIL_FROM:noreply@ujax.site}
