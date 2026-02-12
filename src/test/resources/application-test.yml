@@ -32,3 +32,4 @@ spring:
 judge0:
   api:
     url: http://localhost:2358
+    
