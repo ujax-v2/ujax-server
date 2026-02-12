@@ -14,11 +14,13 @@ public enum ErrorCode {
 	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "C002", "잘못된 파라미터 형식입니다."),
 	MISSING_REQUIRED_FIELD(HttpStatus.BAD_REQUEST, "C003", "필수 입력값이 누락되었습니다."),
 	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "잘못된 타입의 값입니다."),
+	INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "C005", "비밀번호는 8자 이상이며, 영문과 숫자를 포함해야 합니다."),
 
 	// ==================== 401 Unauthorized ====================
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),
 	INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "유효하지 않은 토큰입니다."),
 	EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A003", "만료된 토큰입니다."),
+	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "A004", "이메일 또는 비밀번호가 올바르지 않습니다."),
 
 	// ==================== 403 Forbidden ====================
 	ACCESS_DENIED(HttpStatus.FORBIDDEN, "A010", "접근 권한이 없습니다."),
@@ -41,6 +43,7 @@ public enum ErrorCode {
 	ALREADY_WORKSPACE_MEMBER(HttpStatus.CONFLICT, "D004", "이미 워크스페이스에 가입된 멤버입니다."),
 	DUPLICATE_PROBLEM(HttpStatus.CONFLICT, "D005", "이미 등록된 문제 번호입니다."),
 	WORKSPACE_NAME_DUPLICATE(HttpStatus.CONFLICT, "D006", "이미 존재하는 워크스페이스 이름입니다."),
+	OAUTH_ACCOUNT_EXISTS(HttpStatus.CONFLICT, "D008", "이미 다른 소셜 계정으로 가입된 이메일입니다."),
 
 	// ==================== 422 Unprocessable Entity ====================
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),

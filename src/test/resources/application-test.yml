@@ -23,3 +23,9 @@ spring:
       mode: never
   flyway:
     enabled: false
+
+app:
+  jwt:
+    secret: testSecretKeyThatIsAtLeast256BitsLongForHmacSha256AlgorithmInTestProfile
+    access-expiration: 1800000
+    refresh-expiration: 2592000000

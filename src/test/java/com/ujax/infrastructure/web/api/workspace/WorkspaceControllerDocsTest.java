@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,19 +42,24 @@ import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.GlobalExceptionHandler;
-import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.global.exception.common.ForbiddenException;
+import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.workspace.WorkspaceController;
 import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberNicknameRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
+import com.ujax.support.TestSecurityConfig;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 
 @Tag("restDocs")
 @WebMvcTest(WorkspaceController.class)
 @AutoConfigureRestDocs
-@Import(GlobalExceptionHandler.class)
+@Import({TestSecurityConfig.class, GlobalExceptionHandler.class})
 class WorkspaceControllerDocsTest {
 
 	@Autowired
@@ -62,6 +70,20 @@ class WorkspaceControllerDocsTest {
 
 	@MockitoBean
 	private WorkspaceService workspaceService;
+
+	@BeforeEach
+	void setUpSecurityContext() {
+		Claims claims = Jwts.claims()
+			.subject("1")
+			.add("role", "USER")
+			.add("name", "테스트유저")
+			.add("email", "test@example.com")
+			.build();
+		UserPrincipal principal = UserPrincipal.fromClaims(claims);
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+	}
 
 	@Test
 	@DisplayName("워크스페이스 탐색 목록 조회 API")
@@ -220,7 +242,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces")
-				.param("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -231,9 +252,6 @@ class WorkspaceControllerDocsTest {
 					.tag("Workspace")
 					.summary("내 워크스페이스 목록 조회")
 					.description("유저가 속한 워크스페이스 목록을 조회합니다")
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
-					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceList"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -244,28 +262,6 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.items[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
-					.build()
-				)
-			));
-	}
-
-	@Test
-	@DisplayName("내 워크스페이스 목록 조회 API - userId 누락")
-	void listMyWorkspacesMissingUserId() throws Exception {
-		// when & then
-		mockMvc.perform(get("/api/v1/workspaces")
-				.contentType(MediaType.APPLICATION_JSON))
-			.andDo(print())
-			.andExpect(status().isBadRequest())
-			.andDo(document("workspace-my-list-error",
-				preprocessRequest(prettyPrint()),
-				preprocessResponse(prettyPrint()),
-				resource(ResourceSnippetParameters.builder()
-					.tag("Workspace")
-					.summary("내 워크스페이스 목록 조회")
-					.description("내 워크스페이스 목록 조회")
-					.responseSchema(Schema.schema("ProblemDetail-MissingParameter"))
-					.responseFields(problemDetailFields())
 					.build()
 				)
 			));
@@ -345,7 +341,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/settings", 1)
-				.param("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -358,9 +353,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 설정 정보를 조회합니다 (소유자 전용)")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceSettings"))
 					.responseFields(
@@ -386,7 +378,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/settings", 1)
-				.queryParam("userId", "2")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -399,9 +390,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 설정 조회")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -420,7 +408,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
-				.param("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -433,9 +420,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스에 속한 멤버 목록을 조회합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceMemberList"))
 					.responseFields(
@@ -461,7 +445,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
-				.queryParam("userId", "2")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -474,9 +457,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 멤버 목록 조회")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -494,7 +474,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members/me", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -507,9 +486,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스에서 자신의 멤버 정보를 조회합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceMemberResponse"))
 					.responseFields(
@@ -534,7 +510,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members/me", 1)
-				.queryParam("userId", "2")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -547,9 +522,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 멤버 조회")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -568,7 +540,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/me/nickname", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -582,9 +553,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 닉네임 수정")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceMemberNicknameRequest"))
 					.requestFields(
@@ -612,7 +580,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/me/nickname", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -626,9 +593,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 닉네임 수정")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceMemberNicknameRequest"))
 					.requestFields(
@@ -645,7 +609,7 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 생성 API")
 	void createWorkspace() throws Exception {
 		// given
-		CreateWorkspaceRequest request = new CreateWorkspaceRequest("워크스페이스", "소개", 1L);
+		CreateWorkspaceRequest request = new CreateWorkspaceRequest("워크스페이스", "소개");
 		WorkspaceResponse response = new WorkspaceResponse(1L, "워크스페이스", "소개");
 		given(workspaceService.createWorkspace(anyString(), any(), anyLong())).willReturn(response);
 
@@ -665,8 +629,7 @@ class WorkspaceControllerDocsTest {
 					.requestSchema(Schema.schema("CreateWorkspaceRequest"))
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
-						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("userId").type(JsonFieldType.NUMBER).description("소유자 유저 ID")
+						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional()
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceResponse"))
 					.responseFields(
@@ -686,7 +649,7 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 생성 API - 유효성 오류")
 	void createWorkspaceValidationError() throws Exception {
 		// given
-		CreateWorkspaceRequest request = new CreateWorkspaceRequest("", "소개", 1L);
+		CreateWorkspaceRequest request = new CreateWorkspaceRequest("", "소개");
 
 		// when & then
 		mockMvc.perform(post("/api/v1/workspaces")
@@ -704,8 +667,7 @@ class WorkspaceControllerDocsTest {
 					.requestSchema(Schema.schema("CreateWorkspaceRequest"))
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
-						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("userId").type(JsonFieldType.NUMBER).description("소유자 유저 ID")
+						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional()
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Validation"))
 					.responseFields(problemDetailFieldsWithFieldErrors())
@@ -724,7 +686,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -738,9 +699,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 정보를 수정합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
@@ -773,7 +731,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -787,9 +744,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 수정")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
@@ -812,7 +766,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -825,9 +778,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스를 삭제합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
@@ -849,7 +799,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}", 1)
-				.queryParam("userId", "2")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -862,9 +811,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 삭제")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -882,7 +828,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}/role", 1, 2)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -897,9 +842,6 @@ class WorkspaceControllerDocsTest {
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("UpdateWorkspaceMemberRoleRequest"))
 					.requestFields(
@@ -921,7 +863,6 @@ class WorkspaceControllerDocsTest {
 	void updateWorkspaceMemberRoleValidationError() throws Exception {
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}/role", 1, 2)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
 			.andDo(print())
@@ -936,9 +877,6 @@ class WorkspaceControllerDocsTest {
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Validation"))
 					.responseFields(problemDetailFieldsWithFieldErrors())
@@ -955,7 +893,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}", 1, 2)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -969,9 +906,6 @@ class WorkspaceControllerDocsTest {
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
@@ -993,7 +927,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}", 1, 2)
-				.queryParam("userId", "2")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -1007,9 +940,6 @@ class WorkspaceControllerDocsTest {
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -1026,7 +956,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/me", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -1039,9 +968,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스에서 탈퇴합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
@@ -1063,7 +989,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/me", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())
@@ -1076,9 +1001,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 탈퇴")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Forbidden"))
 					.responseFields(problemDetailFields())
@@ -1096,7 +1018,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/members/invite", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -1108,8 +1029,8 @@ class WorkspaceControllerDocsTest {
 					.tag("Workspace")
 					.summary("워크스페이스 멤버 초대")
 					.description("워크스페이스 소유자가 이메일로 멤버를 초대합니다")
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
 					)
 					.requestSchema(Schema.schema("InviteWorkspaceMemberRequest"))
 					.requestFields(
@@ -1134,7 +1055,6 @@ class WorkspaceControllerDocsTest {
 
 		// when & then
 		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/members/invite", 1)
-				.queryParam("userId", "1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
@@ -1148,9 +1068,6 @@ class WorkspaceControllerDocsTest {
 					.description("워크스페이스 멤버 초대")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
-					)
-					.queryParameters(
-						parameterWithName("userId").description("요청자 유저 ID")
 					)
 					.requestSchema(Schema.schema("InviteWorkspaceMemberRequest"))
 					.requestFields(
