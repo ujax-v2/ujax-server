@@ -29,6 +29,8 @@ public enum ErrorCode {
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "사용자를 찾을 수 없습니다."),
 	WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "R003", "워크스페이스를 찾을 수 없습니다."),
 	WORKSPACE_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "R004", "워크스페이스 멤버를 찾을 수 없습니다."),
+	BOARD_NOT_FOUND(HttpStatus.NOT_FOUND, "R007", "게시글을 찾을 수 없습니다."),
+	BOARD_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "R008", "댓글을 찾을 수 없습니다."),
 	PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "R005", "문제를 찾을 수 없습니다."),
 
 	// ==================== 409 Conflict ====================
