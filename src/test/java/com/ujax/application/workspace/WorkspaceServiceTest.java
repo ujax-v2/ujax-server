@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -42,13 +44,17 @@ class WorkspaceServiceTest {
 	@Autowired
 	private UserRepository userRepository;
 
-	@MockBean
+	@Autowired
+	private RefreshTokenRepository refreshTokenRepository;
+
+	@MockitoBean
 	private WorkspaceInviteMailer workspaceInviteMailer;
 
 	@BeforeEach
 	void setUp() {
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
+		refreshTokenRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
@@ -60,7 +66,7 @@ class WorkspaceServiceTest {
 		@DisplayName("워크스페이스 생성 시 소유자 멤버가 생성된다")
 		void createWorkspaceCreatesOwner() {
 			// given
-			User user = userRepository.save(User.createLocalUser("owner@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("owner@example.com", Password.ofEncoded("password"), "유저"));
 
 			// when
 			Long workspaceId = workspaceService.createWorkspace("워크스페이스", "소개", user.getId()).id();
@@ -78,7 +84,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름이 중복되면 오류가 발생한다")
 		void createWorkspaceDuplicateName() {
 			// given
-			User user = userRepository.save(User.createLocalUser("dup@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("dup@example.com", Password.ofEncoded("password"), "유저"));
 			workspaceRepository.save(Workspace.create("중복", "소개"));
 
 			// when & then
@@ -91,7 +97,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름이 비어 있으면 오류가 발생한다")
 		void createWorkspaceInvalidName() {
 			// given
-			User user = userRepository.save(User.createLocalUser("blank@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("blank@example.com", Password.ofEncoded("password"), "유저"));
 
 			// when & then
 			assertThatThrownBy(() -> workspaceService.createWorkspace(" ", "소개", user.getId()))
@@ -103,7 +109,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름이 너무 길면 오류가 발생한다")
 		void createWorkspaceNameTooLong() {
 			// given
-			User user = userRepository.save(User.createLocalUser("longname@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("longname@example.com", Password.ofEncoded("password"), "유저"));
 			String longName = "a".repeat(51);
 
 			// when & then
@@ -116,7 +122,7 @@ class WorkspaceServiceTest {
 		@DisplayName("설명이 너무 길면 오류가 발생한다")
 		void createWorkspaceInvalidDescription() {
 			// given
-			User user = userRepository.save(User.createLocalUser("desc@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("desc@example.com", Password.ofEncoded("password"), "유저"));
 			String longDescription = "a".repeat(201);
 
 			// when & then
@@ -143,8 +149,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 아니면 수정할 수 없다")
 		void updateWorkspaceForbidden() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner2@example.com", "password", "유저"));
-			User memberUser = userRepository.save(User.createLocalUser("member@example.com", "password", "멤버"));
+			User owner = userRepository.save(User.createLocalUser("owner2@example.com", Password.ofEncoded("password"), "유저"));
+			User memberUser = userRepository.save(User.createLocalUser("member@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -165,7 +171,7 @@ class WorkspaceServiceTest {
 		@DisplayName("워크스페이스가 없으면 오류가 발생한다")
 		void updateWorkspaceNotFound() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-missing@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-missing@example.com", Password.ofEncoded("password"), "유저"));
 
 			// when & then
 			assertThatThrownBy(() -> workspaceService.updateWorkspace(
@@ -183,7 +189,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름과 소개를 수정할 수 있다")
 		void updateWorkspace() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-update@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-update@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -200,7 +206,7 @@ class WorkspaceServiceTest {
 		@DisplayName("웹훅만 수정할 수 있다")
 		void updateWorkspaceOnlyWebhook() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-webhook@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-webhook@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -217,7 +223,7 @@ class WorkspaceServiceTest {
 		@DisplayName("수정 값이 모두 없으면 오류가 발생한다")
 		void updateWorkspaceAllNull() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-null@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-null@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -231,7 +237,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름이 중복되면 오류가 발생한다")
 		void updateWorkspaceDuplicateName() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-dup@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-dup@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceRepository.save(Workspace.create("중복", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
@@ -252,7 +258,7 @@ class WorkspaceServiceTest {
 		@DisplayName("이름이 비어 있으면 오류가 발생한다")
 		void updateWorkspaceInvalidName() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-blank@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-blank@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -272,7 +278,7 @@ class WorkspaceServiceTest {
 		@DisplayName("설명이 너무 길면 오류가 발생한다")
 		void updateWorkspaceInvalidDescription() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-desc@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-desc@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			String longDescription = "a".repeat(201);
@@ -386,8 +392,8 @@ class WorkspaceServiceTest {
 		@DisplayName("워크스페이스 멤버 목록을 조회한다")
 		void listWorkspaceMembers() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-list@example.com", "password", "유저"));
-			User memberUser = userRepository.save(User.createLocalUser("member-list@example.com", "password", "멤버"));
+			User owner = userRepository.save(User.createLocalUser("owner-list@example.com", Password.ofEncoded("password"), "유저"));
+			User memberUser = userRepository.save(User.createLocalUser("member-list@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -418,7 +424,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버가 아니면 목록을 조회할 수 없다")
 		void listWorkspaceMembersForbidden() {
 			// given
-			User outsider = userRepository.save(User.createLocalUser("outsider@example.com", "password", "유저"));
+			User outsider = userRepository.save(User.createLocalUser("outsider@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when & then
@@ -436,7 +442,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버는 자신의 정보를 조회할 수 있다")
 		void getMyWorkspaceMember() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-self@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-self@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember member = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER)
@@ -454,7 +460,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버가 아니면 조회할 수 없다")
 		void getMyWorkspaceMemberForbidden() {
 			// given
-			User outsider = userRepository.save(User.createLocalUser("outsider-self@example.com", "password", "외부"));
+			User outsider = userRepository.save(User.createLocalUser("outsider-self@example.com", Password.ofEncoded("password"), "외부"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when & then
@@ -472,7 +478,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버는 닉네임을 수정할 수 있다")
 		void updateNickname() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-nick@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-nick@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember member = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.MEMBER)
@@ -491,7 +497,7 @@ class WorkspaceServiceTest {
 		@DisplayName("닉네임이 비어 있으면 오류가 발생한다")
 		void updateNicknameInvalid() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-nick2@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-nick2@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.MEMBER));
 
@@ -505,7 +511,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버가 아니면 닉네임을 수정할 수 없다")
 		void updateNicknameForbidden() {
 			// given
-			User outsider = userRepository.save(User.createLocalUser("outsider-nick@example.com", "password", "외부"));
+			User outsider = userRepository.save(User.createLocalUser("outsider-nick@example.com", Password.ofEncoded("password"), "외부"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when & then
@@ -523,8 +529,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 다른 멤버를 소유자로 변경하면 자신은 매니저가 된다")
 		void transferOwner() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-role@example.com", "password", "소유자"));
-			User memberUser = userRepository.save(User.createLocalUser("member-role@example.com", "password", "멤버"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-role@example.com", Password.ofEncoded("password"), "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-role@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember owner = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER)
@@ -552,9 +558,9 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 아니면 권한을 변경할 수 없다")
 		void updateRoleForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-role2@example.com", "password", "소유자"));
-			User memberUser = userRepository.save(User.createLocalUser("member-role2@example.com", "password", "멤버"));
-			User targetUser = userRepository.save(User.createLocalUser("target-role2@example.com", "password", "대상"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-role2@example.com", Password.ofEncoded("password"), "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-role2@example.com", Password.ofEncoded("password"), "멤버"));
+			User targetUser = userRepository.save(User.createLocalUser("target-role2@example.com", Password.ofEncoded("password"), "대상"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -577,8 +583,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자 권한은 변경할 수 없다")
 		void updateRoleOwnerForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-role3@example.com", "password", "소유자"));
-			User memberUser = userRepository.save(User.createLocalUser("member-role3@example.com", "password", "멤버"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-role3@example.com", Password.ofEncoded("password"), "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-role3@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember owner = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER)
@@ -600,7 +606,7 @@ class WorkspaceServiceTest {
 		@DisplayName("대상 멤버가 없으면 오류가 발생한다")
 		void updateRoleMemberNotFound() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-role4@example.com", "password", "소유자"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-role4@example.com", Password.ofEncoded("password"), "소유자"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 
@@ -624,9 +630,9 @@ class WorkspaceServiceTest {
 		@DisplayName("매니저는 멤버를 추방할 수 있다")
 		void removeByManager() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove@example.com", "password", "소유자"));
-			User managerUser = userRepository.save(User.createLocalUser("manager-remove@example.com", "password", "매니저"));
-			User memberUser = userRepository.save(User.createLocalUser("member-remove@example.com", "password", "멤버"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove@example.com", Password.ofEncoded("password"), "소유자"));
+			User managerUser = userRepository.save(User.createLocalUser("manager-remove@example.com", Password.ofEncoded("password"), "매니저"));
+			User memberUser = userRepository.save(User.createLocalUser("member-remove@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, managerUser, WorkspaceMemberRole.MANAGER));
@@ -646,9 +652,9 @@ class WorkspaceServiceTest {
 		@DisplayName("매니저는 매니저를 추방할 수 없다")
 		void removeManagerForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove2@example.com", "password", "소유자"));
-			User managerUser = userRepository.save(User.createLocalUser("manager-remove2@example.com", "password", "매니저"));
-			User targetUser = userRepository.save(User.createLocalUser("target-remove@example.com", "password", "매니저2"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove2@example.com", Password.ofEncoded("password"), "소유자"));
+			User managerUser = userRepository.save(User.createLocalUser("manager-remove2@example.com", Password.ofEncoded("password"), "매니저"));
+			User targetUser = userRepository.save(User.createLocalUser("target-remove@example.com", Password.ofEncoded("password"), "매니저2"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, managerUser, WorkspaceMemberRole.MANAGER));
@@ -666,8 +672,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자는 추방할 수 없다")
 		void removeOwnerForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove3@example.com", "password", "소유자"));
-			User managerUser = userRepository.save(User.createLocalUser("manager-remove3@example.com", "password", "매니저"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove3@example.com", Password.ofEncoded("password"), "소유자"));
+			User managerUser = userRepository.save(User.createLocalUser("manager-remove3@example.com", Password.ofEncoded("password"), "매니저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember owner = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER)
@@ -684,7 +690,7 @@ class WorkspaceServiceTest {
 		@DisplayName("자기 자신은 추방할 수 없다")
 		void removeSelfForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove4@example.com", "password", "소유자"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove4@example.com", Password.ofEncoded("password"), "소유자"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember owner = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER)
@@ -700,9 +706,9 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버가 아니면 추방할 수 없다")
 		void removeMemberForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove5@example.com", "password", "소유자"));
-			User outsider = userRepository.save(User.createLocalUser("outsider-remove@example.com", "password", "외부"));
-			User memberUser = userRepository.save(User.createLocalUser("member-remove5@example.com", "password", "멤버"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove5@example.com", Password.ofEncoded("password"), "소유자"));
+			User outsider = userRepository.save(User.createLocalUser("outsider-remove@example.com", Password.ofEncoded("password"), "외부"));
+			User memberUser = userRepository.save(User.createLocalUser("member-remove5@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			WorkspaceMember member = workspaceMemberRepository.save(
@@ -719,9 +725,9 @@ class WorkspaceServiceTest {
 		@DisplayName("일반 멤버는 다른 멤버를 추방할 수 없다")
 		void removeByMemberForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove6@example.com", "password", "소유자"));
-			User memberUser = userRepository.save(User.createLocalUser("member-remove6@example.com", "password", "멤버"));
-			User targetUser = userRepository.save(User.createLocalUser("target-remove6@example.com", "password", "대상"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove6@example.com", Password.ofEncoded("password"), "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-remove6@example.com", Password.ofEncoded("password"), "멤버"));
+			User targetUser = userRepository.save(User.createLocalUser("target-remove6@example.com", Password.ofEncoded("password"), "대상"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -739,7 +745,7 @@ class WorkspaceServiceTest {
 		@DisplayName("대상 멤버가 없으면 오류가 발생한다")
 		void removeMemberNotFound() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-remove6@example.com", "password", "소유자"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-remove6@example.com", Password.ofEncoded("password"), "소유자"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 
@@ -758,8 +764,8 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버는 워크스페이스를 탈퇴할 수 있다")
 		void leaveWorkspace() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-leave@example.com", "password", "소유자"));
-			User memberUser = userRepository.save(User.createLocalUser("member-leave@example.com", "password", "멤버"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-leave@example.com", Password.ofEncoded("password"), "소유자"));
+			User memberUser = userRepository.save(User.createLocalUser("member-leave@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 			WorkspaceMember member = workspaceMemberRepository.save(
@@ -778,7 +784,7 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자는 워크스페이스를 탈퇴할 수 없다")
 		void leaveWorkspaceOwnerForbidden() {
 			// given
-			User ownerUser = userRepository.save(User.createLocalUser("owner-leave2@example.com", "password", "소유자"));
+			User ownerUser = userRepository.save(User.createLocalUser("owner-leave2@example.com", Password.ofEncoded("password"), "소유자"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
 
@@ -792,7 +798,7 @@ class WorkspaceServiceTest {
 		@DisplayName("멤버가 아니면 탈퇴할 수 없다")
 		void leaveWorkspaceForbidden() {
 			// given
-			User outsider = userRepository.save(User.createLocalUser("outsider-leave@example.com", "password", "외부"));
+			User outsider = userRepository.save(User.createLocalUser("outsider-leave@example.com", Password.ofEncoded("password"), "외부"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when & then
@@ -810,7 +816,7 @@ class WorkspaceServiceTest {
 		@DisplayName("유저가 속한 워크스페이스 목록을 조회한다")
 		void listMyWorkspaces() {
 			// given
-			User user = userRepository.save(User.createLocalUser("mine@example.com", "password", "유저"));
+			User user = userRepository.save(User.createLocalUser("mine@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 
@@ -831,7 +837,7 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자는 설정 정보를 조회할 수 있다")
 		void getWorkspaceSettings() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner3@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner3@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com");
@@ -848,8 +854,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 아니면 설정을 조회할 수 없다")
 		void getWorkspaceSettingsForbidden() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner3-2@example.com", "password", "유저"));
-			User memberUser = userRepository.save(User.createLocalUser("member3-2@example.com", "password", "멤버"));
+			User owner = userRepository.save(User.createLocalUser("owner3-2@example.com", Password.ofEncoded("password"), "유저"));
+			User memberUser = userRepository.save(User.createLocalUser("member3-2@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -864,7 +870,7 @@ class WorkspaceServiceTest {
 		@DisplayName("워크스페이스가 없으면 오류가 발생한다")
 		void getWorkspaceSettingsNotFound() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner3-3@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner3-3@example.com", Password.ofEncoded("password"), "유저"));
 
 			// when & then
 			assertThatThrownBy(() -> workspaceService.getWorkspaceSettings(999L, owner.getId()))
@@ -881,7 +887,7 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자는 워크스페이스를 삭제할 수 있다")
 		void deleteWorkspace() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-delete@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-delete@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -897,8 +903,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 아니면 삭제할 수 없다")
 		void deleteWorkspaceForbidden() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-delete2@example.com", "password", "유저"));
-			User memberUser = userRepository.save(User.createLocalUser("member-delete@example.com", "password", "멤버"));
+			User owner = userRepository.save(User.createLocalUser("owner-delete2@example.com", Password.ofEncoded("password"), "유저"));
+			User memberUser = userRepository.save(User.createLocalUser("member-delete@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -913,7 +919,7 @@ class WorkspaceServiceTest {
 		@DisplayName("워크스페이스가 없으면 오류가 발생한다")
 		void deleteWorkspaceNotFound() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner-delete3@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner-delete3@example.com", Password.ofEncoded("password"), "유저"));
 
 			// when & then
 			assertThatThrownBy(() -> workspaceService.deleteWorkspace(999L, owner.getId()))
@@ -930,8 +936,8 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자는 이메일로 멤버를 초대할 수 있다")
 		void inviteWorkspaceMember() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner4@example.com", "password", "유저"));
-			User target = userRepository.save(User.createLocalUser("invite@example.com", "password", "초대"));
+			User owner = userRepository.save(User.createLocalUser("owner4@example.com", Password.ofEncoded("password"), "유저"));
+			User target = userRepository.save(User.createLocalUser("invite@example.com", Password.ofEncoded("password"), "초대"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
@@ -949,9 +955,9 @@ class WorkspaceServiceTest {
 		@DisplayName("소유자가 아니면 초대할 수 없다")
 		void inviteWorkspaceMemberForbidden() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner5@example.com", "password", "유저"));
-			User memberUser = userRepository.save(User.createLocalUser("member2@example.com", "password", "멤버"));
-			User target = userRepository.save(User.createLocalUser("invite2@example.com", "password", "초대"));
+			User owner = userRepository.save(User.createLocalUser("owner5@example.com", Password.ofEncoded("password"), "유저"));
+			User memberUser = userRepository.save(User.createLocalUser("member2@example.com", Password.ofEncoded("password"), "멤버"));
+			User target = userRepository.save(User.createLocalUser("invite2@example.com", Password.ofEncoded("password"), "초대"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
@@ -970,8 +976,8 @@ class WorkspaceServiceTest {
 		@DisplayName("이미 참여한 멤버면 오류가 발생한다")
 		void inviteWorkspaceMemberDuplicate() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner6@example.com", "password", "유저"));
-			User target = userRepository.save(User.createLocalUser("invite3@example.com", "password", "초대"));
+			User owner = userRepository.save(User.createLocalUser("owner6@example.com", Password.ofEncoded("password"), "유저"));
+			User target = userRepository.save(User.createLocalUser("invite3@example.com", Password.ofEncoded("password"), "초대"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, target, WorkspaceMemberRole.MEMBER));
@@ -990,8 +996,8 @@ class WorkspaceServiceTest {
 		@DisplayName("탈퇴한 멤버는 다시 초대하면 복원된다")
 		void inviteWorkspaceMemberRestore() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner8@example.com", "password", "유저"));
-			User target = userRepository.save(User.createLocalUser("invite4@example.com", "password", "초대"));
+			User owner = userRepository.save(User.createLocalUser("owner8@example.com", Password.ofEncoded("password"), "유저"));
+			User target = userRepository.save(User.createLocalUser("invite4@example.com", Password.ofEncoded("password"), "초대"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 			WorkspaceMember member = workspaceMemberRepository.save(
@@ -1014,7 +1020,7 @@ class WorkspaceServiceTest {
 		@DisplayName("유저가 없으면 오류가 발생한다")
 		void inviteWorkspaceMemberUserNotFound() {
 			// given
-			User owner = userRepository.save(User.createLocalUser("owner7@example.com", "password", "유저"));
+			User owner = userRepository.save(User.createLocalUser("owner7@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 

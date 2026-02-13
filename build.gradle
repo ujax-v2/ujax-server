@@ -47,9 +47,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation 'org.flywaydb:flyway-core'
@@ -119,8 +125,31 @@ tasks.register('copyOpenApiSpec', Copy) {
     from layout.buildDirectory.file("api-spec/openapi3.yaml")
     into "$projectDir/src/main/resources/static/swagger"
 }
+
+// 복사된 openapi3.yaml에 securitySchemes 자동 삽입
+tasks.register('patchOpenApiSecurity') {
+    dependsOn 'copyOpenApiSpec'
+    doLast {
+        def yamlFile = file("$projectDir/src/main/resources/static/swagger/openapi3.yaml")
+        def content = yamlFile.text
+        if (!content.contains('securitySchemes:')) {
+            content = content.replace(
+                    'tags: []',
+                    "security:\n- bearerAuth: []\ntags: []"
+            )
+            content = content.replace(
+                    'components:\n  schemas:',
+                    "components:\n  securitySchemes:\n    bearerAuth:\n      type: http\n      scheme: bearer\n      bearerFormat: JWT\n      description: \"로그인 후 받은 accessToken을 입력하세요\"\n  schemas:"
+            )
+            yamlFile.text = content
+            logger.lifecycle('Patched openapi3.yaml with JWT securitySchemes')
+        }
+    }
+}
+
 afterEvaluate {
     tasks.named('openapi3').configure { finalizedBy 'copyOpenApiSpec' }
+    tasks.named('copyOpenApiSpec').configure { finalizedBy 'patchOpenApiSecurity' }
 }
 
 bootJar {
@@ -172,6 +201,7 @@ def jacocoExcludes = [
         '**/dto/**',             // DTO
         '**/external/**',        // API Client
         '**/global/**',          // global 패키지 전체
+        '**/infrastructure/security/**', // Security
 ]
 
 // 리포트 생성

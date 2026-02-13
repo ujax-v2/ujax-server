@@ -2,10 +2,12 @@ package com.ujax.domain.user;
 
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ujax.domain.common.BaseEntity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -40,7 +42,8 @@ public class User extends BaseEntity {
 	private String email;
 
 	/** 비밀번호 (OAuth 사용 시 null) */
-	private String password;
+	@Embedded
+	private Password password;
 
 	@Column(nullable = false, length = 30)
 	private String name;
@@ -54,15 +57,20 @@ public class User extends BaseEntity {
 	/** OAuth 식별자 (자체 회원가입시 null) */
 	private String providerId;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 10)
+	private UserRole role;
+
 	@Builder
-	private User(String email, String password, String name, String profileImageUrl,
-		AuthProvider provider, String providerId) {
+	private User(String email, Password password, String name, String profileImageUrl,
+		AuthProvider provider, String providerId, UserRole role) {
 		this.email = email;
 		this.password = password;
 		this.name = name;
 		this.profileImageUrl = profileImageUrl != null ? profileImageUrl : DEFAULT_PROFILE_IMAGE_URL;
 		this.provider = provider;
 		this.providerId = providerId;
+		this.role = role != null ? role : UserRole.USER;
 	}
 
 	public static User createOAuthUser(String email, String name, String profileImageUrl,
@@ -73,16 +81,22 @@ public class User extends BaseEntity {
 			.profileImageUrl(profileImageUrl)
 			.provider(provider)
 			.providerId(providerId)
+			.role(UserRole.USER)
 			.build();
 	}
 
-	public static User createLocalUser(String email, String password, String name) {
+	public static User createLocalUser(String email, Password password, String name) {
 		return User.builder()
 			.email(email)
 			.password(password)
 			.name(name)
 			.provider(AuthProvider.LOCAL)
+			.role(UserRole.USER)
 			.build();
+	}
+
+	public boolean matchesPassword(String rawPassword, PasswordEncoder encoder) {
+		return password != null && password.matches(rawPassword, encoder);
 	}
 
 	public void updateProfile(String name, String profileImageUrl) {

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 
 class WorkspaceMemberTest {
@@ -19,7 +20,7 @@ class WorkspaceMemberTest {
 		void updateRole() {
 			// given
 			Workspace workspace = Workspace.create("워크스페이스", "소개");
-			User user = User.createLocalUser("test@example.com", "password", "유저");
+			User user = User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저");
 			WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);
 
 			// when

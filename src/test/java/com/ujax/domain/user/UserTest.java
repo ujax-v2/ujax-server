@@ -57,11 +57,12 @@ class UserTest {
 			String name = "로컬유저";
 
 			// when
-			User user = User.createLocalUser(email, password, name);
+			User user = User.createLocalUser(email, Password.ofEncoded(password), name);
 
 			// then
-			assertThat(user).extracting("email", "password", "name", "provider", "providerId")
-				.containsExactly(email, password, name, AuthProvider.LOCAL, null);
+			assertThat(user).extracting("email", "name", "provider", "providerId")
+				.containsExactly(email, name, AuthProvider.LOCAL, null);
+			assertThat(user.getPassword().getEncodedValue()).isEqualTo(password);
 			assertThat(user.getProfileImageUrl()).isNotNull();
 		}
 	}

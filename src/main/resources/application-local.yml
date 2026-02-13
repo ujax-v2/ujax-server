@@ -23,3 +23,16 @@ spring:
   flyway:
     enabled: false
 
+app:
+  ujax:
+    base-url: http://localhost:5173
+    frontend-callback-url: http://localhost:5173/auth/callback
+
+
+spring.security.oauth2.client:
+  registration:
+    google:
+      redirect-uri: http://localhost:8080/login/oauth2/code/google
+    kakao:
+      redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+
