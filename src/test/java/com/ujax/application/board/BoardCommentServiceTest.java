@@ -21,6 +21,7 @@ import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.board.BoardType;
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -82,8 +83,8 @@ class BoardCommentServiceTest {
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			Board board = createBoard(workspace, member);
 
-			// when
-			CommentResponse result = boardCommentService.createComment(workspace.getId(), board.getId(), member.getId(), "댓글");
+				// when
+				CommentResponse result = boardCommentService.createComment(workspace.getId(), board.getId(), member.getUser().getId(), "댓글");
 
 			// then
 			assertThat(result).extracting("boardId", "content", "author.workspaceMemberId")
@@ -98,10 +99,10 @@ class BoardCommentServiceTest {
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			Board board = createBoard(workspace, member);
 
-			// when & then
-			assertThatThrownBy(() -> boardCommentService.createComment(workspace.getId(), board.getId(), member.getId(), " "))
-				.isInstanceOf(BadRequestException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+				// when & then
+				assertThatThrownBy(() -> boardCommentService.createComment(workspace.getId(), board.getId(), member.getUser().getId(), " "))
+					.isInstanceOf(BadRequestException.class)
+					.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
 		}
 	}
 
@@ -119,8 +120,8 @@ class BoardCommentServiceTest {
 			boardCommentRepository.save(BoardComment.create(board, member, "댓글 1"));
 			boardCommentRepository.save(BoardComment.create(board, member, "댓글 2"));
 
-			// when
-			CommentListResponse result = boardCommentService.listComments(workspace.getId(), board.getId(), member.getId(), 0, 10);
+				// when
+				CommentListResponse result = boardCommentService.listComments(workspace.getId(), board.getId(), member.getUser().getId(), 0, 10);
 
 			// then
 			assertThat(result.items()).hasSize(2);
@@ -142,8 +143,8 @@ class BoardCommentServiceTest {
 			Board board = createBoard(workspace, member);
 			BoardComment comment = boardCommentRepository.save(BoardComment.create(board, member, "댓글"));
 
-			// when
-			boardCommentService.deleteComment(workspace.getId(), board.getId(), comment.getId(), member.getId());
+				// when
+				boardCommentService.deleteComment(workspace.getId(), board.getId(), comment.getId(), member.getUser().getId());
 
 			// then
 			Long deletedCount = jdbcTemplate.queryForObject(
@@ -164,10 +165,10 @@ class BoardCommentServiceTest {
 			Board board = createBoard(workspace, author);
 			BoardComment comment = boardCommentRepository.save(BoardComment.create(board, author, "댓글"));
 
-			// when & then
-			assertThatThrownBy(() -> boardCommentService.deleteComment(workspace.getId(), board.getId(), comment.getId(), other.getId()))
-				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				// when & then
+				assertThatThrownBy(() -> boardCommentService.deleteComment(workspace.getId(), board.getId(), comment.getId(), other.getUser().getId()))
+					.isInstanceOf(ForbiddenException.class)
+					.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
 	}
 
@@ -176,7 +177,7 @@ class BoardCommentServiceTest {
 	}
 
 	private WorkspaceMember createMember(Workspace workspace, WorkspaceMemberRole role) {
-		User user = userRepository.save(User.createLocalUser(uniqueEmail(), "password", "사용자"));
+		User user = userRepository.save(User.createLocalUser(uniqueEmail(), Password.ofEncoded("password"), "사용자"));
 		return workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, role));
 	}
 

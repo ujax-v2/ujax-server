@@ -53,7 +53,7 @@ public class BoardService {
 
 	public BoardListResponse listBoards(
 		Long workspaceId,
-		Long workspaceMemberId,
+		Long userId,
 		BoardListRequest request
 	) {
 		BoardType type = request.type();
@@ -63,7 +63,7 @@ public class BoardService {
 		String sort = request.sort();
 		boolean pinnedFirst = request.pinnedFirst();
 
-		validateMember(workspaceId, workspaceMemberId);
+		validateMember(workspaceId, userId);
 		validatePageable(page, size);
 
 		String searchKeyword = normalizeKeyword(keyword);
@@ -95,8 +95,8 @@ public class BoardService {
 	}
 
 	@Transactional
-	public BoardDetailResponse getBoardDetail(Long workspaceId, Long boardId, Long workspaceMemberId) {
-		validateMember(workspaceId, workspaceMemberId);
+	public BoardDetailResponse getBoardDetail(Long workspaceId, Long boardId, Long userId) {
+		validateMember(workspaceId, userId);
 
 		Board board = boardRepository.findByIdAndWorkspaceId(boardId, workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
@@ -106,9 +106,9 @@ public class BoardService {
 	}
 
 	@Transactional
-	public BoardDetailResponse createBoard(Long workspaceId, Long workspaceMemberId, BoardCreateRequest request) {
+	public BoardDetailResponse createBoard(Long workspaceId, Long userId, BoardCreateRequest request) {
 		Workspace workspace = findWorkspaceById(workspaceId);
-		WorkspaceMember author = findWorkspaceMember(workspaceId, workspaceMemberId);
+		WorkspaceMember author = findWorkspaceMember(workspaceId, userId);
 
 		String title = request.title();
 		String content = request.content();
@@ -128,10 +128,10 @@ public class BoardService {
 	public BoardDetailResponse updateBoard(
 		Long workspaceId,
 		Long boardId,
-		Long workspaceMemberId,
+		Long userId,
 		BoardUpdateRequest request
 	) {
-		WorkspaceMember actor = validateMember(workspaceId, workspaceMemberId);
+		WorkspaceMember actor = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
 
@@ -152,22 +152,22 @@ public class BoardService {
 
 		long commentCount = boardCommentRepository.countByBoard_Id(board.getId());
 		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(board.getId())));
-		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(board.getId()), workspaceMemberId).isEmpty();
+		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(board.getId()), actor.getId()).isEmpty();
 
 		return BoardDetailResponse.from(board, likeCount, commentCount, myLike);
 	}
 
 	@Transactional
-	public void pinBoard(Long workspaceId, Long boardId, Long workspaceMemberId, boolean pinned) {
-		WorkspaceMember actor = validateMember(workspaceId, workspaceMemberId);
+	public void pinBoard(Long workspaceId, Long boardId, Long userId, boolean pinned) {
+		WorkspaceMember actor = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
 		board.updatePinned(pinned);
 	}
 
 	@Transactional
-	public void deleteBoard(Long workspaceId, Long boardId, Long workspaceMemberId) {
-		WorkspaceMember actor = validateMember(workspaceId, workspaceMemberId);
+	public void deleteBoard(Long workspaceId, Long boardId, Long userId) {
+		WorkspaceMember actor = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
 
@@ -186,13 +186,13 @@ public class BoardService {
 			.orElseThrow(() -> new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
 	}
 
-	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long workspaceMemberId) {
-		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
+	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long userId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
 			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
 	}
 
-	private WorkspaceMember validateMember(Long workspaceId, Long workspaceMemberId) {
-		return findWorkspaceMember(workspaceId, workspaceMemberId);
+	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
+		return findWorkspaceMember(workspaceId, userId);
 	}
 
 	private void validateAuthor(WorkspaceMember actor, Board board) {

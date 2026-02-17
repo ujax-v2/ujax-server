@@ -29,19 +29,19 @@ public class BoardLikeService {
 	private final BoardLikeRepository boardLikeRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 
-	public BoardLikeStatusResponse getLikeStatus(Long workspaceId, Long boardId, Long workspaceMemberId) {
-		validateMember(workspaceId, workspaceMemberId);
+	public BoardLikeStatusResponse getLikeStatus(Long workspaceId, Long boardId, Long userId) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
 		findBoard(workspaceId, boardId);
 
 		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(boardId)));
-		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(boardId), workspaceMemberId).isEmpty();
+		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(boardId), member.getId()).isEmpty();
 
 		return BoardLikeStatusResponse.of(likeCount, myLike);
 	}
 
 	@Transactional
-	public void like(Long workspaceId, Long boardId, Long workspaceMemberId) {
-		WorkspaceMember member = validateMember(workspaceId, workspaceMemberId);
+	public void like(Long workspaceId, Long boardId, Long userId) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 
 		int updated = boardLikeRepository.updateDeleted(board.getId(), member.getId(), false);
@@ -57,8 +57,8 @@ public class BoardLikeService {
 	}
 
 	@Transactional
-	public void unlike(Long workspaceId, Long boardId, Long workspaceMemberId) {
-		WorkspaceMember member = validateMember(workspaceId, workspaceMemberId);
+	public void unlike(Long workspaceId, Long boardId, Long userId) {
+		WorkspaceMember member = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 
 		BoardLikeId id = new BoardLikeId(board.getId(), member.getId());
@@ -66,8 +66,8 @@ public class BoardLikeService {
 			.ifPresent(like -> like.updateDeleted(true));
 	}
 
-	private WorkspaceMember validateMember(Long workspaceId, Long workspaceMemberId) {
-		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
+	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
 			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
 	}
 

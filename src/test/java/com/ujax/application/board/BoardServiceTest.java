@@ -27,6 +27,7 @@ import com.ujax.domain.board.BoardLikeId;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.board.BoardType;
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -91,8 +92,8 @@ class BoardServiceTest {
 				.content("내용")
 				.build();
 
-			// when
-			BoardDetailResponse result = boardService.createBoard(workspace.getId(), member.getId(), request);
+				// when
+				BoardDetailResponse result = boardService.createBoard(workspace.getId(), member.getUser().getId(), request);
 
 			// then
 			assertThat(result).extracting("workspaceId", "type", "pinned", "title", "content", "likeCount", "commentCount", "myLike")
@@ -111,10 +112,10 @@ class BoardServiceTest {
 				.content("공지 내용")
 				.build();
 
-			// when & then
-			assertThatThrownBy(() -> boardService.createBoard(workspace.getId(), member.getId(), request))
-				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				// when & then
+				assertThatThrownBy(() -> boardService.createBoard(workspace.getId(), member.getUser().getId(), request))
+					.isInstanceOf(ForbiddenException.class)
+					.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
 	}
 
@@ -152,8 +153,8 @@ class BoardServiceTest {
 				.pinnedFirst(true)
 				.build();
 
-			// when
-			BoardListResponse result = boardService.listBoards(workspace.getId(), viewer.getId(), request);
+				// when
+				BoardListResponse result = boardService.listBoards(workspace.getId(), viewer.getUser().getId(), request);
 
 			// then
 			assertThat(result.items()).hasSize(1);
@@ -187,8 +188,8 @@ class BoardServiceTest {
 			boardCommentRepository.save(BoardComment.create(board, author, "댓글"));
 			boardLikeRepository.save(BoardLike.create(board, viewer));
 
-			// when
-			BoardDetailResponse result = boardService.getBoardDetail(workspace.getId(), board.getId(), viewer.getId());
+				// when
+				BoardDetailResponse result = boardService.getBoardDetail(workspace.getId(), board.getId(), viewer.getUser().getId());
 
 			// then
 			assertThat(result).extracting("boardId", "likeCount", "commentCount", "myLike")
@@ -219,10 +220,10 @@ class BoardServiceTest {
 				.title("수정 제목")
 				.build();
 
-			// when & then
-			assertThatThrownBy(() -> boardService.updateBoard(workspace.getId(), board.getId(), other.getId(), request))
-				.isInstanceOf(ForbiddenException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+				// when & then
+				assertThatThrownBy(() -> boardService.updateBoard(workspace.getId(), board.getId(), other.getUser().getId(), request))
+					.isInstanceOf(ForbiddenException.class)
+					.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
 	}
 
@@ -247,8 +248,8 @@ class BoardServiceTest {
 			BoardComment comment = boardCommentRepository.save(BoardComment.create(board, author, "댓글"));
 			boardLikeRepository.save(BoardLike.create(board, author));
 
-			// when
-			boardService.deleteBoard(workspace.getId(), board.getId(), author.getId());
+				// when
+				boardService.deleteBoard(workspace.getId(), board.getId(), author.getUser().getId());
 
 			// then
 			Long deletedBoardCount = jdbcTemplate.queryForObject(
@@ -275,7 +276,7 @@ class BoardServiceTest {
 	}
 
 	private WorkspaceMember createMember(Workspace workspace, WorkspaceMemberRole role) {
-		User user = userRepository.save(User.createLocalUser(uniqueEmail(), "password", "사용자"));
+		User user = userRepository.save(User.createLocalUser(uniqueEmail(), Password.ofEncoded("password"), "사용자"));
 		return workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, role));
 	}
 

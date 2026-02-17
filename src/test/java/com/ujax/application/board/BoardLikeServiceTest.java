@@ -20,6 +20,7 @@ import com.ujax.domain.board.BoardLikeId;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.board.BoardType;
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -79,7 +80,7 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, member);
 
 			// when
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// then
 			BoardLike saved = boardLikeRepository.findById(new BoardLikeId(board.getId(), member.getId())).orElseThrow();
@@ -93,11 +94,11 @@ class BoardLikeServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			Board board = createBoard(workspace, member);
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
-			boardLikeService.unlike(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
+			boardLikeService.unlike(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// when
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// then
 			BoardLike saved = boardLikeRepository.findById(new BoardLikeId(board.getId(), member.getId())).orElseThrow();
@@ -114,8 +115,8 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, member);
 
 			// when
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// then
 			BoardLike saved = boardLikeRepository.findById(new BoardLikeId(board.getId(), member.getId())).orElseThrow();
@@ -134,7 +135,7 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, boardAuthor);
 
 			// when & then
-			assertThatThrownBy(() -> boardLikeService.like(workspace.getId(), board.getId(), outsider.getId()))
+			assertThatThrownBy(() -> boardLikeService.like(workspace.getId(), board.getId(), outsider.getUser().getId()))
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
@@ -147,7 +148,7 @@ class BoardLikeServiceTest {
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 
 			// when & then
-			assertThatThrownBy(() -> boardLikeService.like(workspace.getId(), 99999L, member.getId()))
+			assertThatThrownBy(() -> boardLikeService.like(workspace.getId(), 99999L, member.getUser().getId()))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BOARD_NOT_FOUND);
 		}
@@ -164,10 +165,10 @@ class BoardLikeServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			Board board = createBoard(workspace, member);
-			boardLikeService.like(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// when
-			boardLikeService.unlike(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.unlike(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// then
 			BoardLike saved = boardLikeRepository.findById(new BoardLikeId(board.getId(), member.getId())).orElseThrow();
@@ -183,7 +184,7 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, member);
 
 			// when
-			boardLikeService.unlike(workspace.getId(), board.getId(), member.getId());
+			boardLikeService.unlike(workspace.getId(), board.getId(), member.getUser().getId());
 
 			// then
 			assertThat(boardLikeRepository.findById(new BoardLikeId(board.getId(), member.getId()))).isEmpty();
@@ -200,7 +201,7 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, boardAuthor);
 
 			// when & then
-			assertThatThrownBy(() -> boardLikeService.unlike(workspace.getId(), board.getId(), outsider.getId()))
+			assertThatThrownBy(() -> boardLikeService.unlike(workspace.getId(), board.getId(), outsider.getUser().getId()))
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
@@ -213,7 +214,7 @@ class BoardLikeServiceTest {
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 
 			// when & then
-			assertThatThrownBy(() -> boardLikeService.unlike(workspace.getId(), 99999L, member.getId()))
+			assertThatThrownBy(() -> boardLikeService.unlike(workspace.getId(), 99999L, member.getUser().getId()))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BOARD_NOT_FOUND);
 		}
@@ -231,11 +232,11 @@ class BoardLikeServiceTest {
 			WorkspaceMember me = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			WorkspaceMember other = createMember(workspace, WorkspaceMemberRole.MEMBER);
 			Board board = createBoard(workspace, me);
-			boardLikeService.like(workspace.getId(), board.getId(), me.getId());
-			boardLikeService.like(workspace.getId(), board.getId(), other.getId());
+			boardLikeService.like(workspace.getId(), board.getId(), me.getUser().getId());
+			boardLikeService.like(workspace.getId(), board.getId(), other.getUser().getId());
 
 			// when
-			BoardLikeStatusResponse result = boardLikeService.getLikeStatus(workspace.getId(), board.getId(), me.getId());
+			BoardLikeStatusResponse result = boardLikeService.getLikeStatus(workspace.getId(), board.getId(), me.getUser().getId());
 
 			// then
 			assertThat(result).extracting("likeCount", "myLike")
@@ -251,7 +252,7 @@ class BoardLikeServiceTest {
 			Board board = createBoard(workspace, me);
 
 			// when
-			BoardLikeStatusResponse result = boardLikeService.getLikeStatus(workspace.getId(), board.getId(), me.getId());
+			BoardLikeStatusResponse result = boardLikeService.getLikeStatus(workspace.getId(), board.getId(), me.getUser().getId());
 
 			// then
 			assertThat(result).extracting("likeCount", "myLike")
@@ -280,7 +281,7 @@ class BoardLikeServiceTest {
 			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
 
 			// when & then
-			assertThatThrownBy(() -> boardLikeService.getLikeStatus(workspace.getId(), 99999L, member.getId()))
+			assertThatThrownBy(() -> boardLikeService.getLikeStatus(workspace.getId(), 99999L, member.getUser().getId()))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BOARD_NOT_FOUND);
 		}
@@ -291,7 +292,7 @@ class BoardLikeServiceTest {
 	}
 
 	private WorkspaceMember createMember(Workspace workspace, WorkspaceMemberRole role) {
-		User user = userRepository.save(User.createLocalUser(uniqueEmail(), "password", "사용자"));
+		User user = userRepository.save(User.createLocalUser(uniqueEmail(), Password.ofEncoded("password"), "사용자"));
 		return workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, role));
 	}
 

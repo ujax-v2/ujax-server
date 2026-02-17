@@ -48,7 +48,7 @@ class BoardLikeServiceUnitTest {
 
 		given(member.getId()).willReturn(workspaceMemberId);
 		given(board.getId()).willReturn(boardId);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, workspaceMemberId))
 			.willReturn(Optional.of(member));
 		given(boardRepository.findByIdAndWorkspaceId(boardId, workspaceId))
 			.willReturn(Optional.of(board));

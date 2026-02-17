@@ -9,12 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,12 +35,18 @@ import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.PageResponse.PageInfo;
-import com.ujax.infrastructure.web.board.BoardController;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.security.UserPrincipal;
+import com.ujax.infrastructure.web.board.BoardController;
+import com.ujax.support.TestSecurityConfig;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 
 @WebMvcTest(BoardController.class)
+@Import(TestSecurityConfig.class)
 class BoardControllerTest {
 
 	@Autowired
@@ -53,6 +63,20 @@ class BoardControllerTest {
 
 	@MockitoBean
 	private BoardLikeService boardLikeService;
+
+	@BeforeEach
+	void setUpSecurityContext() {
+		Claims claims = Jwts.claims()
+			.subject("3")
+			.add("role", "USER")
+			.add("name", "테스트유저")
+			.add("email", "test@example.com")
+			.build();
+		UserPrincipal principal = UserPrincipal.fromClaims(claims);
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+	}
 
 	private BoardDetailResponse boardDetail() {
 		return new BoardDetailResponse(
@@ -102,7 +126,6 @@ class BoardControllerTest {
 
 			// when & then
 			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards", 1L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.param("type", "FREE")
 					.param("keyword", "검색")
 					.param("page", "0")
@@ -128,8 +151,7 @@ class BoardControllerTest {
 			given(boardService.getBoardDetail(1L, 2L, 3L)).willReturn(boardDetail());
 
 			// when & then
-			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
@@ -150,7 +172,6 @@ class BoardControllerTest {
 
 			// when & then
 			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards", 1L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new CreateBoardBody("FREE", "제목", "내용", true))))
 				.andDo(print())
@@ -164,7 +185,6 @@ class BoardControllerTest {
 		void createBoardBadRequestWhenBlankTitle() throws Exception {
 			// when & then
 			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards", 1L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new CreateBoardBody("FREE", "", "내용", true))))
 				.andDo(print())
@@ -188,7 +208,6 @@ class BoardControllerTest {
 
 			// when & then
 			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new UpdateBoardBody("QNA", "수정 제목", "수정 내용", true))))
 				.andDo(print())
@@ -208,7 +227,6 @@ class BoardControllerTest {
 		void pinBoardSuccess() throws Exception {
 			// when & then
 			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/boards/{boardId}/pin", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new PinBoardBody(true))))
 				.andDo(print())
@@ -223,7 +241,6 @@ class BoardControllerTest {
 		void pinBoardBadRequestWhenPinnedMissing() throws Exception {
 			// when & then
 			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/boards/{boardId}/pin", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("{}"))
 				.andDo(print())
@@ -239,8 +256,7 @@ class BoardControllerTest {
 		@DisplayName("정상 요청이면 게시글을 삭제한다")
 		void deleteBoardSuccess() throws Exception {
 			// when & then
-			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));
@@ -261,8 +277,7 @@ class BoardControllerTest {
 				.willReturn(BoardLikeStatusResponse.of(5L, true));
 
 			// when & then
-			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
@@ -278,8 +293,7 @@ class BoardControllerTest {
 				.willThrow(new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
 
 			// when & then
-			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isNotFound());
 		}
@@ -292,8 +306,7 @@ class BoardControllerTest {
 				.willThrow(new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE));
 
 			// when & then
-			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isForbidden());
 		}
@@ -307,8 +320,7 @@ class BoardControllerTest {
 		@DisplayName("PUT 요청이면 좋아요 등록을 처리한다")
 		void likeBoardSuccess() throws Exception {
 			// when & then
-			mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));
@@ -320,8 +332,7 @@ class BoardControllerTest {
 		@DisplayName("DELETE 요청이면 좋아요 취소를 처리한다")
 		void unlikeBoardSuccess() throws Exception {
 			// when & then
-			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));
@@ -337,8 +348,7 @@ class BoardControllerTest {
 				.given(boardLikeService).like(1L, 2L, 3L);
 
 			// when & then
-			mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isNotFound());
 		}
@@ -351,8 +361,7 @@ class BoardControllerTest {
 				.given(boardLikeService).unlike(1L, 2L, 3L);
 
 			// when & then
-			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isForbidden());
 		}
@@ -379,8 +388,7 @@ class BoardControllerTest {
 			given(boardCommentService.listComments(1L, 2L, 3L, 0, 20)).willReturn(response);
 
 			// when & then
-			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
@@ -398,7 +406,6 @@ class BoardControllerTest {
 
 			// when & then
 			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new CommentBody("댓글"))))
 				.andDo(print())
@@ -412,7 +419,6 @@ class BoardControllerTest {
 		void createCommentBadRequestWhenBlankContent() throws Exception {
 			// when & then
 			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L)
-					.header("X-WS-MEMBER-ID", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new CommentBody(""))))
 				.andDo(print())
@@ -423,8 +429,7 @@ class BoardControllerTest {
 		@DisplayName("댓글 삭제 요청이면 댓글을 삭제한다")
 		void deleteCommentSuccess() throws Exception {
 			// when & then
-			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments/{commentId}", 1L, 2L, 10L)
-					.header("X-WS-MEMBER-ID", 3L))
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments/{commentId}", 1L, 2L, 10L))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true));

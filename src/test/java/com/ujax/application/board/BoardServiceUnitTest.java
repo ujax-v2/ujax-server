@@ -60,7 +60,7 @@ class BoardServiceUnitTest {
 	@DisplayName("listBoards: 페이지 번호가 음수면 INVALID_PARAMETER 예외가 발생한다")
 	void listBoardsThrowsBadRequestWhenPageIsNegative() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		BoardListRequest request = BoardListRequest.builder()
 			.page(-1).size(20).pinnedFirst(true)
@@ -76,7 +76,7 @@ class BoardServiceUnitTest {
 	@DisplayName("listBoards: 정렬 형식이 '필드,방향'이 아니면 INVALID_PARAMETER 예외가 발생한다")
 	void listBoardsThrowsBadRequestWhenSortFormatInvalid() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		BoardListRequest request = BoardListRequest.builder()
 			.page(0).size(20).sort("createdAt").pinnedFirst(true)
@@ -92,7 +92,7 @@ class BoardServiceUnitTest {
 	@DisplayName("listBoards: 허용되지 않은 정렬 필드를 요청하면 INVALID_PARAMETER 예외가 발생한다")
 	void listBoardsThrowsBadRequestWhenSortPropertyInvalid() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		BoardListRequest request = BoardListRequest.builder()
 			.page(0).size(20).sort("title,desc").pinnedFirst(true)
@@ -108,7 +108,7 @@ class BoardServiceUnitTest {
 	@DisplayName("listBoards: 허용되지 않은 정렬 방향을 요청하면 INVALID_PARAMETER 예외가 발생한다")
 	void listBoardsThrowsBadRequestWhenSortDirectionInvalid() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		BoardListRequest request = BoardListRequest.builder()
 			.page(0).size(20).sort("createdAt,invalid").pinnedFirst(true)
@@ -125,7 +125,7 @@ class BoardServiceUnitTest {
 	void listBoardsReturnsEmptyListWhenNoBoards() {
 		// given
 		WorkspaceMember member = mock(WorkspaceMember.class);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(member));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 		given(boardRepository.search(eq(1L), isNull(), isNull(), any(PageRequest.class)))
 			.willReturn(Page.empty());
 		BoardListRequest request = BoardListRequest.builder()
@@ -145,7 +145,7 @@ class BoardServiceUnitTest {
 	@DisplayName("listBoards: pinnedFirst=true이면 기본 정렬 앞에 pinned desc 정렬을 추가한다")
 	void listBoardsAddsPinnedSortWhenPinnedFirstTrue() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		given(boardRepository.search(eq(1L), isNull(), isNull(), any(PageRequest.class)))
 			.willReturn(Page.empty());
@@ -184,7 +184,7 @@ class BoardServiceUnitTest {
 		Workspace workspace = mock(Workspace.class);
 		WorkspaceMember member = mock(WorkspaceMember.class);
 		given(workspaceRepository.findById(1L)).willReturn(Optional.of(workspace));
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(member));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 
 		// when & then
 		assertThatThrownBy(() -> boardService.createBoard(1L, 2L, BoardCreateRequest.builder()
@@ -200,7 +200,7 @@ class BoardServiceUnitTest {
 		Workspace workspace = mock(Workspace.class);
 		WorkspaceMember member = mock(WorkspaceMember.class);
 		given(workspaceRepository.findById(1L)).willReturn(Optional.of(workspace));
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(member));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 
 		// when & then
 		assertThatThrownBy(() -> boardService.createBoard(1L, 2L, BoardCreateRequest.builder()
@@ -220,7 +220,7 @@ class BoardServiceUnitTest {
 		given(owner.getNickname()).willReturn("owner");
 		given(owner.getRole()).willReturn(WorkspaceMemberRole.OWNER);
 		given(workspaceRepository.findById(1L)).willReturn(Optional.of(workspace));
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(owner));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(owner));
 
 		Board saved = Board.create(workspace, owner, BoardType.NOTICE, true, "공지", "내용");
 		given(boardRepository.save(any(Board.class))).willReturn(saved);
@@ -242,7 +242,7 @@ class BoardServiceUnitTest {
 		Board board = mock(Board.class);
 		given(author.getId()).willReturn(2L);
 		given(board.getAuthor()).willReturn(author);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(author));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
 
 		// when & then
@@ -256,7 +256,7 @@ class BoardServiceUnitTest {
 	void updateBoardThrowsNotFoundWhenBoardMissing() {
 		// given
 		WorkspaceMember member = mock(WorkspaceMember.class);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(member));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.empty());
 
 		// when & then
@@ -284,7 +284,7 @@ class BoardServiceUnitTest {
 		given(board.getContent()).willReturn("수정 내용");
 		given(board.getViewCount()).willReturn(10L);
 
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(author));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
 		given(boardCommentRepository.countByBoard_Id(3L)).willReturn(4L);
 		given(boardLikeRepository.countByBoardIds(List.of(3L))).willReturn(List.<Object[]>of(new Object[] {3L, 7L}));
@@ -311,7 +311,7 @@ class BoardServiceUnitTest {
 		given(actor.getId()).willReturn(2L);
 		given(author.getId()).willReturn(99L);
 		given(board.getAuthor()).willReturn(author);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(actor));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(actor));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
 
 		// when & then
@@ -329,7 +329,7 @@ class BoardServiceUnitTest {
 		given(author.getId()).willReturn(2L);
 		given(board.getId()).willReturn(3L);
 		given(board.getAuthor()).willReturn(author);
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(author));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
 
 		// when
@@ -345,7 +345,7 @@ class BoardServiceUnitTest {
 	@DisplayName("getBoardDetail: 게시글이 없으면 BOARD_NOT_FOUND 예외가 발생한다")
 	void getBoardDetailThrowsNotFoundWhenBoardMissing() {
 		// given
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L))
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L))
 			.willReturn(Optional.of(mock(WorkspaceMember.class)));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.empty());
 
@@ -375,7 +375,7 @@ class BoardServiceUnitTest {
 		given(board.getContent()).willReturn("내용");
 		given(board.getViewCount()).willReturn(11L);
 
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(member));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
 
 		// when
@@ -406,7 +406,7 @@ class BoardServiceUnitTest {
 		given(board.getContent()).willReturn("c".repeat(120));
 		given(board.getViewCount()).willReturn(0L);
 
-		given(workspaceMemberRepository.findByWorkspace_IdAndId(1L, 2L)).willReturn(Optional.of(author));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
 		Page<Board> page = new PageImpl<>(List.of(board), PageRequest.of(0, 20), 1);
 		given(boardRepository.search(eq(1L), eq(BoardType.FREE), eq("키워드"), any(PageRequest.class))).willReturn(page);
 		given(boardCommentRepository.countByBoardIds(List.of(10L))).willReturn(List.<Object[]>of(new Object[] {10L, 3L}));

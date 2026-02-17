@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.ujax.application.board.BoardCommentService;
 import com.ujax.application.board.BoardLikeService;
@@ -25,6 +25,7 @@ import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.ApiResponse;
+import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.board.dto.request.CreateBoardRequest;
 import com.ujax.infrastructure.web.board.dto.request.CreateCommentRequest;
 import com.ujax.infrastructure.web.board.dto.request.PinBoardRequest;
@@ -45,7 +46,7 @@ public class BoardController {
 	@GetMapping
 	public ApiResponse<BoardListResponse> listBoards(
 		@PathVariable Long workspaceId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@RequestParam(required = false) BoardType type,
 		@RequestParam(required = false) String keyword,
 		@RequestParam(defaultValue = "0") int page,
@@ -62,7 +63,7 @@ public class BoardController {
 			.pinnedFirst(pinnedFirst)
 			.build();
 		return ApiResponse.success(
-			boardService.listBoards(workspaceId, workspaceMemberId, payload)
+			boardService.listBoards(workspaceId, principal.getUserId(), payload)
 		);
 	}
 
@@ -70,15 +71,15 @@ public class BoardController {
 	public ApiResponse<BoardDetailResponse> getBoardDetail(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(boardService.getBoardDetail(workspaceId, boardId, workspaceMemberId));
+		return ApiResponse.success(boardService.getBoardDetail(workspaceId, boardId, principal.getUserId()));
 	}
 
 	@PostMapping
 	public ApiResponse<BoardDetailResponse> createBoard(
 		@PathVariable Long workspaceId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody CreateBoardRequest request
 	) {
 		BoardCreateRequest payload = BoardCreateRequest.builder()
@@ -88,7 +89,7 @@ public class BoardController {
 			.pinned(request.pinned())
 			.build();
 		return ApiResponse.success(
-			boardService.createBoard(workspaceId, workspaceMemberId, payload)
+			boardService.createBoard(workspaceId, principal.getUserId(), payload)
 		);
 	}
 
@@ -96,7 +97,7 @@ public class BoardController {
 	public ApiResponse<BoardDetailResponse> updateBoard(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody UpdateBoardRequest request
 	) {
 		BoardUpdateRequest payload = BoardUpdateRequest.builder()
@@ -106,7 +107,7 @@ public class BoardController {
 			.pinned(request.pinned())
 			.build();
 		return ApiResponse.success(
-			boardService.updateBoard(workspaceId, boardId, workspaceMemberId, payload)
+			boardService.updateBoard(workspaceId, boardId, principal.getUserId(), payload)
 		);
 	}
 
@@ -114,10 +115,10 @@ public class BoardController {
 	public ApiResponse<Void> pinBoard(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody PinBoardRequest request
 	) {
-		boardService.pinBoard(workspaceId, boardId, workspaceMemberId, request.pinned());
+		boardService.pinBoard(workspaceId, boardId, principal.getUserId(), request.pinned());
 		return ApiResponse.success();
 	}
 
@@ -125,9 +126,9 @@ public class BoardController {
 	public ApiResponse<Void> deleteBoard(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		boardService.deleteBoard(workspaceId, boardId, workspaceMemberId);
+		boardService.deleteBoard(workspaceId, boardId, principal.getUserId());
 		return ApiResponse.success();
 	}
 
@@ -135,9 +136,9 @@ public class BoardController {
 	public ApiResponse<Void> likeBoard(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		boardLikeService.like(workspaceId, boardId, workspaceMemberId);
+		boardLikeService.like(workspaceId, boardId, principal.getUserId());
 		return ApiResponse.success();
 	}
 
@@ -145,18 +146,18 @@ public class BoardController {
 	public ApiResponse<BoardLikeStatusResponse> getLikeStatus(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(boardLikeService.getLikeStatus(workspaceId, boardId, workspaceMemberId));
+		return ApiResponse.success(boardLikeService.getLikeStatus(workspaceId, boardId, principal.getUserId()));
 	}
 
 	@DeleteMapping("/{boardId}/likes")
 	public ApiResponse<Void> unlikeBoard(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		boardLikeService.unlike(workspaceId, boardId, workspaceMemberId);
+		boardLikeService.unlike(workspaceId, boardId, principal.getUserId());
 		return ApiResponse.success();
 	}
 
@@ -164,12 +165,12 @@ public class BoardController {
 	public ApiResponse<CommentListResponse> listComments(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size
 	) {
 		return ApiResponse.success(
-			boardCommentService.listComments(workspaceId, boardId, workspaceMemberId, page, size)
+			boardCommentService.listComments(workspaceId, boardId, principal.getUserId(), page, size)
 		);
 	}
 
@@ -177,11 +178,11 @@ public class BoardController {
 	public ApiResponse<CommentResponse> createComment(
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody CreateCommentRequest request
 	) {
 		return ApiResponse.success(
-			boardCommentService.createComment(workspaceId, boardId, workspaceMemberId, request.content())
+			boardCommentService.createComment(workspaceId, boardId, principal.getUserId(), request.content())
 		);
 	}
 
@@ -190,9 +191,9 @@ public class BoardController {
 		@PathVariable Long workspaceId,
 		@PathVariable Long boardId,
 		@PathVariable Long commentId,
-		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		boardCommentService.deleteComment(workspaceId, boardId, commentId, workspaceMemberId);
+		boardCommentService.deleteComment(workspaceId, boardId, commentId, principal.getUserId());
 		return ApiResponse.success();
 	}
 }

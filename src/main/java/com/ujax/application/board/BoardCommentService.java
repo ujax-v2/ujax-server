@@ -35,8 +35,8 @@ public class BoardCommentService {
 	private final BoardCommentRepository boardCommentRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 
-	public CommentListResponse listComments(Long workspaceId, Long boardId, Long workspaceMemberId, int page, int size) {
-		validateMember(workspaceId, workspaceMemberId);
+	public CommentListResponse listComments(Long workspaceId, Long boardId, Long userId, int page, int size) {
+		validateMember(workspaceId, userId);
 		validatePageable(page, size);
 		validateBoardExists(workspaceId, boardId);
 
@@ -52,8 +52,8 @@ public class BoardCommentService {
 	}
 
 	@Transactional
-	public CommentResponse createComment(Long workspaceId, Long boardId, Long workspaceMemberId, String content) {
-		WorkspaceMember author = validateMember(workspaceId, workspaceMemberId);
+	public CommentResponse createComment(Long workspaceId, Long boardId, Long userId, String content) {
+		WorkspaceMember author = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 
 		validateContent(content);
@@ -63,8 +63,8 @@ public class BoardCommentService {
 	}
 
 	@Transactional
-	public void deleteComment(Long workspaceId, Long boardId, Long commentId, Long workspaceMemberId) {
-		WorkspaceMember actor = validateMember(workspaceId, workspaceMemberId);
+	public void deleteComment(Long workspaceId, Long boardId, Long commentId, Long userId) {
+		WorkspaceMember actor = validateMember(workspaceId, userId);
 		BoardComment comment = findComment(boardId, commentId);
 		if (!comment.getAuthor().getId().equals(actor.getId())) {
 			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "작성자만 이 작업을 수행할 수 있습니다.");
@@ -72,8 +72,8 @@ public class BoardCommentService {
 		boardCommentRepository.delete(comment);
 	}
 
-	private WorkspaceMember validateMember(Long workspaceId, Long workspaceMemberId) {
-		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
+	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
 			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
 	}
 

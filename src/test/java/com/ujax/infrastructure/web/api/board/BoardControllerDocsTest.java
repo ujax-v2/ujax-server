@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -41,12 +44,17 @@ import com.ujax.application.board.dto.response.CommentResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.PageResponse.PageInfo;
 import com.ujax.global.exception.GlobalExceptionHandler;
+import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.board.BoardController;
+import com.ujax.support.TestSecurityConfig;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 
 @Tag("restDocs")
 @WebMvcTest(BoardController.class)
 @AutoConfigureRestDocs
-@Import(GlobalExceptionHandler.class)
+@Import({TestSecurityConfig.class, GlobalExceptionHandler.class})
 class BoardControllerDocsTest {
 
 	@Autowired
@@ -63,6 +71,20 @@ class BoardControllerDocsTest {
 
 	@MockitoBean
 	private BoardLikeService boardLikeService;
+
+	@BeforeEach
+	void setUpSecurityContext() {
+		Claims claims = Jwts.claims()
+			.subject("3")
+			.add("role", "USER")
+			.add("name", "테스트유저")
+			.add("email", "test@example.com")
+			.build();
+		UserPrincipal principal = UserPrincipal.fromClaims(claims);
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+	}
 
 	private BoardDetailResponse boardDetail() {
 		return new BoardDetailResponse(
@@ -88,7 +110,6 @@ class BoardControllerDocsTest {
 		given(boardService.listBoards(eq(1L), eq(3L), any())).willReturn(response);
 
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards", 1L)
-				.header("X-WS-MEMBER-ID", 3L)
 				.param("type", "FREE")
 				.param("keyword", "검색")
 				.param("page", "0")
@@ -105,7 +126,6 @@ class BoardControllerDocsTest {
 					.summary("게시글 목록 조회")
 					.description("워크스페이스 게시글 목록을 조회합니다")
 					.pathParameters(parameterWithName("workspaceId").description("워크스페이스 ID"))
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.queryParameters(
 						parameterWithName("type").optional().description("게시글 타입"),
 						parameterWithName("keyword").optional().description("검색어"),
@@ -130,8 +150,7 @@ class BoardControllerDocsTest {
 	void getBoardDetail() throws Exception {
 		given(boardService.getBoardDetail(1L, 2L, 3L)).willReturn(boardDetail());
 
-		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-get",
@@ -145,7 +164,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-BoardDetail"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -163,7 +181,6 @@ class BoardControllerDocsTest {
 		given(boardService.createBoard(eq(1L), eq(3L), any())).willReturn(boardDetail());
 
 		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards", 1L)
-				.header("X-WS-MEMBER-ID", 3L)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(new CreateBoardBody("FREE", "제목", "내용", true))))
 			.andDo(print())
@@ -176,7 +193,6 @@ class BoardControllerDocsTest {
 					.summary("게시글 생성")
 					.description("게시글을 생성합니다")
 					.pathParameters(parameterWithName("workspaceId").description("워크스페이스 ID"))
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.requestSchema(Schema.schema("CreateBoardRequest"))
 					.requestFields(
 						fieldWithPath("type").type(JsonFieldType.STRING).description("게시글 타입"),
@@ -201,7 +217,6 @@ class BoardControllerDocsTest {
 		given(boardService.updateBoard(eq(1L), eq(2L), eq(3L), any())).willReturn(boardDetail());
 
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(new UpdateBoardBody("QNA", "수정 제목", "수정 내용", true))))
 			.andDo(print())
@@ -217,7 +232,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.requestSchema(Schema.schema("UpdateBoardRequest"))
 					.requestFields(
 						fieldWithPath("type").type(JsonFieldType.STRING).description("게시글 타입").optional(),
@@ -240,7 +254,6 @@ class BoardControllerDocsTest {
 	@DisplayName("게시글 고정 API")
 	void pinBoard() throws Exception {
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/boards/{boardId}/pin", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(new PinBoardBody(true))))
 			.andDo(print())
@@ -256,7 +269,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.requestSchema(Schema.schema("PinBoardRequest"))
 					.requestFields(fieldWithPath("pinned").type(JsonFieldType.BOOLEAN).description("고정 여부"))
 					.responseSchema(Schema.schema("ApiResponse-Void"))
@@ -273,8 +285,7 @@ class BoardControllerDocsTest {
 	@Test
 	@DisplayName("게시글 삭제 API")
 	void deleteBoard() throws Exception {
-		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-delete",
@@ -288,7 +299,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -305,8 +315,7 @@ class BoardControllerDocsTest {
 	void getLikeStatus() throws Exception {
 		given(boardLikeService.getLikeStatus(1L, 2L, 3L)).willReturn(BoardLikeStatusResponse.of(5L, true));
 
-		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-like-status",
@@ -320,7 +329,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-BoardLikeStatus"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -337,8 +345,7 @@ class BoardControllerDocsTest {
 	@Test
 	@DisplayName("좋아요 등록 API")
 	void likeBoard() throws Exception {
-		mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(put("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-like",
@@ -352,7 +359,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -367,8 +373,7 @@ class BoardControllerDocsTest {
 	@Test
 	@DisplayName("좋아요 취소 API")
 	void unlikeBoard() throws Exception {
-		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/likes", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-unlike",
@@ -382,7 +387,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -403,8 +407,7 @@ class BoardControllerDocsTest {
 		);
 		given(boardCommentService.listComments(1L, 2L, 3L, 0, 20)).willReturn(response);
 
-		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-comment-list",
@@ -418,7 +421,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.queryParameters(
 						parameterWithName("page").optional().description("페이지"),
 						parameterWithName("size").optional().description("크기")
@@ -441,7 +443,6 @@ class BoardControllerDocsTest {
 		given(boardCommentService.createComment(1L, 2L, 3L, "댓글")).willReturn(response);
 
 		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments", 1L, 2L)
-				.header("X-WS-MEMBER-ID", 3L)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(new CommentBody("댓글"))))
 			.andDo(print())
@@ -457,7 +458,6 @@ class BoardControllerDocsTest {
 						parameterWithName("workspaceId").description("워크스페이스 ID"),
 						parameterWithName("boardId").description("게시글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.requestSchema(Schema.schema("CreateCommentRequest"))
 					.requestFields(fieldWithPath("content").type(JsonFieldType.STRING).description("댓글 내용"))
 					.responseSchema(Schema.schema("ApiResponse-Comment"))
@@ -474,8 +474,7 @@ class BoardControllerDocsTest {
 	@Test
 	@DisplayName("댓글 삭제 API")
 	void deleteComment() throws Exception {
-		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments/{commentId}", 1L, 2L, 10L)
-				.header("X-WS-MEMBER-ID", 3L))
+		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/boards/{boardId}/comments/{commentId}", 1L, 2L, 10L))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andDo(document("board-comment-delete",
@@ -490,7 +489,6 @@ class BoardControllerDocsTest {
 						parameterWithName("boardId").description("게시글 ID"),
 						parameterWithName("commentId").description("댓글 ID")
 					)
-					.requestHeaders(headerWithName("X-WS-MEMBER-ID").description("워크스페이스 멤버 ID"))
 					.responseSchema(Schema.schema("ApiResponse-Void"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),

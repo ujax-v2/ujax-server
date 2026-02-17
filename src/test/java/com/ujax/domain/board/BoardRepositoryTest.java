@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.domain.user.User;
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceMember;
@@ -133,7 +134,7 @@ class BoardRepositoryTest {
 	}
 
 	private WorkspaceMember createMember(Workspace workspace) {
-		User user = userRepository.save(User.createLocalUser(UUID.randomUUID() + "@example.com", "password", "사용자"));
+		User user = userRepository.save(User.createLocalUser(UUID.randomUUID() + "@example.com", Password.ofEncoded("password"), "사용자"));
 		return workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 	}
 }
