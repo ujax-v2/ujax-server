@@ -15,7 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ujax.application.board.BoardCommentService;
 import com.ujax.application.board.BoardLikeService;
 import com.ujax.application.board.BoardService;
+import com.ujax.application.board.dto.request.BoardCreateRequest;
+import com.ujax.application.board.dto.request.BoardListRequest;
+import com.ujax.application.board.dto.request.BoardUpdateRequest;
 import com.ujax.application.board.dto.response.BoardDetailResponse;
+import com.ujax.application.board.dto.response.BoardLikeStatusResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
 import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
@@ -49,8 +53,16 @@ public class BoardController {
 		@RequestParam(required = false) String sort,
 		@RequestParam(defaultValue = "true") boolean pinnedFirst
 	) {
+		BoardListRequest payload = BoardListRequest.builder()
+			.type(type)
+			.keyword(keyword)
+			.page(page)
+			.size(size)
+			.sort(sort)
+			.pinnedFirst(pinnedFirst)
+			.build();
 		return ApiResponse.success(
-			boardService.listBoards(workspaceId, workspaceMemberId, type, keyword, page, size, sort, pinnedFirst)
+			boardService.listBoards(workspaceId, workspaceMemberId, payload)
 		);
 	}
 
@@ -69,15 +81,14 @@ public class BoardController {
 		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
 		@Valid @RequestBody CreateBoardRequest request
 	) {
+		BoardCreateRequest payload = BoardCreateRequest.builder()
+			.type(request.type())
+			.title(request.title())
+			.content(request.content())
+			.pinned(request.pinned())
+			.build();
 		return ApiResponse.success(
-			boardService.createBoard(
-				workspaceId,
-				workspaceMemberId,
-				request.type(),
-				request.title(),
-				request.content(),
-				request.pinned()
-			)
+			boardService.createBoard(workspaceId, workspaceMemberId, payload)
 		);
 	}
 
@@ -88,16 +99,14 @@ public class BoardController {
 		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId,
 		@Valid @RequestBody UpdateBoardRequest request
 	) {
+		BoardUpdateRequest payload = BoardUpdateRequest.builder()
+			.type(request.type())
+			.title(request.title())
+			.content(request.content())
+			.pinned(request.pinned())
+			.build();
 		return ApiResponse.success(
-			boardService.updateBoard(
-				workspaceId,
-				boardId,
-				workspaceMemberId,
-				request.type(),
-				request.title(),
-				request.content(),
-				request.pinned()
-			)
+			boardService.updateBoard(workspaceId, boardId, workspaceMemberId, payload)
 		);
 	}
 
@@ -130,6 +139,15 @@ public class BoardController {
 	) {
 		boardLikeService.like(workspaceId, boardId, workspaceMemberId);
 		return ApiResponse.success();
+	}
+
+	@GetMapping("/{boardId}/likes")
+	public ApiResponse<BoardLikeStatusResponse> getLikeStatus(
+		@PathVariable Long workspaceId,
+		@PathVariable Long boardId,
+		@RequestHeader("X-WS-MEMBER-ID") Long workspaceMemberId
+	) {
+		return ApiResponse.success(boardLikeService.getLikeStatus(workspaceId, boardId, workspaceMemberId));
 	}
 
 	@DeleteMapping("/{boardId}/likes")

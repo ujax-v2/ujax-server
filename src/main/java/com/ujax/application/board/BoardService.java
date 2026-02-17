@@ -10,6 +10,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ujax.application.board.dto.request.BoardCreateRequest;
+import com.ujax.application.board.dto.request.BoardListRequest;
+import com.ujax.application.board.dto.request.BoardUpdateRequest;
 import com.ujax.application.board.dto.response.BoardDetailResponse;
 import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
@@ -21,6 +24,7 @@ import com.ujax.domain.board.BoardType;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
+import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.dto.PageResponse.PageInfo;
 import com.ujax.global.exception.ErrorCode;
@@ -50,13 +54,15 @@ public class BoardService {
 	public BoardListResponse listBoards(
 		Long workspaceId,
 		Long workspaceMemberId,
-		BoardType type,
-		String keyword,
-		int page,
-		int size,
-		String sort,
-		boolean pinnedFirst
+		BoardListRequest request
 	) {
+		BoardType type = request.type();
+		String keyword = request.keyword();
+		int page = request.page();
+		int size = request.size();
+		String sort = request.sort();
+		boolean pinnedFirst = request.pinnedFirst();
+
 		validateMember(workspaceId, workspaceMemberId);
 		validatePageable(page, size);
 
@@ -72,17 +78,13 @@ public class BoardService {
 		Map<Long, Long> likeCounts = boardIds.isEmpty()
 			? Map.of()
 			: toCountMap(boardLikeRepository.countByBoardIds(boardIds));
-		List<Long> myLikedIds = boardIds.isEmpty()
-			? List.of()
-			: boardLikeRepository.findMyLikedBoardIds(boardIds, workspaceMemberId);
-
 		List<BoardListItemResponse> items = result.getContent().stream()
 			.map(board -> BoardListItemResponse.from(
 				board,
 				preview(board.getContent()),
 				likeCounts.getOrDefault(board.getId(), 0L),
 				commentCounts.getOrDefault(board.getId(), 0L),
-				myLikedIds.contains(board.getId())
+				false
 			))
 			.toList();
 
@@ -100,23 +102,23 @@ public class BoardService {
 			.orElseThrow(() -> new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
 		boardRepository.incrementViewCount(workspaceId, boardId);
 
-		long commentCount = boardCommentRepository.countByBoard_Id(board.getId());
-		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(board.getId())));
-		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(board.getId()), workspaceMemberId).isEmpty();
-
-		return BoardDetailResponse.from(board, likeCount, commentCount, myLike);
+		return BoardDetailResponse.from(board, 0L, 0L, false);
 	}
 
 	@Transactional
-	public BoardDetailResponse createBoard(Long workspaceId, Long workspaceMemberId, BoardType type, String title, String content, Boolean pinned) {
+	public BoardDetailResponse createBoard(Long workspaceId, Long workspaceMemberId, BoardCreateRequest request) {
 		Workspace workspace = findWorkspaceById(workspaceId);
 		WorkspaceMember author = findWorkspaceMember(workspaceId, workspaceMemberId);
 
+		String title = request.title();
+		String content = request.content();
+
+		validateNoticePermission(author, request.type());
 		validateTitle(title);
 		validateContent(content);
 
-		boolean pinnedValue = pinned != null && pinned;
-		Board board = Board.create(workspace, author, type, pinnedValue, title, content);
+		boolean pinnedValue = request.pinned() != null && request.pinned();
+		Board board = Board.create(workspace, author, request.type(), pinnedValue, title, content);
 		Board saved = boardRepository.save(board);
 
 		return BoardDetailResponse.from(saved, 0L, 0L, false);
@@ -127,16 +129,16 @@ public class BoardService {
 		Long workspaceId,
 		Long boardId,
 		Long workspaceMemberId,
-		BoardType type,
-		String title,
-		String content,
-		Boolean pinned
+		BoardUpdateRequest request
 	) {
 		WorkspaceMember actor = validateMember(workspaceId, workspaceMemberId);
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
 
-		if (type == null && title == null && content == null && pinned == null) {
+		String title = request.title();
+		String content = request.content();
+
+		if (request.type() == null && title == null && content == null && request.pinned() == null) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 		if (title != null) {
@@ -146,7 +148,7 @@ public class BoardService {
 			validateContent(content);
 		}
 
-		board.update(type, title, content, pinned);
+		board.update(request.type(), title, content, request.pinned());
 
 		long commentCount = boardCommentRepository.countByBoard_Id(board.getId());
 		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(board.getId())));
@@ -169,7 +171,7 @@ public class BoardService {
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
 
-		boardLikeRepository.softDeleteByBoardId(board.getId());
+		boardLikeRepository.markDeletedByBoardId(board.getId());
 		boardCommentRepository.softDeleteByBoardId(board.getId());
 		boardRepository.delete(board);
 	}
@@ -196,6 +198,16 @@ public class BoardService {
 	private void validateAuthor(WorkspaceMember actor, Board board) {
 		if (!board.getAuthor().getId().equals(actor.getId())) {
 			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "작성자만 이 작업을 수행할 수 있습니다.");
+		}
+	}
+
+	private void validateNoticePermission(WorkspaceMember author, BoardType type) {
+		if (type == null || type != BoardType.NOTICE) {
+			return;
+		}
+		WorkspaceMemberRole role = author.getRole();
+		if (role != WorkspaceMemberRole.MANAGER && role != WorkspaceMemberRole.OWNER) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "공지 게시글은 운영자 이상만 작성할 수 있습니다.");
 		}
 	}
 

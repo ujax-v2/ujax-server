@@ -1,8 +1,12 @@
 package com.ujax.application.board;
 
+import java.util.List;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ujax.application.board.dto.response.BoardLikeStatusResponse;
 import com.ujax.domain.board.Board;
 import com.ujax.domain.board.BoardLike;
 import com.ujax.domain.board.BoardLikeId;
@@ -25,17 +29,31 @@ public class BoardLikeService {
 	private final BoardLikeRepository boardLikeRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 
+	public BoardLikeStatusResponse getLikeStatus(Long workspaceId, Long boardId, Long workspaceMemberId) {
+		validateMember(workspaceId, workspaceMemberId);
+		findBoard(workspaceId, boardId);
+
+		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(boardId)));
+		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(boardId), workspaceMemberId).isEmpty();
+
+		return BoardLikeStatusResponse.of(likeCount, myLike);
+	}
+
 	@Transactional
 	public void like(Long workspaceId, Long boardId, Long workspaceMemberId) {
 		WorkspaceMember member = validateMember(workspaceId, workspaceMemberId);
 		Board board = findBoard(workspaceId, boardId);
 
-		BoardLikeId id = new BoardLikeId(board.getId(), member.getId());
-		boardLikeRepository.findById(id)
-			.ifPresentOrElse(
-				like -> like.updateDeleted(false),
-				() -> boardLikeRepository.save(BoardLike.create(board, member))
-			);
+		int updated = boardLikeRepository.updateDeleted(board.getId(), member.getId(), false);
+		if (updated > 0) {
+			return;
+		}
+
+		try {
+			boardLikeRepository.saveAndFlush(BoardLike.create(board, member));
+		} catch (DataIntegrityViolationException ex) {
+			boardLikeRepository.updateDeleted(board.getId(), member.getId(), false);
+		}
 	}
 
 	@Transactional
@@ -56,5 +74,12 @@ public class BoardLikeService {
 	private Board findBoard(Long workspaceId, Long boardId) {
 		return boardRepository.findByIdAndWorkspaceId(boardId, workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
+	}
+
+	private long extractSingleCount(List<Object[]> results) {
+		if (results.isEmpty()) {
+			return 0L;
+		}
+		return (Long)results.get(0)[1];
 	}
 }
