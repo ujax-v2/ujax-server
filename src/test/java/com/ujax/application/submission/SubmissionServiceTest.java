@@ -67,7 +67,6 @@ class SubmissionServiceTest {
 
         // then
         assertThat(unifiedToken).isNotNull();
-        // Redis에 단순 토큰이 아닌, 입력/기대값이 포함된 JSON 구조가 저장되는지 검증
         verify(valueOperations).set(contains("submission:"), contains("\"input\":\"1 2\""), any());
         verify(valueOperations).set(contains("submission:"), contains("\"expected\":\"3\""), any());
     }
@@ -85,16 +84,25 @@ class SubmissionServiceTest {
                 .hasMessageContaining("지원하지 않는 언어: BASIC");
     }
 
-    @Test
-    @DisplayName("테스트 케이스가 비어있으면 InvalidSubmissionException이 발생한다")
-    void submit_EmptyTestCases() {
-        // given
-        var request = new SubmissionRequest("JAVA", "code", List.of());
 
-        // when & then
-        assertThatThrownBy(() -> submissionService.submitAndAggregateTokens(request))
-                .isInstanceOf(InvalidSubmissionException.class)
-                .hasMessageContaining("테스트 케이스는 최소 1개 이상");
+
+    @Test
+    @DisplayName("테스트 케이스의 Input이 비어있어도 정상적으로 제출된다")
+    void submit_EmptyInput_Success() {
+        // given
+        var testCase = new SubmissionRequest.TestCaseRequest("", "expected");
+        var request = new SubmissionRequest("JAVA", "code", List.of(testCase));
+
+        String judge0Response = "[{\"token\": \"token-123\"}]";
+        given(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .willReturn(ResponseEntity.ok(judge0Response));
+
+        // when
+        String token = submissionService.submitAndAggregateTokens(request);
+
+        // then
+        assertThat(token).isNotNull();
+        verify(valueOperations).set(contains("submission:"), contains("\"input\":\"\""), any());
     }
 
     @Test
@@ -140,7 +148,7 @@ class SubmissionServiceTest {
                 .willReturn(ResponseEntity.ok(judge0Response));
 
         // when
-        List<SubmissionResultResponse.TestCaseResult> results = submissionService.getSubmissionResults(unifiedToken);
+        List<SubmissionResultResponse> results = submissionService.getSubmissionResults(unifiedToken);
 
         // then
         assertThat(results).hasSize(1);
@@ -187,7 +195,7 @@ class SubmissionServiceTest {
         given(restTemplate.getForEntity(anyString(), eq(String.class))).willReturn(ResponseEntity.ok(invalidBase64Response));
 
         // when
-        List<SubmissionResultResponse.TestCaseResult> results = submissionService.getSubmissionResults("uuid");
+        List<SubmissionResultResponse> results = submissionService.getSubmissionResults("uuid");
 
         // then
         assertThat(results.getFirst().stdout()).isEqualTo("!!!Invalid!!!");
@@ -202,7 +210,7 @@ class SubmissionServiceTest {
         given(restTemplate.getForEntity(anyString(), eq(String.class))).willReturn(ResponseEntity.ok(nullFieldsResponse));
 
         // when
-        List<SubmissionResultResponse.TestCaseResult> results = submissionService.getSubmissionResults("uuid");
+        List<SubmissionResultResponse> results = submissionService.getSubmissionResults("uuid");
 
         // then
         assertThat(results.getFirst().time()).isNull();

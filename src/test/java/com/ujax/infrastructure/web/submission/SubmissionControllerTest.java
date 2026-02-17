@@ -64,4 +64,17 @@ class SubmissionControllerTest {
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.message").isEmpty());
     }
+
+    @Test
+    @DisplayName("유효하지 않은 요청(테스트 케이스 없음) 시 400 Bad Request를 반환한다")
+    void createSubmission_Invalid() throws Exception {
+        // given
+        var request = new SubmissionRequest("JAVA", "source", List.of());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/workspaces/1/problems/1/submissions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }
