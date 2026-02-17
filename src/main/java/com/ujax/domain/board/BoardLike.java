@@ -1,9 +1,5 @@
 package com.ujax.domain.board;
 
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.SQLDelete;
-
-import com.ujax.domain.common.BaseEntity;
 import com.ujax.domain.workspace.WorkspaceMember;
 
 import jakarta.persistence.Column;
@@ -22,13 +18,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @Table(name = "board_likes")
-@Filter(
-	name = "softDeleteFilter",
-	condition = "deleted_at IS NULL"
-)
-@SQLDelete(sql = "UPDATE board_likes SET deleted_at = now() WHERE board_id = ? AND workspace_member_id = ?")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class BoardLike extends BaseEntity {
+public class BoardLike {
 
 	@EmbeddedId
 	private BoardLikeId id;

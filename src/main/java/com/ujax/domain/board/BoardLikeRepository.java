@@ -1,21 +1,13 @@
 package com.ujax.domain.board;
 
 import java.util.List;
-import java.util.Optional;
 
-import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BoardLikeRepository extends JpaRepository<BoardLike, BoardLikeId> {
-
-	/** findById를 JPQL로 오버라이드하여 @Filter(softDeleteFilter) 적용 */
-	@Override
-	@NonNull
-	@Query("SELECT bl FROM BoardLike bl WHERE bl.id = :id")
-	Optional<BoardLike> findById(@Param("id") @NonNull BoardLikeId id);
 
 	@Query("SELECT bl.board.id, COUNT(bl) FROM BoardLike bl WHERE bl.board.id IN :boardIds AND bl.deleted = false GROUP BY bl.board.id")
 	List<Object[]> countByBoardIds(@Param("boardIds") List<Long> boardIds);
@@ -39,5 +31,5 @@ public interface BoardLikeRepository extends JpaRepository<BoardLike, BoardLikeI
 
 	@Modifying
 	@Query("UPDATE BoardLike bl SET bl.deleted = true WHERE bl.board.id = :boardId")
-	int softDeleteByBoardId(@Param("boardId") Long boardId);
+	int markDeletedByBoardId(@Param("boardId") Long boardId);
 }
