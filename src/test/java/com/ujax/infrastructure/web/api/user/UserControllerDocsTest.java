@@ -13,14 +13,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,11 +32,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.user.UserService;
 import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.user.AuthProvider;
+import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.user.UserController;
 import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
+import com.ujax.support.TestSecurityConfig;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+
 @Tag("restDocs")
 @WebMvcTest(UserController.class)
 @AutoConfigureRestDocs
+@Import(TestSecurityConfig.class)
 class UserControllerDocsTest {
 
 	@Autowired
@@ -43,6 +54,20 @@ class UserControllerDocsTest {
 
 	@MockitoBean
 	private UserService userService;
+
+	@BeforeEach
+	void setUpSecurityContext() {
+		Claims claims = Jwts.claims()
+			.subject("1")
+			.add("role", "USER")
+			.add("name", "테스트유저")
+			.add("email", "test@example.com")
+			.build();
+		UserPrincipal principal = UserPrincipal.fromClaims(claims);
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+	}
 
 	@Test
 	@DisplayName("내 정보 조회 API")

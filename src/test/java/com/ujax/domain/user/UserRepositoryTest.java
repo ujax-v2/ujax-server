@@ -98,14 +98,14 @@ class UserRepositoryTest {
 	@DisplayName("로컬 유저를 저장한다")
 	void save_LocalUser() {
 		// given
-		User user = User.createLocalUser("local@example.com", "password123!", "로컬유저");
+		User user = User.createLocalUser("local@example.com", Password.ofEncoded("password123!"), "로컬유저");
 
 		// when
 		User savedUser = userRepository.save(user);
 
 		// then
 		assertThat(savedUser.getId()).isNotNull();
-		assertThat(savedUser).extracting("provider", "password")
-			.containsExactly(AuthProvider.LOCAL, "password123!");
+		assertThat(savedUser.getProvider()).isEqualTo(AuthProvider.LOCAL);
+		assertThat(savedUser.getPassword().getEncodedValue()).isEqualTo("password123!");
 	}
 }

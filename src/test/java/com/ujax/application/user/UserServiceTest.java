@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.application.user.dto.response.UserResponse;
+import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -26,8 +27,12 @@ class UserServiceTest {
 	@Autowired
 	private UserRepository userRepository;
 
+	@Autowired
+	private RefreshTokenRepository refreshTokenRepository;
+
 	@BeforeEach
 	void tearDown() {
+		refreshTokenRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 

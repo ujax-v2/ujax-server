@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.infrastructure.persistence.jpa.JpaAuditingConfig;
@@ -49,7 +50,7 @@ class WorkspaceRepositoryTest {
 	@DisplayName("유저가 속한 워크스페이스를 조회할 수 있다")
 	void findByMemberUserId() {
 		// given
-		User user = userRepository.save(User.createLocalUser("test@example.com", "password", "유저"));
+		User user = userRepository.save(User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저"));
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 		workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 

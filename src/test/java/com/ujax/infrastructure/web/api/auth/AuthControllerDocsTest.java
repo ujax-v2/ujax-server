@@ -1,0 +1,210 @@
+package com.ujax.infrastructure.web.api.auth;
+
+import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.*;
+import static com.epages.restdocs.apispec.ResourceDocumentation.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
+import static org.springframework.restdocs.payload.PayloadDocumentation.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.epages.restdocs.apispec.Schema;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.auth.AuthService;
+import com.ujax.application.auth.dto.response.AuthTokenResponse;
+import com.ujax.infrastructure.web.auth.AuthController;
+import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
+import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupRequest;
+import com.ujax.support.TestSecurityConfig;
+
+@Tag("restDocs")
+@WebMvcTest(AuthController.class)
+@AutoConfigureRestDocs
+@Import(TestSecurityConfig.class)
+class AuthControllerDocsTest {
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
+	@MockitoBean
+	private AuthService authService;
+
+	@Test
+	@DisplayName("회원가입 API")
+	void signup() throws Exception {
+		// given
+		SignupRequest request = new SignupRequest("test@example.com", "password123", "테스트유저");
+		AuthTokenResponse response = new AuthTokenResponse("access.token.here", "refresh.token.here");
+		given(authService.signup(anyString(), anyString(), anyString())).willReturn(response);
+
+		// when & then
+		mockMvc.perform(post("/api/v1/auth/signup")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.accessToken").exists())
+			.andExpect(jsonPath("$.data.refreshToken").exists())
+			.andDo(document("auth-signup",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("회원가입")
+					.description("이메일/비밀번호로 회원가입합니다")
+					.requestSchema(Schema.schema("SignupRequest"))
+					.responseSchema(Schema.schema("ApiResponse-AuthTokenResponse"))
+					.requestFields(
+						fieldWithPath("email").type(JsonFieldType.STRING).description("이메일"),
+						fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호"),
+						fieldWithPath("name").type(JsonFieldType.STRING).description("이름")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.accessToken").type(JsonFieldType.STRING).description("액세스 토큰"),
+						fieldWithPath("data.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("로그인 API")
+	void login() throws Exception {
+		// given
+		LoginRequest request = new LoginRequest("test@example.com", "password123");
+		AuthTokenResponse response = new AuthTokenResponse("access.token.here", "refresh.token.here");
+		given(authService.login(anyString(), anyString())).willReturn(response);
+
+		// when & then
+		mockMvc.perform(post("/api/v1/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.accessToken").exists())
+			.andDo(document("auth-login",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("로그인")
+					.description("이메일/비밀번호로 로그인합니다")
+					.requestSchema(Schema.schema("LoginRequest"))
+					.responseSchema(Schema.schema("ApiResponse-AuthTokenResponse"))
+					.requestFields(
+						fieldWithPath("email").type(JsonFieldType.STRING).description("이메일"),
+						fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.accessToken").type(JsonFieldType.STRING).description("액세스 토큰"),
+						fieldWithPath("data.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("토큰 갱신 API")
+	void refresh() throws Exception {
+		// given
+		RefreshRequest request = new RefreshRequest("refresh.token.here");
+		AuthTokenResponse response = new AuthTokenResponse("new.access.token", "new.refresh.token");
+		given(authService.refresh(anyString())).willReturn(response);
+
+		// when & then
+		mockMvc.perform(post("/api/v1/auth/refresh")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andDo(document("auth-refresh",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("토큰 갱신")
+					.description("리프레시 토큰으로 새 토큰을 발급받습니다")
+					.requestSchema(Schema.schema("RefreshRequest"))
+					.responseSchema(Schema.schema("ApiResponse-AuthTokenResponse"))
+					.requestFields(
+						fieldWithPath("refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.accessToken").type(JsonFieldType.STRING).description("새 액세스 토큰"),
+						fieldWithPath("data.refreshToken").type(JsonFieldType.STRING).description("새 리프레시 토큰"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("로그아웃 API")
+	void logout() throws Exception {
+		// given
+		RefreshRequest request = new RefreshRequest("refresh.token.here");
+		willDoNothing().given(authService).logout(anyString());
+
+		// when & then
+		mockMvc.perform(post("/api/v1/auth/logout")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andDo(document("auth-logout",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("로그아웃")
+					.description("리프레시 토큰을 해지합니다")
+					.requestSchema(Schema.schema("RefreshRequest"))
+					.responseSchema(Schema.schema("ApiResponse-Void"))
+					.requestFields(
+						fieldWithPath("refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.NULL).description("응답 데이터").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+}

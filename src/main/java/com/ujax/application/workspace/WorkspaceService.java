@@ -22,9 +22,10 @@ import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.BadRequestException;
-import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.global.exception.common.ConflictException;
+import com.ujax.global.exception.common.ForbiddenException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -102,7 +103,7 @@ public class WorkspaceService {
 		workspaceMemberRepository.findByWorkspaceIdAndUserIdIncludingDeleted(workspaceId, user.getId())
 			.ifPresent(member -> {
 				if (!member.isDeleted()) {
-					throw new ConflictException(ErrorCode.DUPLICATE_RESOURCE, "이미 워크스페이스에 참여한 멤버입니다.");
+					throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
 				}
 				member.restore();
 				member.updateRole(WorkspaceMemberRole.MEMBER);
@@ -179,7 +180,7 @@ public class WorkspaceService {
 		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
 
 		if (target.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자 권한은 변경할 수 없습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자 권한은 변경할 수 없습니다.");
 		}
 
 		if (role == WorkspaceMemberRole.OWNER) {
@@ -200,19 +201,19 @@ public class WorkspaceService {
 		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
 
 		if (actor.getRole() == WorkspaceMemberRole.MEMBER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "멤버는 다른 사용자를 추방할 수 없습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "멤버는 다른 사용자를 추방할 수 없습니다.");
 		}
 
 		if (target.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자는 추방할 수 없습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자는 추방할 수 없습니다.");
 		}
 
 		if (actor.getRole() == WorkspaceMemberRole.MANAGER && target.getRole() != WorkspaceMemberRole.MEMBER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "매니저는 멤버만 추방할 수 있습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "매니저는 멤버만 추방할 수 있습니다.");
 		}
 
 		if (actor.getId().equals(target.getId())) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "자기 자신은 추방할 수 없습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "자기 자신은 추방할 수 없습니다.");
 		}
 
 		workspaceMemberRepository.delete(target);
@@ -222,7 +223,7 @@ public class WorkspaceService {
 	public void leaveWorkspace(Long workspaceId, Long userId) {
 		WorkspaceMember member = validateMember(workspaceId, userId);
 		if (member.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자는 워크스페이스를 탈퇴할 수 없습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자는 워크스페이스를 탈퇴할 수 없습니다.");
 		}
 		workspaceMemberRepository.delete(member);
 	}
@@ -290,22 +291,22 @@ public class WorkspaceService {
 			return;
 		}
 		if (workspaceRepository.existsByName(name)) {
-			throw new ConflictException(ErrorCode.DUPLICATE_RESOURCE, "이미 존재하는 워크스페이스 이름입니다.");
+			throw new ConflictException(ErrorCode.WORKSPACE_NAME_DUPLICATE);
 		}
 	}
 
 	private WorkspaceMember validateOwner(Long workspaceId, Long userId) {
 		WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
+			.orElseThrow(() -> new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 
 		if (member.getRole() != WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "소유자만 이 작업을 수행할 수 있습니다.");
+			throw new ForbiddenException(ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 		return member;
 	}
 
 	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
 		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-			.orElseThrow(() -> new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "워크스페이스에 소속된 멤버가 아닙니다."));
+			.orElseThrow(() -> new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 	}
 }

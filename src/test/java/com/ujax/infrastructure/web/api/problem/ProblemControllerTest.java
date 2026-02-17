@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,8 +25,10 @@ import com.ujax.application.problem.dto.response.ProblemResponse;
 import com.ujax.application.problem.dto.response.SampleResponse;
 import com.ujax.infrastructure.web.problem.ProblemController;
 import com.ujax.infrastructure.web.problem.dto.request.ProblemIngestRequest;
+import com.ujax.support.TestSecurityConfig;
 
 @WebMvcTest(ProblemController.class)
+@Import(TestSecurityConfig.class)
 class ProblemControllerTest {
 
 	@Autowired

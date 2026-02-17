@@ -24,7 +24,34 @@ spring:
         "[mail.smtp.writetimeout]": 5000
 
 app:
+  jwt:
+    secret: ${JWT_SECRET:defaultDevSecretKeyThatIsAtLeast256BitsLongForHmacSha256Algorithm}
+    access-expiration: 1800000
+    refresh-expiration: 2592000000
   ujax:
     base-url: ${UJAX_BASE_URL:https://ujax.site}
+    frontend-callback-url: ${UJAX_FRONTEND_CALLBACK:https://ujax.site/auth/callback}
     mail:
       from: ${UJAX_MAIL_FROM:noreply@ujax.site}
+
+spring.security.oauth2.client:
+  registration:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:google-client-id}
+      client-secret: ${GOOGLE_CLIENT_SECRET:google-client-secret}
+      redirect-uri: ${GOOGLE_REDIRECT_URI}
+      scope: email, profile
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:kakao-client-id}
+      client-secret: ${KAKAO_CLIENT_SECRET:kakao-client-secret}
+      redirect-uri: ${KAKAO_REDIRECT_URI}
+      client-authentication-method: client_secret_post
+      authorization-grant-type: authorization_code
+      scope: profile_nickname, account_email, profile_image
+
+  provider:
+    kakao:
+      authorization-uri: https://kauth.kakao.com/oauth/authorize
+      token-uri: https://kauth.kakao.com/oauth/token
+      user-info-uri: https://kapi.kakao.com/v2/user/me
+      user-name-attribute: id

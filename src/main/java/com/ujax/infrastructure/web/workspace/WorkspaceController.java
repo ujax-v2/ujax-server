@@ -1,5 +1,6 @@
 package com.ujax.infrastructure.web.workspace;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.dto.ApiResponse;
+import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.workspace.dto.request.CreateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
@@ -52,8 +54,8 @@ public class WorkspaceController {
 	}
 
 	@GetMapping
-	public ApiResponse<WorkspaceListResponse> listMyWorkspaces(@RequestParam Long userId) {
-		return ApiResponse.success(workspaceService.listMyWorkspaces(userId));
+	public ApiResponse<WorkspaceListResponse> listMyWorkspaces(@AuthenticationPrincipal UserPrincipal principal) {
+		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId()));
 	}
 
 	@GetMapping("/{workspaceId}")
@@ -64,65 +66,68 @@ public class WorkspaceController {
 	@GetMapping("/{workspaceId}/settings")
 	public ApiResponse<WorkspaceSettingsResponse> getWorkspaceSettings(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(workspaceService.getWorkspaceSettings(workspaceId, userId));
+		return ApiResponse.success(workspaceService.getWorkspaceSettings(workspaceId, principal.getUserId()));
 	}
 
 	@GetMapping("/{workspaceId}/members")
 	public ApiResponse<WorkspaceMemberListResponse> listWorkspaceMembers(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, userId));
+		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, principal.getUserId()));
 	}
 
 	@GetMapping("/{workspaceId}/members/me")
 	public ApiResponse<WorkspaceMemberResponse> getMyWorkspaceMember(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(workspaceService.getMyWorkspaceMember(workspaceId, userId));
+		return ApiResponse.success(workspaceService.getMyWorkspaceMember(workspaceId, principal.getUserId()));
 	}
 
 	@PatchMapping("/{workspaceId}/members/me/nickname")
 	public ApiResponse<WorkspaceMemberResponse> updateMyWorkspaceNickname(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody UpdateWorkspaceMemberNicknameRequest request
 	) {
 		return ApiResponse.success(
-			workspaceService.updateMyWorkspaceNickname(workspaceId, userId, request.nickname())
+			workspaceService.updateMyWorkspaceNickname(workspaceId, principal.getUserId(), request.nickname())
 		);
 	}
 
 	@PostMapping("/{workspaceId}/members/invite")
 	public ApiResponse<Void> inviteWorkspaceMember(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody InviteWorkspaceMemberRequest request
 	) {
-		workspaceService.inviteWorkspaceMember(workspaceId, userId, request.email());
+		workspaceService.inviteWorkspaceMember(workspaceId, principal.getUserId(), request.email());
 		return ApiResponse.success();
 	}
 
 	@PostMapping
-	public ApiResponse<WorkspaceResponse> createWorkspace(@Valid @RequestBody CreateWorkspaceRequest request) {
+	public ApiResponse<WorkspaceResponse> createWorkspace(
+		@AuthenticationPrincipal UserPrincipal principal,
+		@Valid @RequestBody CreateWorkspaceRequest request
+	) {
 		return ApiResponse.success(
-			workspaceService.createWorkspace(request.name(), request.description(), request.userId())
+			workspaceService.createWorkspace(request.name(), request.description(), principal.getUserId())
 		);
 	}
 
 	@PatchMapping("/{workspaceId}")
 	public ApiResponse<WorkspaceResponse> updateWorkspace(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody UpdateWorkspaceRequest request
 	) {
 		return ApiResponse.success(
 			workspaceService.updateWorkspace(
 				workspaceId,
-				userId,
+				principal.getUserId(),
 				request.name(),
 				request.description(),
 				request.mmWebhookUrl()
@@ -133,9 +138,9 @@ public class WorkspaceController {
 	@DeleteMapping("/{workspaceId}")
 	public ApiResponse<Void> deleteWorkspace(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		workspaceService.deleteWorkspace(workspaceId, userId);
+		workspaceService.deleteWorkspace(workspaceId, principal.getUserId());
 		return ApiResponse.success();
 	}
 
@@ -143,10 +148,10 @@ public class WorkspaceController {
 	public ApiResponse<Void> updateWorkspaceMemberRole(
 		@PathVariable Long workspaceId,
 		@PathVariable Long workspaceMemberId,
-		@RequestParam Long userId,
+		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody UpdateWorkspaceMemberRoleRequest request
 	) {
-		workspaceService.updateWorkspaceMemberRole(workspaceId, userId, workspaceMemberId, request.role());
+		workspaceService.updateWorkspaceMemberRole(workspaceId, principal.getUserId(), workspaceMemberId, request.role());
 		return ApiResponse.success();
 	}
 
@@ -154,18 +159,18 @@ public class WorkspaceController {
 	public ApiResponse<Void> removeWorkspaceMember(
 		@PathVariable Long workspaceId,
 		@PathVariable Long workspaceMemberId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		workspaceService.removeWorkspaceMember(workspaceId, userId, workspaceMemberId);
+		workspaceService.removeWorkspaceMember(workspaceId, principal.getUserId(), workspaceMemberId);
 		return ApiResponse.success();
 	}
 
 	@DeleteMapping("/{workspaceId}/members/me")
 	public ApiResponse<Void> leaveWorkspace(
 		@PathVariable Long workspaceId,
-		@RequestParam Long userId
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		workspaceService.leaveWorkspace(workspaceId, userId);
+		workspaceService.leaveWorkspace(workspaceId, principal.getUserId());
 		return ApiResponse.success();
 	}
 }
