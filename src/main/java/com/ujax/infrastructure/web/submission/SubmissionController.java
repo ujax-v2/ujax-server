@@ -5,6 +5,7 @@ import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.web.submission.dto.SubmissionRequest;
 import com.ujax.infrastructure.web.submission.dto.SubmissionResponse;
 import com.ujax.infrastructure.web.submission.dto.SubmissionResultResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,21 +19,21 @@ public class SubmissionController {
     private final SubmissionService submissionService;
 
     @PostMapping("/workspaces/{workspaceId}/problems/{problemId}/submissions")
-    public ApiResponse<SubmissionResponse.SubmissionData> createSubmission(
+    public ApiResponse<SubmissionResponse> createSubmission(
             @PathVariable Long workspaceId,
             @PathVariable Long problemId,
-            @RequestBody SubmissionRequest request) {
+            @RequestBody @Valid SubmissionRequest request) {
 
         String unifiedToken = submissionService.submitAndAggregateTokens(request);
 
-        return ApiResponse.success(SubmissionResponse.SubmissionData.from(unifiedToken));
+        return ApiResponse.success(SubmissionResponse.from(unifiedToken));
     }
 
     @GetMapping("/submissions/{submissionToken}")
-    public ApiResponse<List<SubmissionResultResponse.TestCaseResult>> getResults(
+    public ApiResponse<List<SubmissionResultResponse>> getResults(
             @PathVariable String submissionToken) {
 
-        List<SubmissionResultResponse.TestCaseResult> results =
+        List<SubmissionResultResponse> results =
                 submissionService.getSubmissionResults(submissionToken);
 
         return ApiResponse.success(results);

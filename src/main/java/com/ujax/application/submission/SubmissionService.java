@@ -16,7 +16,6 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 
@@ -36,22 +35,8 @@ public class SubmissionService {
     }
 
     public String submitAndAggregateTokens(SubmissionRequest request) {
-        if (request.testCases() == null || request.testCases().isEmpty()) {
-            throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "테스트 케이스는 최소 1개 이상이어야 합니다.");
-        }
-        int languageId = getLanguageId(request.language());
-
         try {
-            List<Map<String, Object>> submissions = request.testCases().stream()
-                    .map(tc -> {
-                        Map<String, Object> s = new LinkedHashMap<>();
-                        s.put("language_id", languageId);
-                        s.put("source_code", request.sourceCode());
-                        s.put("stdin", encodeToBase64(tc.input()));
-                        s.put("expected_output", encodeToBase64(tc.expected()));
-                        return s;
-                    })
-                    .toList();
+            List<Map<String, Object>> submissions = request.toJudge0Submissions();
 
             String jsonPayload = objectMapper.writeValueAsString(Map.of("submissions", submissions));
             HttpHeaders headers = new HttpHeaders();
@@ -83,7 +68,7 @@ public class SubmissionService {
         }
     }
 
-    public List<SubmissionResultResponse.TestCaseResult> getSubmissionResults(String submissionToken) {
+    public List<SubmissionResultResponse> getSubmissionResults(String submissionToken) {
         String metadataJson = redisTemplate.opsForValue().get("submission:" + submissionToken);
         if (metadataJson == null) throw new InvalidSubmissionException(ErrorCode.RESOURCE_NOT_FOUND, "제출 정보가 만료되었습니다.");
 
@@ -103,47 +88,10 @@ public class SubmissionService {
             // 3. 데이터 병합 및 반환
             return rawResponse.submissions().stream().map(item -> {
                 TestCaseMetadata meta = metadataMap.get(item.token());
-                boolean isCorrect = item.status().id() == 3; // Accepted 상태(status_id == 3)인 경우 성공이므로
-
-                return new SubmissionResultResponse.TestCaseResult(
-                        item.token(),
-                        item.status().id(),
-                        item.status().description(),
-                        decodeBase64(item.stdout()),
-                        decodeBase64(item.stderr()),
-                        decodeBase64(item.compileOutput()),
-                        item.time() != null ? Float.parseFloat(item.time()) : null,
-                        item.memory() != null ? (int) Double.parseDouble(item.memory()) : null,
-                        meta.input(),
-                        meta.expected(),
-                        isCorrect
-                );
+                return SubmissionResultResponse.from(item, meta.input(), meta.expected());
             }).toList();
         } catch (Exception e) {
             throw new Judge0Exception(ErrorCode.JUDGE0_API_ERROR, "조회 중 오류 발생: " + e.getMessage());
         }
-    }
-
-    private String encodeToBase64(String raw) {
-        return (raw == null || raw.isEmpty()) ? "" : Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String decodeBase64(String encoded) {
-        if (encoded == null || encoded.isEmpty()) return null;
-        try {
-            return new String(Base64.getDecoder().decode(encoded.replaceAll("\\s", "")), StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return encoded;
-        }
-    }
-
-    // 추후에 enum 도입 검토
-    private int getLanguageId(String lang) {
-        return switch (lang.toUpperCase()) {
-            case "JAVA" -> 62;
-            case "PYTHON" -> 71;
-            case "CPP" -> 54;
-            default -> throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "지원하지 않는 언어: " + lang);
-        };
     }
 }
