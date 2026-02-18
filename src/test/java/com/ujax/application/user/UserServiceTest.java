@@ -12,9 +12,14 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.board.BoardCommentRepository;
+import com.ujax.domain.board.BoardLikeRepository;
+import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
+import com.ujax.domain.workspace.WorkspaceMemberRepository;
+import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.exception.common.NotFoundException;
 
 @SpringBootTest
@@ -30,9 +35,29 @@ class UserServiceTest {
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
+	@Autowired
+	private BoardLikeRepository boardLikeRepository;
+
+	@Autowired
+	private BoardCommentRepository boardCommentRepository;
+
+	@Autowired
+	private BoardRepository boardRepository;
+
+	@Autowired
+	private WorkspaceMemberRepository workspaceMemberRepository;
+
+	@Autowired
+	private WorkspaceRepository workspaceRepository;
+
 	@BeforeEach
 	void tearDown() {
 		refreshTokenRepository.deleteAllInBatch();
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
+		workspaceMemberRepository.deleteAllInBatch();
+		workspaceRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
