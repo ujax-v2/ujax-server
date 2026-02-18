@@ -19,6 +19,7 @@ import com.ujax.application.board.dto.request.BoardUpdateRequest;
 import com.ujax.application.board.dto.response.BoardDetailResponse;
 import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
+import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.Board;
 import com.ujax.domain.board.BoardComment;
 import com.ujax.domain.board.BoardCommentRepository;
@@ -64,10 +65,14 @@ class BoardServiceTest {
 	private UserRepository userRepository;
 
 	@Autowired
+	private RefreshTokenRepository refreshTokenRepository;
+
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
 	@BeforeEach
 	void setUp() {
+		refreshTokenRepository.deleteAllInBatch();
 		boardLikeRepository.deleteAllInBatch();
 		boardCommentRepository.deleteAllInBatch();
 		boardRepository.deleteAllInBatch();

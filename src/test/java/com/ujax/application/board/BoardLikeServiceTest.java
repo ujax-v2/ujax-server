@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.application.board.dto.response.BoardLikeStatusResponse;
+import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.Board;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLike;
@@ -57,8 +58,12 @@ class BoardLikeServiceTest {
 	@Autowired
 	private UserRepository userRepository;
 
+	@Autowired
+	private RefreshTokenRepository refreshTokenRepository;
+
 	@BeforeEach
 	void setUp() {
+		refreshTokenRepository.deleteAllInBatch();
 		boardLikeRepository.deleteAllInBatch();
 		boardCommentRepository.deleteAllInBatch();
 		boardRepository.deleteAllInBatch();
