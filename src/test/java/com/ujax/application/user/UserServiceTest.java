@@ -15,6 +15,12 @@ import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
+import com.ujax.domain.workspace.Workspace;
+import com.ujax.domain.workspace.WorkspaceMember;
+import com.ujax.domain.workspace.WorkspaceMemberRepository;
+import com.ujax.domain.workspace.WorkspaceMemberRole;
+import com.ujax.domain.workspace.WorkspaceRepository;
+import com.ujax.global.exception.common.BusinessRuleViolationException;
 import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 
@@ -31,8 +37,16 @@ class UserServiceTest {
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
+	@Autowired
+	private WorkspaceMemberRepository workspaceMemberRepository;
+
+	@Autowired
+	private WorkspaceRepository workspaceRepository;
+
 	@BeforeEach
 	void tearDown() {
+		workspaceMemberRepository.deleteAllInBatch();
+		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
@@ -153,6 +167,25 @@ class UserServiceTest {
 			// when & then
 			assertThatThrownBy(() -> userService.deleteUser(999L))
 				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		@DisplayName("워크스페이스 소유자인 유저는 탈퇴할 수 없다")
+		void deleteUser_FailWhenWorkspaceOwner() {
+			// given
+			User user = userRepository.save(User.createOAuthUser(
+				"owner@example.com",
+				"소유자",
+				null,
+				AuthProvider.GOOGLE,
+				"google-owner"
+			));
+			Workspace workspace = workspaceRepository.save(Workspace.create("테스트 워크스페이스", "설명"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
+
+			// when & then
+			assertThatThrownBy(() -> userService.deleteUser(user.getId()))
+				.isInstanceOf(BusinessRuleViolationException.class);
 		}
 	}
 }
