@@ -34,7 +34,7 @@ public class UserController {
 		@AuthenticationPrincipal UserPrincipal principal,
 		@Valid @RequestBody UserUpdateRequest request
 	) {
-		return ApiResponse.success(userService.updateUser(principal.getUserId(), request.name(), request.profileImageUrl()));
+		return ApiResponse.success(userService.updateUser(principal.getUserId(), request));
 	}
 
 	@DeleteMapping("/me")

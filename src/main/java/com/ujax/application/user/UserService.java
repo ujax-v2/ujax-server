@@ -8,6 +8,7 @@ import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,9 +24,9 @@ public class UserService {
 	}
 
 	@Transactional
-	public UserResponse updateUser(Long userId, String name, String profileImageUrl) {
+	public UserResponse updateUser(Long userId, UserUpdateRequest request) {
 		User user = findUserById(userId);
-		user.updateProfile(name, profileImageUrl);
+		user.updateProfile(request.name(), request.profileImageUrl(), request.baekjoonId());
 		return UserResponse.from(user);
 	}
 

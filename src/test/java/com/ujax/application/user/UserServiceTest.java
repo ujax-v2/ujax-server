@@ -16,6 +16,7 @@ import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -86,7 +87,7 @@ class UserServiceTest {
 			));
 
 			// when
-			UserResponse response = userService.updateUser(user.getId(), "수정된이름", "https://new-image.com/profile.jpg");
+			UserResponse response = userService.updateUser(user.getId(), new UserUpdateRequest("수정된이름", "https://new-image.com/profile.jpg", null));
 
 			// then
 			assertThat(response).extracting("name", "profileImageUrl")
@@ -106,7 +107,7 @@ class UserServiceTest {
 			));
 
 			// when
-			UserResponse response = userService.updateUser(user.getId(), "새이름", null);
+			UserResponse response = userService.updateUser(user.getId(), new UserUpdateRequest("새이름", null, null));
 
 			// then
 			assertThat(response).extracting("name", "profileImageUrl")
@@ -117,7 +118,7 @@ class UserServiceTest {
 		@DisplayName("존재하지 않는 유저를 수정하면 오류가 발생한다")
 		void updateUser_NotFound() {
 			// when & then
-			assertThatThrownBy(() -> userService.updateUser(999L, "새이름", null))
+			assertThatThrownBy(() -> userService.updateUser(999L, new UserUpdateRequest("새이름", null, null)))
 				.isInstanceOf(NotFoundException.class);
 		}
 	}
