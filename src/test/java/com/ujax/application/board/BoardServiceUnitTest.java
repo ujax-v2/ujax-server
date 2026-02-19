@@ -235,6 +235,22 @@ class BoardServiceUnitTest {
 	}
 
 	@Test
+	@DisplayName("createBoard: NOTICE가 아닌 타입에서 pinned=true면 INVALID_INPUT 예외가 발생한다")
+	void createBoardThrowsBadRequestWhenPinnedTrueForNonNoticeType() {
+		// given
+		Workspace workspace = mock(Workspace.class);
+		WorkspaceMember member = mock(WorkspaceMember.class);
+		given(workspaceRepository.findById(1L)).willReturn(Optional.of(workspace));
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
+
+		// when & then
+		assertThatThrownBy(() -> boardService.createBoard(1L, 2L, BoardCreateRequest.builder()
+			.type(BoardType.FREE).title("제목").content("내용").pinned(true).build()))
+			.isInstanceOf(BadRequestException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+	}
+
+	@Test
 	@DisplayName("updateBoard: 수정 필드가 하나도 없으면 INVALID_INPUT 예외가 발생한다")
 	void updateBoardThrowsBadRequestWhenNoFieldsToUpdate() {
 		// given
@@ -275,10 +291,11 @@ class BoardServiceUnitTest {
 		given(workspace.getId()).willReturn(1L);
 		given(author.getId()).willReturn(2L);
 		given(author.getNickname()).willReturn("author");
+		given(author.getRole()).willReturn(WorkspaceMemberRole.MANAGER);
 		given(board.getId()).willReturn(3L);
 		given(board.getWorkspace()).willReturn(workspace);
 		given(board.getAuthor()).willReturn(author);
-		given(board.getType()).willReturn(BoardType.FREE);
+		given(board.getType()).willReturn(BoardType.NOTICE);
 		given(board.isPinned()).willReturn(true);
 		given(board.getTitle()).willReturn("수정 제목");
 		given(board.getContent()).willReturn("수정 내용");
@@ -302,6 +319,80 @@ class BoardServiceUnitTest {
 	}
 
 	@Test
+	@DisplayName("updateBoard: MEMBER가 NOTICE 타입으로 수정하면 FORBIDDEN_RESOURCE 예외가 발생한다")
+	void updateBoardThrowsForbiddenWhenMemberChangesTypeToNotice() {
+		// given
+		WorkspaceMember author = mock(WorkspaceMember.class);
+		Board board = mock(Board.class);
+		given(author.getId()).willReturn(2L);
+		given(author.getRole()).willReturn(WorkspaceMemberRole.MEMBER);
+		given(board.getAuthor()).willReturn(author);
+		given(board.isPinned()).willReturn(false);
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
+		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
+
+		// when & then
+		assertThatThrownBy(() -> boardService.updateBoard(1L, 3L, 2L, BoardUpdateRequest.builder()
+			.type(BoardType.NOTICE).build()))
+			.isInstanceOf(ForbiddenException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+	}
+
+	@Test
+	@DisplayName("updateBoard: MANAGER가 NOTICE 타입으로 수정하면 정상 처리한다")
+	void updateBoardAllowsManagerChangesTypeToNotice() {
+		// given
+		Workspace workspace = mock(Workspace.class);
+		WorkspaceMember author = mock(WorkspaceMember.class);
+		Board board = mock(Board.class);
+		given(workspace.getId()).willReturn(1L);
+		given(author.getId()).willReturn(2L);
+		given(author.getNickname()).willReturn("manager");
+		given(author.getRole()).willReturn(WorkspaceMemberRole.MANAGER);
+		given(board.getId()).willReturn(3L);
+		given(board.getWorkspace()).willReturn(workspace);
+		given(board.getAuthor()).willReturn(author);
+		given(board.getType()).willReturn(BoardType.NOTICE);
+		given(board.isPinned()).willReturn(false);
+		given(board.getTitle()).willReturn("제목");
+		given(board.getContent()).willReturn("내용");
+		given(board.getViewCount()).willReturn(5L);
+
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
+		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
+		given(boardCommentRepository.countByBoard_Id(3L)).willReturn(0L);
+		given(boardLikeRepository.countByBoardIds(List.of(3L))).willReturn(List.<Object[]>of());
+		given(boardLikeRepository.findMyLikedBoardIds(List.of(3L), 2L)).willReturn(List.of());
+
+		// when
+		BoardDetailResponse result = boardService.updateBoard(1L, 3L, 2L, BoardUpdateRequest.builder()
+			.type(BoardType.NOTICE).build());
+
+		// then
+		assertThat(result.type()).isEqualTo(BoardType.NOTICE);
+		then(board).should().update(eq(BoardType.NOTICE), isNull(), isNull(), isNull());
+	}
+
+	@Test
+	@DisplayName("updateBoard: NOTICE가 아닌 상태에서 pinned=true가 되면 INVALID_INPUT 예외가 발생한다")
+	void updateBoardThrowsBadRequestWhenPinnedTrueForNonNoticeType() {
+		// given
+		WorkspaceMember author = mock(WorkspaceMember.class);
+		Board board = mock(Board.class);
+		given(author.getId()).willReturn(2L);
+		given(board.getAuthor()).willReturn(author);
+		given(board.getType()).willReturn(BoardType.FREE);
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
+		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
+
+		// when & then
+		assertThatThrownBy(() -> boardService.updateBoard(1L, 3L, 2L, BoardUpdateRequest.builder()
+			.pinned(true).build()))
+			.isInstanceOf(BadRequestException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+	}
+
+	@Test
 	@DisplayName("pinBoard: 작성자가 아니면 FORBIDDEN_RESOURCE 예외가 발생한다")
 	void pinBoardThrowsForbiddenWhenActorIsNotAuthor() {
 		// given
@@ -318,6 +409,24 @@ class BoardServiceUnitTest {
 		assertThatThrownBy(() -> boardService.pinBoard(1L, 3L, 2L, true))
 			.isInstanceOf(ForbiddenException.class)
 			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+	}
+
+	@Test
+	@DisplayName("pinBoard: NOTICE가 아닌 게시글을 pinned=true로 변경하면 INVALID_INPUT 예외가 발생한다")
+	void pinBoardThrowsBadRequestWhenPinnedTrueForNonNoticeType() {
+		// given
+		WorkspaceMember author = mock(WorkspaceMember.class);
+		Board board = mock(Board.class);
+		given(author.getId()).willReturn(2L);
+		given(board.getAuthor()).willReturn(author);
+		given(board.getType()).willReturn(BoardType.FREE);
+		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(author));
+		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
+
+		// when & then
+		assertThatThrownBy(() -> boardService.pinBoard(1L, 3L, 2L, true))
+			.isInstanceOf(BadRequestException.class)
+			.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
 	}
 
 	@Test

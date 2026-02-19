@@ -118,6 +118,7 @@ public class BoardService {
 		validateContent(content);
 
 		boolean pinnedValue = request.pinned() != null && request.pinned();
+		validatePinnedAllowed(request.type(), pinnedValue);
 		Board board = Board.create(workspace, author, request.type(), pinnedValue, title, content);
 		Board saved = boardRepository.save(board);
 
@@ -147,6 +148,10 @@ public class BoardService {
 		if (content != null) {
 			validateContent(content);
 		}
+		BoardType nextType = request.type() != null ? request.type() : board.getType();
+		boolean nextPinned = request.pinned() != null ? request.pinned() : board.isPinned();
+		validateNoticePermission(actor, nextType);
+		validatePinnedAllowed(nextType, nextPinned);
 
 		board.update(request.type(), title, content, request.pinned());
 
@@ -162,6 +167,7 @@ public class BoardService {
 		WorkspaceMember actor = validateMember(workspaceId, userId);
 		Board board = findBoard(workspaceId, boardId);
 		validateAuthor(actor, board);
+		validatePinnedAllowed(board.getType(), pinned);
 		board.updatePinned(pinned);
 	}
 
@@ -208,6 +214,15 @@ public class BoardService {
 		WorkspaceMemberRole role = author.getRole();
 		if (role != WorkspaceMemberRole.MANAGER && role != WorkspaceMemberRole.OWNER) {
 			throw new ForbiddenException(ErrorCode.FORBIDDEN_RESOURCE, "공지 게시글은 운영자 이상만 작성할 수 있습니다.");
+		}
+	}
+
+	private void validatePinnedAllowed(BoardType type, boolean pinned) {
+		if (!pinned) {
+			return;
+		}
+		if (type != BoardType.NOTICE) {
+			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 	}
 
