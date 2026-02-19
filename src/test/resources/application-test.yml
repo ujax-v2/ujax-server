@@ -32,3 +32,8 @@ spring:
 judge0:
   api:
     url: http://localhost:2358
+app:
+  jwt:
+    secret: testSecretKeyThatIsAtLeast256BitsLongForHmacSha256AlgorithmInTestProfile
+    access-expiration: 1800000
+    refresh-expiration: 2592000000
