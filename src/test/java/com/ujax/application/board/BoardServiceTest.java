@@ -165,7 +165,7 @@ class BoardServiceTest {
 			assertThat(result.items()).hasSize(1);
 			BoardListItemResponse item = result.items().get(0);
 			assertThat(item).extracting("boardId", "likeCount", "commentCount", "myLike")
-				.containsExactly(board.getId(), 1L, 2L, false);
+				.containsExactly(board.getId(), 1L, 2L, true);
 			assertThat(item.preview()).hasSize(100);
 			assertThat(item.preview()).isEqualTo(longContent.substring(0, 100));
 		}
@@ -176,8 +176,8 @@ class BoardServiceTest {
 	class GetBoardDetail {
 
 		@Test
-		@DisplayName("상세 조회는 좋아요와 댓글 정보를 기본값으로 반환한다")
-		void getBoardDetailReturnsDefaultReactionInfo() {
+		@DisplayName("상세 조회는 조회수/좋아요/댓글/내 좋아요를 반영해 반환한다")
+		void getBoardDetailReturnsReactionInfo() {
 			// given
 			Workspace workspace = createWorkspace();
 			WorkspaceMember author = createMember(workspace, WorkspaceMemberRole.OWNER);
@@ -193,12 +193,12 @@ class BoardServiceTest {
 			boardCommentRepository.save(BoardComment.create(board, author, "댓글"));
 			boardLikeRepository.save(BoardLike.create(board, viewer));
 
-				// when
-				BoardDetailResponse result = boardService.getBoardDetail(workspace.getId(), board.getId(), viewer.getUser().getId());
+			// when
+			BoardDetailResponse result = boardService.getBoardDetail(workspace.getId(), board.getId(), viewer.getUser().getId());
 
 			// then
-			assertThat(result).extracting("boardId", "likeCount", "commentCount", "myLike")
-				.containsExactly(board.getId(), 0L, 0L, false);
+			assertThat(result).extracting("boardId", "viewCount", "likeCount", "commentCount", "myLike")
+				.containsExactly(board.getId(), 1L, 1L, 1L, true);
 		}
 	}
 

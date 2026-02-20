@@ -27,6 +27,16 @@ public record BoardDetailResponse(
 		long commentCount,
 		boolean myLike
 	) {
+		return from(board, board.getViewCount(), likeCount, commentCount, myLike);
+	}
+
+	public static BoardDetailResponse from(
+		Board board,
+		long viewCount,
+		long likeCount,
+		long commentCount,
+		boolean myLike
+	) {
 		return new BoardDetailResponse(
 			board.getId(),
 			board.getWorkspace().getId(),
@@ -34,7 +44,7 @@ public record BoardDetailResponse(
 			board.isPinned(),
 			board.getTitle(),
 			board.getContent(),
-			board.getViewCount(),
+			viewCount,
 			likeCount,
 			commentCount,
 			myLike,

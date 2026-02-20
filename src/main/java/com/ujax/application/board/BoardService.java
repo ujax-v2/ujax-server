@@ -3,6 +3,7 @@ package com.ujax.application.board;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -63,7 +64,7 @@ public class BoardService {
 		String sort = request.sort();
 		boolean pinnedFirst = request.pinnedFirst();
 
-		validateMember(workspaceId, userId);
+		WorkspaceMember viewer = validateMember(workspaceId, userId);
 		validatePageable(page, size);
 
 		String searchKeyword = normalizeKeyword(keyword);
@@ -78,13 +79,16 @@ public class BoardService {
 		Map<Long, Long> likeCounts = boardIds.isEmpty()
 			? Map.of()
 			: toCountMap(boardLikeRepository.countByBoardIds(boardIds));
+		Set<Long> myLikedBoardIds = boardIds.isEmpty()
+			? Set.of()
+			: Set.copyOf(boardLikeRepository.findMyLikedBoardIds(boardIds, viewer.getId()));
 		List<BoardListItemResponse> items = result.getContent().stream()
 			.map(board -> BoardListItemResponse.from(
 				board,
 				preview(board.getContent()),
 				likeCounts.getOrDefault(board.getId(), 0L),
 				commentCounts.getOrDefault(board.getId(), 0L),
-				false
+				myLikedBoardIds.contains(board.getId())
 			))
 			.toList();
 
@@ -96,13 +100,16 @@ public class BoardService {
 
 	@Transactional
 	public BoardDetailResponse getBoardDetail(Long workspaceId, Long boardId, Long userId) {
-		validateMember(workspaceId, userId);
+		WorkspaceMember viewer = validateMember(workspaceId, userId);
 
 		Board board = boardRepository.findByIdAndWorkspaceId(boardId, workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.BOARD_NOT_FOUND));
 		boardRepository.incrementViewCount(workspaceId, boardId);
+		long commentCount = boardCommentRepository.countByBoard_Id(boardId);
+		long likeCount = extractSingleCount(boardLikeRepository.countByBoardIds(List.of(boardId)));
+		boolean myLike = !boardLikeRepository.findMyLikedBoardIds(List.of(boardId), viewer.getId()).isEmpty();
 
-		return BoardDetailResponse.from(board, 0L, 0L, false);
+		return BoardDetailResponse.from(board, board.getViewCount() + 1L, likeCount, commentCount, myLike);
 	}
 
 	@Transactional

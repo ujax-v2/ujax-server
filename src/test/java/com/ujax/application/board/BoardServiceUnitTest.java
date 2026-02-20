@@ -465,7 +465,7 @@ class BoardServiceUnitTest {
 	}
 
 	@Test
-	@DisplayName("getBoardDetail: 정상 조회면 조회수를 증가시키고 상세 정보를 반환한다")
+	@DisplayName("getBoardDetail: 정상 조회면 조회수/좋아요/댓글/내 좋아요를 반영해 반환한다")
 	void getBoardDetailIncrementsViewCountAndReturnsDetail() {
 		// given
 		Workspace workspace = mock(Workspace.class);
@@ -486,12 +486,19 @@ class BoardServiceUnitTest {
 
 		given(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(1L, 2L)).willReturn(Optional.of(member));
 		given(boardRepository.findByIdAndWorkspaceId(3L, 1L)).willReturn(Optional.of(board));
+		given(boardCommentRepository.countByBoard_Id(3L)).willReturn(5L);
+		given(boardLikeRepository.countByBoardIds(List.of(3L))).willReturn(List.<Object[]>of(new Object[] {3L, 8L}));
+		given(boardLikeRepository.findMyLikedBoardIds(List.of(3L), 2L)).willReturn(List.of(3L));
 
 		// when
 		BoardDetailResponse result = boardService.getBoardDetail(1L, 3L, 2L);
 
 		// then
 		assertThat(result.boardId()).isEqualTo(3L);
+		assertThat(result.viewCount()).isEqualTo(12L);
+		assertThat(result.likeCount()).isEqualTo(8L);
+		assertThat(result.commentCount()).isEqualTo(5L);
+		assertThat(result.myLike()).isTrue();
 		then(boardRepository).should().incrementViewCount(1L, 3L);
 	}
 
@@ -520,6 +527,7 @@ class BoardServiceUnitTest {
 		given(boardRepository.search(eq(1L), eq(BoardType.FREE), eq("키워드"), any(PageRequest.class))).willReturn(page);
 		given(boardCommentRepository.countByBoardIds(List.of(10L))).willReturn(List.<Object[]>of(new Object[] {10L, 3L}));
 		given(boardLikeRepository.countByBoardIds(List.of(10L))).willReturn(List.<Object[]>of(new Object[] {10L, 4L}));
+		given(boardLikeRepository.findMyLikedBoardIds(List.of(10L), 2L)).willReturn(List.of(10L));
 
 		BoardListRequest request = BoardListRequest.builder()
 			.type(BoardType.FREE).keyword("키워드").page(0).size(20).sort("createdAt,desc").pinnedFirst(true)
@@ -532,6 +540,7 @@ class BoardServiceUnitTest {
 		assertThat(result.items()).hasSize(1);
 		assertThat(result.items().get(0).commentCount()).isEqualTo(3L);
 		assertThat(result.items().get(0).likeCount()).isEqualTo(4L);
+		assertThat(result.items().get(0).myLike()).isTrue();
 		assertThat(result.items().get(0).preview()).hasSize(100);
 	}
 }
