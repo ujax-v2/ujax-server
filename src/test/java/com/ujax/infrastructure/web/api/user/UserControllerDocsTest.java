@@ -74,7 +74,7 @@ class UserControllerDocsTest {
 	void getMe() throws Exception {
 		// given
 		UserResponse response = new UserResponse(1L, "test@example.com", "테스트유저",
-			"https://example.com/profile.jpg", AuthProvider.GOOGLE);
+			"https://example.com/profile.jpg", AuthProvider.GOOGLE, null);
 		given(userService.getUser(anyLong())).willReturn(response);
 
 		// when & then
@@ -103,6 +103,7 @@ class UserControllerDocsTest {
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("이름"),
 						fieldWithPath("data.profileImageUrl").type(JsonFieldType.STRING).description("프로필 이미지 URL").optional(),
 						fieldWithPath("data.provider").type(JsonFieldType.STRING).description("인증 제공자 (GOOGLE, KAKAO, LOCAL)"),
+						fieldWithPath("data.baekjoonId").type(JsonFieldType.STRING).description("백준 아이디").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -114,10 +115,10 @@ class UserControllerDocsTest {
 	@DisplayName("내 정보 수정 API")
 	void updateMe() throws Exception {
 		// given
-		UserUpdateRequest request = new UserUpdateRequest("수정된이름", "https://example.com/new-profile.jpg");
+		UserUpdateRequest request = new UserUpdateRequest("수정된이름", "https://example.com/new-profile.jpg", null);
 		UserResponse response = new UserResponse(1L, "test@example.com", "수정된이름",
-			"https://example.com/new-profile.jpg", AuthProvider.GOOGLE);
-		given(userService.updateUser(anyLong(), anyString(), anyString())).willReturn(response);
+			"https://example.com/new-profile.jpg", AuthProvider.GOOGLE, null);
+		given(userService.updateUser(anyLong(), any(UserUpdateRequest.class))).willReturn(response);
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/users/me")
@@ -138,7 +139,8 @@ class UserControllerDocsTest {
 					.responseSchema(Schema.schema("ApiResponse-UserResponse"))
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("수정할 이름 (30자 이내)").optional(),
-						fieldWithPath("profileImageUrl").type(JsonFieldType.STRING).description("수정할 프로필 이미지 URL").optional()
+						fieldWithPath("profileImageUrl").type(JsonFieldType.STRING).description("수정할 프로필 이미지 URL").optional(),
+						fieldWithPath("baekjoonId").type(JsonFieldType.STRING).description("백준 아이디").optional()
 					)
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -148,6 +150,7 @@ class UserControllerDocsTest {
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("이름"),
 						fieldWithPath("data.profileImageUrl").type(JsonFieldType.STRING).description("프로필 이미지 URL").optional(),
 						fieldWithPath("data.provider").type(JsonFieldType.STRING).description("인증 제공자 (GOOGLE, KAKAO, LOCAL)"),
+						fieldWithPath("data.baekjoonId").type(JsonFieldType.STRING).description("백준 아이디").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()

@@ -78,7 +78,7 @@ paths:
                       "detail" : "잘못된 요청 형식입니다.",
                       "instance" : "/api/v1/workspaces",
                       "exception" : "MethodArgumentNotValidException",
-                      "timestamp" : "2026-02-12T15:43:52.42326",
+                      "timestamp" : "2026-02-19T13:46:13.794539",
                       "fieldErrors" : [ {
                         "field" : "name",
                         "rejectedValue" : "",
@@ -413,7 +413,8 @@ paths:
                         "email" : "test@example.com",
                         "name" : "테스트유저",
                         "profileImageUrl" : "https://example.com/profile.jpg",
-                        "provider" : "GOOGLE"
+                        "provider" : "GOOGLE",
+                        "baekjoonId" : null
                       },
                       "message" : null
                     }
@@ -454,7 +455,8 @@ paths:
                 value: |-
                   {
                     "name" : "수정된이름",
-                    "profileImageUrl" : "https://example.com/new-profile.jpg"
+                    "profileImageUrl" : "https://example.com/new-profile.jpg",
+                    "baekjoonId" : null
                   }
       responses:
         "200":
@@ -473,7 +475,8 @@ paths:
                         "email" : "test@example.com",
                         "name" : "수정된이름",
                         "profileImageUrl" : "https://example.com/new-profile.jpg",
-                        "provider" : "GOOGLE"
+                        "provider" : "GOOGLE",
+                        "baekjoonId" : null
                       },
                       "message" : null
                     }
@@ -542,7 +545,7 @@ paths:
                       "detail" : "파라미터 'page'의 타입이 올바르지 않습니다. (기대 타입: int)",
                       "instance" : "/api/v1/workspaces/explore",
                       "exception" : "MethodArgumentTypeMismatchException",
-                      "timestamp" : "2026-02-12T15:43:52.351218"
+                      "timestamp" : "2026-02-19T13:46:13.722418"
                     }
   /api/v1/workspaces/search:
     get:
@@ -587,7 +590,7 @@ paths:
                       "detail" : "필수 파라미터 'name'이(가) 누락되었습니다.",
                       "instance" : "/api/v1/workspaces/search",
                       "exception" : "MissingServletRequestParameterException",
-                      "timestamp" : "2026-02-12T15:43:52.575377"
+                      "timestamp" : "2026-02-19T13:46:13.959303"
                     }
         "200":
           description: "200"
@@ -648,7 +651,7 @@ paths:
                       "detail" : "워크스페이스를 찾을 수 없습니다.",
                       "instance" : "/api/v1/workspaces/999",
                       "exception" : "NotFoundException",
-                      "timestamp" : "2026-02-12T15:43:52.628645"
+                      "timestamp" : "2026-02-19T13:46:14.018404"
                     }
         "200":
           description: "200"
@@ -712,7 +715,7 @@ paths:
                       "detail" : "소유자만 이 작업을 수행할 수 있습니다.",
                       "instance" : "/api/v1/workspaces/1",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.441233"
+                      "timestamp" : "2026-02-19T13:46:13.81351"
                     }
     patch:
       tags:
@@ -782,7 +785,7 @@ paths:
                       "detail" : "잘못된 요청 형식입니다.",
                       "instance" : "/api/v1/workspaces/1",
                       "exception" : "BadRequestException",
-                      "timestamp" : "2026-02-12T15:43:52.307726"
+                      "timestamp" : "2026-02-19T13:46:13.675763"
                     }
   /api/v1/problems/number/{problemNumber}:
     get:
@@ -873,7 +876,7 @@ paths:
                       "detail" : "워크스페이스에 소속된 멤버가 아닙니다.",
                       "instance" : "/api/v1/workspaces/1/members",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.365511"
+                      "timestamp" : "2026-02-19T13:46:13.736121"
                     }
         "200":
           description: "200"
@@ -926,7 +929,7 @@ paths:
                       "detail" : "소유자만 이 작업을 수행할 수 있습니다.",
                       "instance" : "/api/v1/workspaces/1/settings",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.650816"
+                      "timestamp" : "2026-02-19T13:46:14.043981"
                     }
         "200":
           description: "200"
@@ -994,7 +997,7 @@ paths:
                       "detail" : "잘못된 요청 형식입니다.",
                       "instance" : "/api/v1/workspaces/1/members/invite",
                       "exception" : "MethodArgumentNotValidException",
-                      "timestamp" : "2026-02-12T15:43:52.46002",
+                      "timestamp" : "2026-02-19T13:46:13.83059",
                       "fieldErrors" : [ {
                         "field" : "email",
                         "rejectedValue" : "invalid-email",
@@ -1046,7 +1049,7 @@ paths:
                       "detail" : "워크스페이스에 소속된 멤버가 아닙니다.",
                       "instance" : "/api/v1/workspaces/1/members/me",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.609998"
+                      "timestamp" : "2026-02-19T13:46:13.995541"
                     }
         "200":
           description: "200"
@@ -1096,7 +1099,7 @@ paths:
                       "detail" : "워크스페이스에 대한 권한이 없습니다.",
                       "instance" : "/api/v1/workspaces/1/members/me",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.640134"
+                      "timestamp" : "2026-02-19T13:46:14.03135"
                     }
         "200":
           description: "200"
@@ -1149,7 +1152,7 @@ paths:
                       "detail" : "워크스페이스에 대한 권한이 없습니다.",
                       "instance" : "/api/v1/workspaces/1/members/2",
                       "exception" : "ForbiddenException",
-                      "timestamp" : "2026-02-12T15:43:52.336805"
+                      "timestamp" : "2026-02-19T13:46:13.706999"
                     }
         "200":
           description: "200"
@@ -1212,7 +1215,7 @@ paths:
                       "detail" : "잘못된 요청 형식입니다.",
                       "instance" : "/api/v1/workspaces/1/members/me/nickname",
                       "exception" : "MethodArgumentNotValidException",
-                      "timestamp" : "2026-02-12T15:43:52.563218",
+                      "timestamp" : "2026-02-19T13:46:13.946397",
                       "fieldErrors" : [ {
                         "field" : "nickname",
                         "rejectedValue" : "",
@@ -1301,7 +1304,7 @@ paths:
                       "detail" : "잘못된 요청 형식입니다.",
                       "instance" : "/api/v1/workspaces/1/members/2/role",
                       "exception" : "MethodArgumentNotValidException",
-                      "timestamp" : "2026-02-12T15:43:52.504873",
+                      "timestamp" : "2026-02-19T13:46:13.889366",
                       "fieldErrors" : [ {
                         "field" : "role",
                         "rejectedValue" : null,
@@ -1402,18 +1405,6 @@ components:
           type: string
           description: 메시지
           nullable: true
-    UserUpdateRequest:
-      title: UserUpdateRequest
-      type: object
-      properties:
-        name:
-          type: string
-          description: 수정할 이름 (30자 이내)
-          nullable: true
-        profileImageUrl:
-          type: string
-          description: 수정할 프로필 이미지 URL
-          nullable: true
     ApiResponse-AuthTokenResponse:
       title: ApiResponse-AuthTokenResponse
       required:
@@ -1433,6 +1424,49 @@ components:
             refreshToken:
               type: string
               description: 새 리프레시 토큰
+          description: 응답 데이터
+        success:
+          type: boolean
+          description: 성공 여부
+        message:
+          type: string
+          description: 메시지
+          nullable: true
+    ApiResponse-UserResponse:
+      title: ApiResponse-UserResponse
+      required:
+      - data
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - email
+          - id
+          - name
+          - provider
+          type: object
+          properties:
+            provider:
+              type: string
+              description: "인증 제공자 (GOOGLE, KAKAO, LOCAL)"
+            name:
+              type: string
+              description: 이름
+            baekjoonId:
+              type: string
+              description: 백준 아이디
+              nullable: true
+            id:
+              type: number
+              description: 유저 ID
+            profileImageUrl:
+              type: string
+              description: 프로필 이미지 URL
+              nullable: true
+            email:
+              type: string
+              description: 이메일
           description: 응답 데이터
         success:
           type: boolean
@@ -1622,45 +1656,6 @@ components:
         email:
           type: string
           description: 이메일
-    ApiResponse-UserResponse:
-      title: ApiResponse-UserResponse
-      required:
-      - data
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - email
-          - id
-          - name
-          - provider
-          type: object
-          properties:
-            provider:
-              type: string
-              description: "인증 제공자 (GOOGLE, KAKAO, LOCAL)"
-            name:
-              type: string
-              description: 이름
-            id:
-              type: number
-              description: 유저 ID
-            profileImageUrl:
-              type: string
-              description: 프로필 이미지 URL
-              nullable: true
-            email:
-              type: string
-              description: 이메일
-          description: 응답 데이터
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 메시지
-          nullable: true
     UpdateWorkspaceMemberNicknameRequest:
       title: UpdateWorkspaceMemberNicknameRequest
       required:
@@ -2170,3 +2165,19 @@ components:
               name:
                 type: string
                 description: 태그 이름
+    UserUpdateRequest:
+      title: UserUpdateRequest
+      type: object
+      properties:
+        name:
+          type: string
+          description: 수정할 이름 (30자 이내)
+          nullable: true
+        baekjoonId:
+          type: string
+          description: 백준 아이디
+          nullable: true
+        profileImageUrl:
+          type: string
+          description: 수정할 프로필 이미지 URL
+          nullable: true

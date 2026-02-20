@@ -61,6 +61,9 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 10)
 	private UserRole role;
 
+	/** 백준 아이디 (연동 전 null) */
+	private String baekjoonId;
+
 	@Builder
 	private User(String email, Password password, String name, String profileImageUrl,
 		AuthProvider provider, String providerId, UserRole role) {
@@ -99,12 +102,15 @@ public class User extends BaseEntity {
 		return password != null && password.matches(rawPassword, encoder);
 	}
 
-	public void updateProfile(String name, String profileImageUrl) {
+	public void updateProfile(String name, String profileImageUrl, String baekjoonId) {
 		if (name != null) {
 			this.name = name;
 		}
 		if (profileImageUrl != null) {
 			this.profileImageUrl = profileImageUrl;
+		}
+		if (baekjoonId != null) {
+			this.baekjoonId = baekjoonId;
 		}
 	}
 

@@ -9,7 +9,8 @@ public record UserResponse(
 	String email,
 	String name,
 	String profileImageUrl,
-	AuthProvider provider
+	AuthProvider provider,
+	String baekjoonId
 ) {
 
 	public static UserResponse from(User user) {
@@ -18,7 +19,8 @@ public record UserResponse(
 			user.getEmail(),
 			user.getName(),
 			user.getProfileImageUrl(),
-			user.getProvider()
+			user.getProvider(),
+			user.getBaekjoonId()
 		);
 	}
 }

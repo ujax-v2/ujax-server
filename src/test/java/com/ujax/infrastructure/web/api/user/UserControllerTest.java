@@ -66,10 +66,10 @@ class UserControllerTest {
 		@DisplayName("일부 필드만 보내도 정상 수정된다")
 		void updateMe_PartialUpdate() throws Exception {
 			// given
-			UserUpdateRequest request = new UserUpdateRequest("새이름", null);
+			UserUpdateRequest request = new UserUpdateRequest("새이름", null, null);
 			UserResponse response = new UserResponse(1L, "test@example.com", "새이름",
-				"https://example.com/profile.jpg", AuthProvider.GOOGLE);
-			given(userService.updateUser(anyLong(), anyString(), isNull())).willReturn(response);
+				"https://example.com/profile.jpg", AuthProvider.GOOGLE, null);
+			given(userService.updateUser(anyLong(), any(UserUpdateRequest.class))).willReturn(response);
 
 			// when & then
 			mockMvc.perform(patch("/api/v1/users/me")
