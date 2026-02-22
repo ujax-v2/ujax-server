@@ -13,7 +13,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.ujax.infrastructure.persistence.jpa.IncludeDeleted;
-
 public interface BoardCommentRepository extends JpaRepository<BoardComment, Long> {
 
 	/** findById를 JPQL로 오버라이드하여 @Filter(softDeleteFilter) 적용 */

@@ -65,6 +65,11 @@ class UserServiceTest {
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
+		workspaceMemberRepository.deleteAllInBatch();
+		workspaceRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
