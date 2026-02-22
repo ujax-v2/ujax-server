@@ -6,10 +6,13 @@ import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.ujax.infrastructure.persistence.jpa.IncludeDeleted;
 
 public interface BoardCommentRepository extends JpaRepository<BoardComment, Long> {
 
@@ -19,11 +22,33 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
 	@Query("SELECT bc FROM BoardComment bc WHERE bc.id = :id")
 	Optional<BoardComment> findById(@Param("id") @NonNull Long id);
 
-	Page<BoardComment> findByBoard_Id(Long boardId, Pageable pageable);
+	@EntityGraph(attributePaths = {"board", "author"})
+	@IncludeDeleted
+	@Query(
+		"""
+		SELECT bc FROM BoardComment bc
+		WHERE bc.board.id = :boardId
+		AND bc.deletedAt IS NULL
+		AND bc.board.deletedAt IS NULL
+		AND bc.board.workspace.deletedAt IS NULL
+		"""
+	)
+	Page<BoardComment> findByBoard_Id(@Param("boardId") Long boardId, Pageable pageable);
 
 	long countByBoard_Id(Long boardId);
 
-	@Query("SELECT bc FROM BoardComment bc WHERE bc.id = :commentId AND bc.board.id = :boardId")
+	@EntityGraph(attributePaths = {"board", "author"})
+	@IncludeDeleted
+	@Query(
+		"""
+		SELECT bc FROM BoardComment bc
+		WHERE bc.id = :commentId
+		AND bc.board.id = :boardId
+		AND bc.deletedAt IS NULL
+		AND bc.board.deletedAt IS NULL
+		AND bc.board.workspace.deletedAt IS NULL
+		"""
+	)
 	Optional<BoardComment> findByIdAndBoardId(
 		@Param("commentId") Long commentId,
 		@Param("boardId") Long boardId
