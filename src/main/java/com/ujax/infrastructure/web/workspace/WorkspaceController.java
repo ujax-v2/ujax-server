@@ -58,6 +58,13 @@ public class WorkspaceController {
 		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId()));
 	}
 
+	@GetMapping("/me")
+	public ApiResponse<WorkspaceListResponse> listMyWorkspacesByMe(
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId()));
+	}
+
 	@GetMapping("/{workspaceId}")
 	public ApiResponse<WorkspaceResponse> getWorkspace(@PathVariable Long workspaceId) {
 		return ApiResponse.success(workspaceService.getWorkspace(workspaceId));

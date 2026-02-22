@@ -268,6 +268,41 @@ class WorkspaceControllerDocsTest {
 	}
 
 	@Test
+	@DisplayName("내 워크스페이스 목록 조회 API (/me)")
+	void listMyWorkspacesByMe() throws Exception {
+		// given
+		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
+		WorkspaceListResponse response = WorkspaceListResponse.of(List.of(workspace));
+		given(workspaceService.listMyWorkspaces(anyLong())).willReturn(response);
+
+		// when & then
+		mockMvc.perform(get("/api/v1/workspaces/me")
+				.contentType(MediaType.APPLICATION_JSON))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("workspace-my-list-me",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("내 워크스페이스 목록 조회")
+					.description("유저가 속한 워크스페이스 목록을 조회합니다 (/me)")
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceList"))
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("워크스페이스 목록"),
+						fieldWithPath("data.items[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
+						fieldWithPath("data.items[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
+						fieldWithPath("data.items[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
 	@DisplayName("워크스페이스 단건 조회 API")
 	void getWorkspace() throws Exception {
 		// given

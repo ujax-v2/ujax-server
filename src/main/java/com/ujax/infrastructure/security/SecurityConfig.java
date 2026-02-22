@@ -61,6 +61,7 @@ public class SecurityConfig {
 					"/api/v1/workspaces/search",
 					"/error"
 				).permitAll()
+				.requestMatchers("GET", "/api/v1/workspaces/me").authenticated()
 				.requestMatchers("GET", "/api/v1/workspaces/{id}").permitAll()
 				.anyRequest().authenticated()
 			)
