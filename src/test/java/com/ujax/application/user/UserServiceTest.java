@@ -12,9 +12,14 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.board.BoardCommentRepository;
+import com.ujax.domain.board.BoardLikeRepository;
+import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
+import com.ujax.domain.workspace.WorkspaceMemberRepository;
+import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
@@ -38,6 +43,15 @@ class UserServiceTest {
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
+	private BoardLikeRepository boardLikeRepository;
+
+	@Autowired
+	private BoardCommentRepository boardCommentRepository;
+
+	@Autowired
+	private BoardRepository boardRepository;
+
+	@Autowired
 	private WorkspaceMemberRepository workspaceMemberRepository;
 
 	@Autowired
@@ -48,6 +62,11 @@ class UserServiceTest {
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
+		workspaceMemberRepository.deleteAllInBatch();
+		workspaceRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
