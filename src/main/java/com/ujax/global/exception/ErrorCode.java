@@ -14,7 +14,8 @@ public enum ErrorCode {
 	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "C002", "잘못된 파라미터 형식입니다."),
 	MISSING_REQUIRED_FIELD(HttpStatus.BAD_REQUEST, "C003", "필수 입력값이 누락되었습니다."),
 	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "잘못된 타입의 값입니다."),
-	INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "C005", "비밀번호는 8자 이상이며, 영문과 숫자를 포함해야 합니다."),
+	INVALID_SUBMISSION(HttpStatus.BAD_REQUEST, "C005", "유효하지 않은 제출 정보입니다."),
+	INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "C006", "비밀번호는 8자 이상이며, 영문과 숫자를 포함해야 합니다."),
 
 	// ==================== 401 Unauthorized ====================
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),
@@ -50,6 +51,7 @@ public enum ErrorCode {
 	// ==================== 422 Unprocessable Entity ====================
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
 	BUSINESS_RULE_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY, "U002", "비즈니스 규칙 위반입니다."),
+	WORKSPACE_OWNER_CANNOT_WITHDRAW(HttpStatus.UNPROCESSABLE_ENTITY, "U003", "워크스페이스 소유자는 탈퇴할 수 없습니다. 소유권을 양도하거나 워크스페이스를 삭제해 주세요."),
 
 	// ==================== 429 Too Many Requests ====================
 	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "T001", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
@@ -60,6 +62,7 @@ public enum ErrorCode {
 
 	// ==================== 502 Bad Gateway ====================
 	EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "E001", "외부 서비스 연동 중 오류가 발생했습니다."),
+	JUDGE0_API_ERROR(HttpStatus.BAD_GATEWAY, "E003", "Judge0 서비스 연동 중 오류가 발생했습니다."),
 
 	// ==================== 503 Service Unavailable ====================
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "E002", "서비스를 일시적으로 사용할 수 없습니다."),

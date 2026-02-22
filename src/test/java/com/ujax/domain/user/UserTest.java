@@ -84,7 +84,7 @@ class UserTest {
 			);
 
 			// when
-			user.updateProfile("새이름", "https://new-image.com/profile.jpg");
+			user.updateProfile("새이름", "https://new-image.com/profile.jpg", null);
 
 			// then
 			assertThat(user).extracting("name", "profileImageUrl")
@@ -105,7 +105,7 @@ class UserTest {
 			);
 
 			// when
-			user.updateProfile("새이름", null);
+			user.updateProfile("새이름", null, null);
 
 			// then
 			assertThat(user).extracting("name", "profileImageUrl")
@@ -126,7 +126,7 @@ class UserTest {
 			);
 
 			// when
-			user.updateProfile(null, "https://new-image.com/profile.jpg");
+			user.updateProfile(null, "https://new-image.com/profile.jpg", null);
 
 			// then
 			assertThat(user).extracting("name", "profileImageUrl")
