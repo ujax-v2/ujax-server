@@ -57,12 +57,11 @@ public class SecurityConfig {
 					"/oauth2/**",
 					"/login/oauth2/**",
 					"/api/v1/problems/**",
-					"/api/v1/workspaces/explore",
-					"/api/v1/workspaces/search",
 					"/error"
 				).permitAll()
+				.requestMatchers("GET", "/api/v1/workspaces/explore").permitAll()
 				.requestMatchers("GET", "/api/v1/workspaces/me").authenticated()
-				.requestMatchers("GET", "/api/v1/workspaces/{id}").permitAll()
+				.requestMatchers("GET", "/api/v1/workspaces/{id:[0-9]+}").permitAll()
 				.anyRequest().authenticated()
 			)
 			.oauth2Login(oauth2 -> oauth2
