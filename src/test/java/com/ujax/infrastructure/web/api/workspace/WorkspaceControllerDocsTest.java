@@ -33,7 +33,6 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.workspace.WorkspaceService;
-import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
@@ -91,10 +90,11 @@ class WorkspaceControllerDocsTest {
 		// given
 		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
 		PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
-		given(workspaceService.listWorkspaces(anyInt(), anyInt())).willReturn(response);
+		given(workspaceService.listWorkspaces(any(), anyInt(), anyInt())).willReturn(response);
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/explore")
+				.param("name", "워크")
 				.param("page", "0")
 				.param("size", "20")
 				.contentType(MediaType.APPLICATION_JSON))
@@ -108,6 +108,7 @@ class WorkspaceControllerDocsTest {
 					.summary("워크스페이스 탐색 목록 조회")
 					.description("워크스페이스 탐색 페이지에서 목록을 조회합니다")
 					.queryParameters(
+						parameterWithName("name").optional().description("검색어"),
 						parameterWithName("page").optional().description("페이지 번호"),
 						parameterWithName("size").optional().description("페이지 크기")
 					)
@@ -150,6 +151,7 @@ class WorkspaceControllerDocsTest {
 					.summary("워크스페이스 탐색 목록 조회")
 					.description("워크스페이스 탐색 목록 조회")
 					.queryParameters(
+						parameterWithName("name").optional().description("검색어"),
 						parameterWithName("page").optional().description("페이지 번호"),
 						parameterWithName("size").optional().description("페이지 크기")
 					)
@@ -161,34 +163,32 @@ class WorkspaceControllerDocsTest {
 	}
 
 	@Test
-	@DisplayName("워크스페이스 검색 API")
-	void searchWorkspaces() throws Exception {
+	@DisplayName("내 워크스페이스 목록 조회 API (/me)")
+	void listMyWorkspacesByMe() throws Exception {
 		// given
 		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
 		PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
-		given(workspaceService.searchWorkspaces(anyString(), anyInt(), anyInt())).willReturn(response);
+		given(workspaceService.listMyWorkspaces(anyLong(), anyInt(), anyInt())).willReturn(response);
 
 		// when & then
-		mockMvc.perform(get("/api/v1/workspaces/search")
-				.param("name", "워크")
+		mockMvc.perform(get("/api/v1/workspaces/me")
 				.param("page", "0")
 				.param("size", "20")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
-			.andDo(document("workspace-search",
+			.andDo(document("workspace-my-list-me",
 				preprocessRequest(prettyPrint()),
 				preprocessResponse(prettyPrint()),
 				resource(ResourceSnippetParameters.builder()
 					.tag("Workspace")
-					.summary("워크스페이스 검색")
-					.description("워크스페이스 이름으로 검색합니다")
+					.summary("내 워크스페이스 목록 조회")
+					.description("유저가 속한 워크스페이스 목록을 조회합니다 (/me)")
 					.queryParameters(
-						parameterWithName("name").description("검색어"),
 						parameterWithName("page").optional().description("페이지 번호"),
 						parameterWithName("size").optional().description("페이지 크기")
 					)
-					.responseSchema(Schema.schema("ApiResponse-WorkspaceSearch"))
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceMyPage"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
 						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
@@ -203,98 +203,6 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.page.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
 						fieldWithPath("data.page.first").type(JsonFieldType.BOOLEAN).description("첫 페이지 여부"),
 						fieldWithPath("data.page.last").type(JsonFieldType.BOOLEAN).description("마지막 페이지 여부"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
-					.build()
-				)
-			));
-	}
-
-	@Test
-	@DisplayName("워크스페이스 검색 API - 검색어 누락")
-	void searchWorkspacesMissingName() throws Exception {
-		// when & then
-		mockMvc.perform(get("/api/v1/workspaces/search")
-				.contentType(MediaType.APPLICATION_JSON))
-			.andDo(print())
-			.andExpect(status().isBadRequest())
-			.andDo(document("workspace-search-error",
-				preprocessRequest(prettyPrint()),
-				preprocessResponse(prettyPrint()),
-				resource(ResourceSnippetParameters.builder()
-					.tag("Workspace")
-					.summary("워크스페이스 검색")
-					.description("워크스페이스 검색")
-					.responseSchema(Schema.schema("ProblemDetail-MissingParameter"))
-					.responseFields(problemDetailFields())
-					.build()
-				)
-			));
-	}
-
-	@Test
-	@DisplayName("내 워크스페이스 목록 조회 API")
-	void listMyWorkspaces() throws Exception {
-		// given
-		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
-		WorkspaceListResponse response = WorkspaceListResponse.of(List.of(workspace));
-		given(workspaceService.listMyWorkspaces(anyLong())).willReturn(response);
-
-		// when & then
-		mockMvc.perform(get("/api/v1/workspaces")
-				.contentType(MediaType.APPLICATION_JSON))
-			.andDo(print())
-			.andExpect(status().isOk())
-			.andDo(document("workspace-my-list",
-				preprocessRequest(prettyPrint()),
-				preprocessResponse(prettyPrint()),
-				resource(ResourceSnippetParameters.builder()
-					.tag("Workspace")
-					.summary("내 워크스페이스 목록 조회")
-					.description("유저가 속한 워크스페이스 목록을 조회합니다")
-					.responseSchema(Schema.schema("ApiResponse-WorkspaceList"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
-						fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("워크스페이스 목록"),
-						fieldWithPath("data.items[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
-						fieldWithPath("data.items[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
-						fieldWithPath("data.items[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
-					.build()
-				)
-			));
-	}
-
-	@Test
-	@DisplayName("내 워크스페이스 목록 조회 API (/me)")
-	void listMyWorkspacesByMe() throws Exception {
-		// given
-		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
-		WorkspaceListResponse response = WorkspaceListResponse.of(List.of(workspace));
-		given(workspaceService.listMyWorkspaces(anyLong())).willReturn(response);
-
-		// when & then
-		mockMvc.perform(get("/api/v1/workspaces/me")
-				.contentType(MediaType.APPLICATION_JSON))
-			.andDo(print())
-			.andExpect(status().isOk())
-			.andDo(document("workspace-my-list-me",
-				preprocessRequest(prettyPrint()),
-				preprocessResponse(prettyPrint()),
-				resource(ResourceSnippetParameters.builder()
-					.tag("Workspace")
-					.summary("내 워크스페이스 목록 조회")
-					.description("유저가 속한 워크스페이스 목록을 조회합니다 (/me)")
-					.responseSchema(Schema.schema("ApiResponse-WorkspaceList"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
-						fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("워크스페이스 목록"),
-						fieldWithPath("data.items[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
-						fieldWithPath("data.items[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
-						fieldWithPath("data.items[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
