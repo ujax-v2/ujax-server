@@ -59,6 +59,9 @@ class UserServiceTest {
 
 	@BeforeEach
 	void tearDown() {
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();

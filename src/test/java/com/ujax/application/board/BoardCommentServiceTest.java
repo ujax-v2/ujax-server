@@ -133,6 +133,26 @@ class BoardCommentServiceTest {
 			assertThat(result.page()).extracting("page", "size", "totalElements")
 				.containsExactly(0, 10, 2L);
 		}
+
+		@Test
+		@DisplayName("작성자가 소프트 삭제되어도 댓글 목록을 조회할 수 있다")
+		void listCommentsWithSoftDeletedAuthor() {
+			// given
+			Workspace workspace = createWorkspace();
+			WorkspaceMember author = createMember(workspace, WorkspaceMemberRole.MEMBER);
+			WorkspaceMember viewer = createMember(workspace, WorkspaceMemberRole.MEMBER);
+			Board board = createBoard(workspace, viewer);
+			boardCommentRepository.save(BoardComment.create(board, author, "삭제된 작성자 댓글"));
+			workspaceMemberRepository.delete(author);
+
+			// when
+			CommentListResponse result = boardCommentService.listComments(workspace.getId(), board.getId(), viewer.getUser().getId(), 0, 10);
+
+			// then
+			assertThat(result.items()).hasSize(1);
+			assertThat(result.items().get(0)).extracting("author.workspaceMemberId", "author.nickname")
+				.containsExactly(author.getId(), author.getNickname());
+		}
 	}
 
 	@Nested

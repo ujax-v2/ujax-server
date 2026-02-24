@@ -169,6 +169,42 @@ class BoardServiceTest {
 			assertThat(item.preview()).hasSize(100);
 			assertThat(item.preview()).isEqualTo(longContent.substring(0, 100));
 		}
+
+		@Test
+		@DisplayName("작성자가 소프트 삭제되어도 게시글 목록을 조회할 수 있다")
+		void listBoardsWithSoftDeletedAuthor() {
+			// given
+			Workspace workspace = createWorkspace();
+			WorkspaceMember author = createMember(workspace, WorkspaceMemberRole.OWNER);
+			WorkspaceMember viewer = createMember(workspace, WorkspaceMemberRole.MEMBER);
+			Board board = boardRepository.save(Board.create(
+				workspace,
+				author,
+				BoardType.FREE,
+				false,
+				"삭제 멤버 게시글",
+				"내용"
+			));
+			workspaceMemberRepository.delete(author);
+
+			BoardListRequest request = BoardListRequest.builder()
+				.type(null)
+				.keyword(null)
+				.page(0)
+				.size(20)
+				.sort("createdAt,desc")
+				.pinnedFirst(false)
+				.build();
+
+			// when
+			BoardListResponse result = boardService.listBoards(workspace.getId(), viewer.getUser().getId(), request);
+
+			// then
+			assertThat(result.items()).hasSize(1);
+			BoardListItemResponse item = result.items().get(0);
+			assertThat(item).extracting("boardId", "author.workspaceMemberId", "author.nickname")
+				.containsExactly(board.getId(), author.getId(), author.getNickname());
+		}
 	}
 
 	@Nested
@@ -199,6 +235,31 @@ class BoardServiceTest {
 			// then
 			assertThat(result).extracting("boardId", "viewCount", "likeCount", "commentCount", "myLike")
 				.containsExactly(board.getId(), 1L, 1L, 1L, true);
+		}
+
+		@Test
+		@DisplayName("작성자가 소프트 삭제되어도 게시글 상세를 조회할 수 있다")
+		void getBoardDetailWithSoftDeletedAuthor() {
+			// given
+			Workspace workspace = createWorkspace();
+			WorkspaceMember author = createMember(workspace, WorkspaceMemberRole.OWNER);
+			WorkspaceMember viewer = createMember(workspace, WorkspaceMemberRole.MEMBER);
+			Board board = boardRepository.save(Board.create(
+				workspace,
+				author,
+				BoardType.FREE,
+				false,
+				"제목",
+				"내용"
+			));
+			workspaceMemberRepository.delete(author);
+
+			// when
+			BoardDetailResponse result = boardService.getBoardDetail(workspace.getId(), board.getId(), viewer.getUser().getId());
+
+			// then
+			assertThat(result).extracting("boardId", "author.workspaceMemberId", "author.nickname")
+				.containsExactly(board.getId(), author.getId(), author.getNickname());
 		}
 	}
 

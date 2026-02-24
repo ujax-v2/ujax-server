@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.ujax.infrastructure.persistence.jpa.IncludeDeleted;
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
 	/** findById를 JPQL로 오버라이드하여 @Filter(softDeleteFilter) 적용 */
@@ -20,16 +21,28 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 	Optional<Board> findById(@Param("id") @NonNull Long id);
 
 	@EntityGraph(attributePaths = {"workspace", "author"})
-	@Query("SELECT b FROM Board b WHERE b.id = :boardId AND b.workspace.id = :workspaceId")
+	@IncludeDeleted
+	@Query(
+		"""
+		SELECT b FROM Board b
+		WHERE b.id = :boardId
+		AND b.workspace.id = :workspaceId
+		AND b.deletedAt IS NULL
+		AND b.workspace.deletedAt IS NULL
+		"""
+	)
 	Optional<Board> findByIdAndWorkspaceId(@Param("boardId") Long boardId, @Param("workspaceId") Long workspaceId);
 
 	boolean existsByIdAndWorkspace_Id(Long boardId, Long workspaceId);
 
 	@EntityGraph(attributePaths = {"workspace", "author"})
+	@IncludeDeleted
 	@Query(
 		"""
 		SELECT b FROM Board b
 		WHERE b.workspace.id = :workspaceId
+		AND b.deletedAt IS NULL
+		AND b.workspace.deletedAt IS NULL
 		AND (:type IS NULL OR b.type = :type)
 		AND (:keyword IS NULL OR b.title LIKE %:keyword% OR b.content LIKE %:keyword%)
 		"""
