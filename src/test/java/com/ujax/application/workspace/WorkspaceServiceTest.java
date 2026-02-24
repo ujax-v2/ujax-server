@@ -1199,6 +1199,29 @@ class WorkspaceServiceTest {
 			assertThat(response).extracting("isMember", "joinRequestStatus", "canApply")
 				.containsExactly(false, WorkspaceMyJoinRequestStatus.NONE, true);
 		}
+
+		@Test
+		@DisplayName("거부 이력이 있으면 REJECTED로 조회된다")
+		void getMyJoinRequestStatusRejectedHistoryReturnsRejected() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-my-join-status-rejected@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-my-join-status-rejected@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			var created = workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+			workspaceService.rejectJoinRequest(workspace.getId(), owner.getId(), created.requestId());
+
+			// when
+			var response = workspaceService.getMyJoinRequestStatus(workspace.getId(), applicant.getId());
+
+			// then
+			assertThat(response).extracting("isMember", "joinRequestStatus", "canApply")
+				.containsExactly(false, WorkspaceMyJoinRequestStatus.REJECTED, true);
+		}
 	}
 
 	@Nested
