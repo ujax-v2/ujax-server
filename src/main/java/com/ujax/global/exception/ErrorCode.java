@@ -16,6 +16,8 @@ public enum ErrorCode {
 	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "잘못된 타입의 값입니다."),
 	INVALID_SUBMISSION(HttpStatus.BAD_REQUEST, "C005", "유효하지 않은 제출 정보입니다."),
 	INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "C006", "비밀번호는 8자 이상이며, 영문과 숫자를 포함해야 합니다."),
+	UNSUPPORTED_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "C007", "지원하지 않는 이미지 형식입니다. JPEG, PNG, WEBP만 허용됩니다."),
+	IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "C008", "이미지 크기는 5MB를 초과할 수 없습니다."),
 
 	// ==================== 401 Unauthorized ====================
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),
