@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.workspace.WorkspaceService;
-import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
@@ -38,24 +37,20 @@ public class WorkspaceController {
 
 	@GetMapping("/explore")
 	public ApiResponse<PageResponse<WorkspaceResponse>> listWorkspaces(
+		@RequestParam(required = false) String name,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size
 	) {
-		return ApiResponse.success(workspaceService.listWorkspaces(page, size));
+		return ApiResponse.success(workspaceService.listWorkspaces(name, page, size));
 	}
 
-	@GetMapping("/search")
-	public ApiResponse<PageResponse<WorkspaceResponse>> searchWorkspaces(
-		@RequestParam String name,
+	@GetMapping("/me")
+	public ApiResponse<PageResponse<WorkspaceResponse>> listMyWorkspaces(
+		@AuthenticationPrincipal UserPrincipal principal,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size
 	) {
-		return ApiResponse.success(workspaceService.searchWorkspaces(name, page, size));
-	}
-
-	@GetMapping
-	public ApiResponse<WorkspaceListResponse> listMyWorkspaces(@AuthenticationPrincipal UserPrincipal principal) {
-		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId()));
+		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId(), page, size));
 	}
 
 	@GetMapping("/{workspaceId}")

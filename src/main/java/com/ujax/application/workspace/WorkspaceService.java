@@ -4,10 +4,10 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ujax.application.workspace.dto.response.WorkspaceListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
@@ -22,10 +22,9 @@ import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.BadRequestException;
-import com.ujax.global.exception.common.ForbiddenException;
-import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.ForbiddenException;
+import com.ujax.global.exception.common.NotFoundException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -39,15 +38,21 @@ public class WorkspaceService {
 	private static final int DESCRIPTION_MAX = 200;
 	private static final int NICKNAME_MIN = 1;
 	private static final int NICKNAME_MAX = 30;
+	private static final Sort WORKSPACE_DEFAULT_SORT = Sort.by(
+		Sort.Order.desc("createdAt"),
+		Sort.Order.desc("id")
+	);
 
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceInviteMailer workspaceInviteMailer;
 
-	public PageResponse<WorkspaceResponse> listWorkspaces(int page, int size) {
+	public PageResponse<WorkspaceResponse> listWorkspaces(String name, int page, int size) {
 		validatePageable(page, size);
-		Page<Workspace> workspaces = workspaceRepository.findAll(PageRequest.of(page, size));
+		String normalizedName = name == null ? null : name.trim();
+		PageRequest pageable = PageRequest.of(page, size, WORKSPACE_DEFAULT_SORT);
+		Page<Workspace> workspaces = workspaceRepository.findByNameContainingOrAll(normalizedName, pageable);
 		return PageResponse.of(
 			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
 			workspaces.getNumber(),
@@ -57,19 +62,9 @@ public class WorkspaceService {
 		);
 	}
 
-	public WorkspaceListResponse listMyWorkspaces(Long userId) {
-		List<WorkspaceResponse> items = workspaceRepository.findByMemberUserId(userId).stream()
-			.map(WorkspaceResponse::from)
-			.toList();
-		return WorkspaceListResponse.of(items);
-	}
-
-	public PageResponse<WorkspaceResponse> searchWorkspaces(String name, int page, int size) {
-		if (name == null || name.isBlank()) {
-			throw new BadRequestException(ErrorCode.INVALID_INPUT);
-		}
+	public PageResponse<WorkspaceResponse> listMyWorkspaces(Long userId, int page, int size) {
 		validatePageable(page, size);
-		Page<Workspace> workspaces = workspaceRepository.findByNameContaining(name, PageRequest.of(page, size));
+		Page<Workspace> workspaces = workspaceRepository.findByMemberUserId(userId, PageRequest.of(page, size));
 		return PageResponse.of(
 			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
 			workspaces.getNumber(),

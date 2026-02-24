@@ -335,7 +335,7 @@ class WorkspaceServiceTest {
 			workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when
-			PageResponse<?> response = workspaceService.listWorkspaces(0, 20);
+			PageResponse<?> response = workspaceService.listWorkspaces(null, 0, 20);
 
 			// then
 			assertThat(response.getContent()).hasSize(1);
@@ -343,19 +343,40 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
-		@DisplayName("검색어가 없으면 오류가 발생한다")
+		@DisplayName("탐색 목록은 최신순으로 조회한다")
+		void listWorkspacesLatestOrder() {
+			// given
+			Workspace older = workspaceRepository.save(Workspace.create("오래된 공간", "소개"));
+			Workspace newer = workspaceRepository.save(Workspace.create("최신 공간", "소개"));
+
+			// when
+			PageResponse<?> response = workspaceService.listWorkspaces(null, 0, 20);
+
+			// then
+			assertThat(response.getContent())
+				.extracting("id")
+				.containsExactly(newer.getId(), older.getId());
+		}
+
+		@Test
+		@DisplayName("검색어가 공백이면 전체 목록을 조회한다")
 		void searchWorkspacesInvalid() {
-			// when & then
-			assertThatThrownBy(() -> workspaceService.searchWorkspaces(" ", 0, 20))
-				.isInstanceOf(BadRequestException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+			// given
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+
+			// when
+			var response = workspaceService.listWorkspaces(" ", 0, 20);
+
+			// then
+			assertThat(response.getContent()).extracting("id")
+				.containsExactly(workspace.getId());
 		}
 
 		@Test
 		@DisplayName("페이지 값이 잘못되면 오류가 발생한다")
 		void listWorkspacesInvalidPageable() {
 			// when & then
-			assertThatThrownBy(() -> workspaceService.listWorkspaces(-1, 0))
+			assertThatThrownBy(() -> workspaceService.listWorkspaces(null, -1, 0))
 				.isInstanceOf(BadRequestException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
 		}
@@ -367,7 +388,7 @@ class WorkspaceServiceTest {
 			Workspace workspace = workspaceRepository.save(Workspace.create("테스트 공간", "소개"));
 
 			// when
-			var response = workspaceService.searchWorkspaces("테스트", 0, 20);
+			var response = workspaceService.listWorkspaces("테스트", 0, 20);
 
 			// then
 			assertThat(response.getContent()).extracting("id")
@@ -378,7 +399,7 @@ class WorkspaceServiceTest {
 		@DisplayName("검색 페이지 값이 잘못되면 오류가 발생한다")
 		void searchWorkspacesInvalidPageable() {
 			// when & then
-			assertThatThrownBy(() -> workspaceService.searchWorkspaces("테스트", -1, 0))
+			assertThatThrownBy(() -> workspaceService.listWorkspaces("테스트", -1, 0))
 				.isInstanceOf(BadRequestException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
 		}
@@ -821,11 +842,23 @@ class WorkspaceServiceTest {
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 
 			// when
-			var response = workspaceService.listMyWorkspaces(user.getId());
+			var response = workspaceService.listMyWorkspaces(user.getId(), 0, 20);
 
 			// then
-			assertThat(response.items()).extracting("id")
+			assertThat(response.getContent()).extracting("id")
 				.containsExactly(workspace.getId());
+		}
+
+		@Test
+		@DisplayName("페이지 값이 잘못되면 오류가 발생한다")
+		void listMyWorkspacesInvalidPageable() {
+			// given
+			User user = userRepository.save(User.createLocalUser("mine-invalid@example.com", Password.ofEncoded("password"), "유저"));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.listMyWorkspaces(user.getId(), -1, 0))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
 		}
 	}
 
