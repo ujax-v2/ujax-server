@@ -10,11 +10,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
+import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -45,6 +49,7 @@ public class WorkspaceService {
 
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
+	private final WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceInviteMailer workspaceInviteMailer;
 
@@ -113,6 +118,34 @@ public class WorkspaceService {
 		WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);
 		workspaceMemberRepository.save(member);
 		workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
+	}
+
+	@Transactional
+	public WorkspaceJoinRequestResponse createJoinRequest(Long workspaceId, Long userId) {
+		throw new UnsupportedOperationException("TODO(issue-16): create join request");
+	}
+
+	public WorkspaceMyJoinRequestStatusResponse getMyJoinRequestStatus(Long workspaceId, Long userId) {
+		throw new UnsupportedOperationException("TODO(issue-16): get my join request status");
+	}
+
+	public PageResponse<WorkspaceJoinRequestListItemResponse> listJoinRequests(
+		Long workspaceId,
+		Long userId,
+		int page,
+		int size
+	) {
+		throw new UnsupportedOperationException("TODO(issue-16): list join requests");
+	}
+
+	@Transactional
+	public void approveJoinRequest(Long workspaceId, Long userId, Long requestId) {
+		throw new UnsupportedOperationException("TODO(issue-16): approve join request");
+	}
+
+	@Transactional
+	public void rejectJoinRequest(Long workspaceId, Long userId, Long requestId) {
+		throw new UnsupportedOperationException("TODO(issue-16): reject join request");
 	}
 
 	public WorkspaceResponse getWorkspace(Long workspaceId) {

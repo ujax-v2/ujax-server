@@ -35,6 +35,7 @@ public enum ErrorCode {
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "사용자를 찾을 수 없습니다."),
 	WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "R003", "워크스페이스를 찾을 수 없습니다."),
 	WORKSPACE_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "R004", "워크스페이스 멤버를 찾을 수 없습니다."),
+	WORKSPACE_JOIN_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "R006", "워크스페이스 가입 신청을 찾을 수 없습니다."),
 	BOARD_NOT_FOUND(HttpStatus.NOT_FOUND, "R007", "게시글을 찾을 수 없습니다."),
 	BOARD_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "R008", "댓글을 찾을 수 없습니다."),
 	PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "R005", "문제를 찾을 수 없습니다."),
@@ -46,12 +47,14 @@ public enum ErrorCode {
 	ALREADY_WORKSPACE_MEMBER(HttpStatus.CONFLICT, "D004", "이미 워크스페이스에 가입된 멤버입니다."),
 	DUPLICATE_PROBLEM(HttpStatus.CONFLICT, "D005", "이미 등록된 문제 번호입니다."),
 	WORKSPACE_NAME_DUPLICATE(HttpStatus.CONFLICT, "D006", "이미 존재하는 워크스페이스 이름입니다."),
+	WORKSPACE_JOIN_REQUEST_ALREADY_PENDING(HttpStatus.CONFLICT, "D007", "이미 처리 대기중인 가입 신청이 있습니다."),
 	OAUTH_ACCOUNT_EXISTS(HttpStatus.CONFLICT, "D008", "이미 다른 소셜 계정으로 가입된 이메일입니다."),
 
 	// ==================== 422 Unprocessable Entity ====================
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
 	BUSINESS_RULE_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY, "U002", "비즈니스 규칙 위반입니다."),
 	WORKSPACE_OWNER_CANNOT_WITHDRAW(HttpStatus.UNPROCESSABLE_ENTITY, "U003", "워크스페이스 소유자는 탈퇴할 수 없습니다. 소유권을 양도하거나 워크스페이스를 삭제해 주세요."),
+	WORKSPACE_JOIN_REQUEST_ALREADY_PROCESSED(HttpStatus.UNPROCESSABLE_ENTITY, "U004", "이미 처리된 가입 신청입니다."),
 
 	// ==================== 429 Too Many Requests ====================
 	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "T001", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
