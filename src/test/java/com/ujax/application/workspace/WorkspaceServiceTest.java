@@ -12,11 +12,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
+import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
+import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -42,6 +45,9 @@ class WorkspaceServiceTest {
 	private WorkspaceMemberRepository workspaceMemberRepository;
 
 	@Autowired
+	private WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
+
+	@Autowired
 	private UserRepository userRepository;
 
 	@Autowired
@@ -52,6 +58,7 @@ class WorkspaceServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		workspaceJoinRequestRepository.deleteAllInBatch();
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
@@ -1065,6 +1072,187 @@ class WorkspaceServiceTest {
 			))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 가입 신청")
+	class CreateJoinRequest {
+
+		@Test
+		@DisplayName("워크스페이스 가입 신청을 생성할 수 있다")
+		void createJoinRequest() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-join@example.com", Password.ofEncoded("password"), "오너"));
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-join@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when
+			var response = workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// then
+			assertThat(response).extracting("workspaceId", "status")
+				.containsExactly(workspace.getId(), WorkspaceJoinRequestStatus.PENDING);
+			assertThat(response.requestId()).isNotNull();
+		}
+
+		@Test
+		@DisplayName("동일 사용자의 대기중 가입 신청은 중복 생성할 수 없다")
+		void createJoinRequestDuplicatePending() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-join-dup@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-join-dup@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.createJoinRequest(workspace.getId(), applicant.getId()))
+				.isInstanceOf(ConflictException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_JOIN_REQUEST_ALREADY_PENDING);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 가입 신청 수락")
+	class ApproveJoinRequest {
+
+		@Test
+		@DisplayName("소유자는 가입 신청을 수락할 수 있다")
+		void approveJoinRequest() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-approve@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-approve@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			var created = workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when
+			workspaceService.approveJoinRequest(workspace.getId(), owner.getId(), created.requestId());
+
+			// then
+			WorkspaceMember member = workspaceMemberRepository
+				.findByWorkspace_IdAndUser_Id(workspace.getId(), applicant.getId())
+				.orElseThrow();
+			assertThat(member.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
+		}
+
+		@Test
+		@DisplayName("소유자가 아니면 가입 신청을 수락할 수 없다")
+		void approveJoinRequestForbidden() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-approve-forbidden@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User manager = userRepository.save(
+				User.createLocalUser("manager-approve-forbidden@example.com", Password.ofEncoded("password"), "매니저")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-approve-forbidden@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, manager, WorkspaceMemberRole.MANAGER));
+			var created = workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when & then
+			assertThatThrownBy(() ->
+				workspaceService.approveJoinRequest(workspace.getId(), manager.getId(), created.requestId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
+		}
+	}
+
+	@Nested
+	@DisplayName("내 가입 신청 상태 조회")
+	class GetMyJoinRequestStatus {
+
+		@Test
+		@DisplayName("내 가입 신청 상태를 조회할 수 있다")
+		void getMyJoinRequestStatus() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-my-join-status@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-my-join-status@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when
+			var response = workspaceService.getMyJoinRequestStatus(workspace.getId(), applicant.getId());
+
+			// then
+			assertThat(response).extracting("isMember", "joinRequestStatus", "canApply")
+				.containsExactly(false, WorkspaceMyJoinRequestStatus.NONE, true);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 가입 신청 목록")
+	class ListJoinRequests {
+
+		@Test
+		@DisplayName("소유자는 가입 신청 목록을 조회할 수 있다")
+		void listJoinRequests() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-list-join-request@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-list-join-request@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when
+			var response = workspaceService.listJoinRequests(workspace.getId(), owner.getId(), 0, 20);
+
+			// then
+			assertThat(response.getContent()).hasSize(1);
+			assertThat(response.getContent().getFirst()).extracting("workspaceId", "status")
+				.containsExactly(workspace.getId(), WorkspaceJoinRequestStatus.PENDING);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 가입 신청 거부")
+	class RejectJoinRequest {
+
+		@Test
+		@DisplayName("소유자는 가입 신청을 거부할 수 있다")
+		void rejectJoinRequest() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-reject-join-request@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-reject-join-request@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			var created = workspaceService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when
+			workspaceService.rejectJoinRequest(workspace.getId(), owner.getId(), created.requestId());
+
+			// then
+			var rejected = workspaceJoinRequestRepository.findById(created.requestId()).orElseThrow();
+			assertThat(rejected.getStatus()).isEqualTo(WorkspaceJoinRequestStatus.REJECTED);
 		}
 	}
 }
