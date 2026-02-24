@@ -1,6 +1,8 @@
 package com.ujax.application.user;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,7 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.BoardCommentRepository;
@@ -22,11 +26,12 @@ import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceMember;
-import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
-import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.exception.common.BusinessRuleViolationException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
+import com.ujax.infrastructure.web.user.dto.request.ProfileImageUploadRequest;
 import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 
 @SpringBootTest
@@ -35,6 +40,9 @@ class UserServiceTest {
 
 	@Autowired
 	private UserService userService;
+
+	@MockitoBean
+	private S3StorageService s3StorageService;
 
 	@Autowired
 	private UserRepository userRepository;
@@ -154,6 +162,73 @@ class UserServiceTest {
 			assertThatThrownBy(() -> userService.updateUser(999L, new UserUpdateRequest("새이름", null, null)))
 				.isInstanceOf(NotFoundException.class);
 		}
+	}
+
+	@Nested
+	@DisplayName("프로필 이미지 Presigned URL 생성")
+	class CreateProfileImagePresignedUrl {
+
+		@Test
+		@DisplayName("presigned URL을 생성한다")
+		void createPresignedUrl_Success() {
+			// given
+			User user = userRepository.save(User.createOAuthUser(
+				"test@example.com",
+				"테스트유저",
+				"https://example.com/profile.jpg",
+				AuthProvider.GOOGLE,
+				"google-123"
+			));
+			given(s3StorageService.generatePresignedUrl(eq(user.getId()), eq("image/png"), eq(1024L)))
+				.willReturn(new PresignedUrlResult("https://presigned-url", "https://image-url"));
+
+			// when
+			PresignedUrlResponse response = userService.createProfileImagePresignedUrl(
+				user.getId(), new ProfileImageUploadRequest("image/png", 1024L));
+
+			// then
+			assertThat(response).extracting("presignedUrl", "imageUrl")
+				.containsExactly("https://presigned-url", "https://image-url");
+		}
+	}
+
+	@Test
+	@DisplayName("프로필 변경 시 기존 이미지에 대해 삭제를 시도한다")
+	void updateUser_deleteOldImage() {
+		// given
+		String oldUrl = "https://example.com/profile.jpg";
+		User user = userRepository.save(User.createOAuthUser(
+			"test@example.com",
+			"테스트유저",
+			oldUrl,
+			AuthProvider.GOOGLE,
+			"google-123"
+		));
+
+		// when
+		userService.updateUser(user.getId(), new UserUpdateRequest(null, "https://new-image.com/profile.jpg", null));
+
+		// then
+		then(s3StorageService).should().deleteByUrl(oldUrl);
+	}
+
+	@Test
+	@DisplayName("프로필 이미지를 변경하지 않으면 삭제를 시도하지 않는다")
+	void updateUser_noDeleteWhenImageNotChanged() {
+		// given
+		User user = userRepository.save(User.createOAuthUser(
+			"test@example.com",
+			"테스트유저",
+			"https://example.com/profile.jpg",
+			AuthProvider.GOOGLE,
+			"google-123"
+		));
+
+		// when
+		userService.updateUser(user.getId(), new UserUpdateRequest("새이름", null, null));
+
+		// then
+		then(s3StorageService).should(never()).deleteByUrl(any());
 	}
 
 	@Nested
