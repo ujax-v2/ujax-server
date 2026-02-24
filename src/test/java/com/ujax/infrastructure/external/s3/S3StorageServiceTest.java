@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+@SuppressWarnings("resource")
 @ExtendWith(MockitoExtension.class)
 class S3StorageServiceTest {
 
