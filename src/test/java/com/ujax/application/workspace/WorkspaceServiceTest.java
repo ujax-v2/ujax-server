@@ -421,31 +421,46 @@ class WorkspaceServiceTest {
 		void listWorkspaceMembers() {
 			// given
 			User owner = userRepository.save(User.createLocalUser("owner-list@example.com", Password.ofEncoded("password"), "유저"));
+			User managerUser = userRepository.save(
+				User.createLocalUser("manager-list@example.com", Password.ofEncoded("password"), "매니저")
+			);
 			User memberUser = userRepository.save(User.createLocalUser("member-list@example.com", Password.ofEncoded("password"), "멤버"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
-			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
-			workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
+			WorkspaceMember ownerMember = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER)
+			);
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER)
+			);
+			WorkspaceMember manager = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, managerUser, WorkspaceMemberRole.MANAGER)
+			);
 
 			// when
-			var response = workspaceService.listWorkspaceMembers(workspace.getId(), owner.getId());
+			var response = workspaceService.listWorkspaceMembers(workspace.getId(), owner.getId(), 0, 20);
 
 			// then
-			assertThat(response.items())
-				.extracting("workspaceMemberId", "nickname", "role")
-				.containsExactlyInAnyOrder(
-					tuple(
-						workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), owner.getId())
-							.orElseThrow().getId(),
-						owner.getName(),
-						WorkspaceMemberRole.OWNER
-					),
-					tuple(
-						workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), memberUser.getId())
-							.orElseThrow().getId(),
-						memberUser.getName(),
-						WorkspaceMemberRole.MEMBER
-					)
+			assertThat(response.getContent())
+				.extracting("workspaceMemberId", "role")
+				.containsExactly(
+					tuple(ownerMember.getId(), WorkspaceMemberRole.OWNER),
+					tuple(manager.getId(), WorkspaceMemberRole.MANAGER),
+					tuple(member.getId(), WorkspaceMemberRole.MEMBER)
 				);
+		}
+
+		@Test
+		@DisplayName("멤버 목록 조회 페이지 값이 잘못되면 오류가 발생한다")
+		void listWorkspaceMembersInvalidPageable() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-list-invalid@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.listWorkspaceMembers(workspace.getId(), owner.getId(), -1, 0))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
 		}
 
 		@Test
@@ -456,9 +471,34 @@ class WorkspaceServiceTest {
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when & then
-			assertThatThrownBy(() -> workspaceService.listWorkspaceMembers(workspace.getId(), outsider.getId()))
+			assertThatThrownBy(() -> workspaceService.listWorkspaceMembers(workspace.getId(), outsider.getId(), 0, 20))
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
+		}
+
+		@Test
+		@DisplayName("소프트 삭제된 멤버는 멤버 목록에서 제외된다")
+		void listWorkspaceMembersExcludeSoftDeletedMembers() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-soft-member@example.com", Password.ofEncoded("password"), "소유자"));
+			User activeUser = userRepository.save(User.createLocalUser("active-soft-member@example.com", Password.ofEncoded("password"), "활성멤버"));
+			User deletedUser = userRepository.save(User.createLocalUser("deleted-soft-member@example.com", Password.ofEncoded("password"), "삭제멤버"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			WorkspaceMember ownerMember = workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			WorkspaceMember activeMember = workspaceMemberRepository.save(WorkspaceMember.create(workspace, activeUser, WorkspaceMemberRole.MEMBER));
+			WorkspaceMember deletedMember = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, deletedUser, WorkspaceMemberRole.MEMBER)
+			);
+			workspaceMemberRepository.delete(deletedMember);
+
+			// when
+			var response = workspaceService.listWorkspaceMembers(workspace.getId(), owner.getId(), 0, 20);
+
+			// then
+			assertThat(response.getContent())
+				.extracting("workspaceMemberId")
+				.containsExactlyInAnyOrder(ownerMember.getId(), activeMember.getId())
+				.doesNotContain(deletedMember.getId());
 		}
 	}
 
@@ -849,23 +889,56 @@ class WorkspaceServiceTest {
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 
 			// when
-			var response = workspaceService.listMyWorkspaces(user.getId(), 0, 20);
+			var response = workspaceService.listMyWorkspaces(user.getId());
 
 			// then
-			assertThat(response.getContent()).extracting("id")
+			assertThat(response).extracting("id")
 				.containsExactly(workspace.getId());
 		}
 
 		@Test
-		@DisplayName("페이지 값이 잘못되면 오류가 발생한다")
-		void listMyWorkspacesInvalidPageable() {
+		@DisplayName("유저 워크스페이스 목록은 최신순으로 정렬된다")
+		void listMyWorkspacesOrderedByLatest() {
 			// given
-			User user = userRepository.save(User.createLocalUser("mine-invalid@example.com", Password.ofEncoded("password"), "유저"));
+			User user = userRepository.save(User.createLocalUser("mine-order@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace older = workspaceRepository.save(Workspace.create("오래된 워크스페이스", "소개"));
+			Workspace newer = workspaceRepository.save(Workspace.create("새 워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(older, user, WorkspaceMemberRole.MEMBER));
+			workspaceMemberRepository.save(WorkspaceMember.create(newer, user, WorkspaceMemberRole.MEMBER));
 
-			// when & then
-			assertThatThrownBy(() -> workspaceService.listMyWorkspaces(user.getId(), -1, 0))
-				.isInstanceOf(BadRequestException.class)
-				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_PARAMETER);
+			// when
+			var response = workspaceService.listMyWorkspaces(user.getId());
+
+			// then
+			assertThat(response).extracting("id")
+				.containsExactly(newer.getId(), older.getId());
+		}
+
+		@Test
+		@DisplayName("소프트 삭제된 멤버십/워크스페이스는 내 목록에서 제외된다")
+		void listMyWorkspacesExcludeSoftDeleted() {
+			// given
+			User user = userRepository.save(User.createLocalUser("mine-soft@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace activeWorkspace = workspaceRepository.save(Workspace.create("활성 워크스페이스", "소개"));
+			Workspace deletedMembershipWorkspace = workspaceRepository.save(Workspace.create("탈퇴 워크스페이스", "소개"));
+			Workspace deletedWorkspace = workspaceRepository.save(Workspace.create("삭제 워크스페이스", "소개"));
+
+			workspaceMemberRepository.save(WorkspaceMember.create(activeWorkspace, user, WorkspaceMemberRole.MEMBER));
+			WorkspaceMember deletedMembership = workspaceMemberRepository.save(
+				WorkspaceMember.create(deletedMembershipWorkspace, user, WorkspaceMemberRole.MEMBER)
+			);
+			workspaceMemberRepository.save(WorkspaceMember.create(deletedWorkspace, user, WorkspaceMemberRole.MEMBER));
+
+			workspaceMemberRepository.delete(deletedMembership);
+			workspaceRepository.delete(deletedWorkspace);
+
+			// when
+			var response = workspaceService.listMyWorkspaces(user.getId());
+
+			// then
+			assertThat(response)
+				.extracting("id")
+				.containsExactly(activeWorkspace.getId());
 		}
 	}
 

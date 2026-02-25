@@ -8,7 +8,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
@@ -70,24 +69,27 @@ public class WorkspaceService {
 		);
 	}
 
-	public PageResponse<WorkspaceResponse> listMyWorkspaces(Long userId, int page, int size) {
-		validatePageable(page, size);
-		Page<Workspace> workspaces = workspaceRepository.findByMemberUserId(userId, PageRequest.of(page, size));
-		return PageResponse.of(
-			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
-			workspaces.getNumber(),
-			workspaces.getSize(),
-			workspaces.getTotalElements(),
-			workspaces.getTotalPages()
-		);
+	public List<WorkspaceResponse> listMyWorkspaces(Long userId) {
+		return workspaceRepository.findByMemberUserId(userId, WORKSPACE_DEFAULT_SORT).stream()
+			.map(WorkspaceResponse::from)
+			.toList();
 	}
 
-	public WorkspaceMemberListResponse listWorkspaceMembers(Long workspaceId, Long userId) {
+	public PageResponse<WorkspaceMemberResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
+		validatePageable(page, size);
 		validateMember(workspaceId, userId);
-		List<WorkspaceMemberResponse> items = workspaceMemberRepository.findByWorkspace_Id(workspaceId).stream()
-			.map(WorkspaceMemberResponse::from)
-			.toList();
-		return WorkspaceMemberListResponse.of(items);
+		Page<WorkspaceMember> members = workspaceMemberRepository.findByWorkspace_Id(
+			workspaceId,
+			PageRequest.of(page, size)
+		);
+
+		return PageResponse.of(
+			members.getContent().stream().map(WorkspaceMemberResponse::from).toList(),
+			members.getNumber(),
+			members.getSize(),
+			members.getTotalElements(),
+			members.getTotalPages()
+		);
 	}
 
 	public WorkspaceMemberResponse getMyWorkspaceMember(Long workspaceId, Long userId) {

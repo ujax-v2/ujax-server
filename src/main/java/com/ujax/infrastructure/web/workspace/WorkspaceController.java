@@ -1,5 +1,7 @@
 package com.ujax.infrastructure.web.workspace;
 
+import java.util.List;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ujax.application.workspace.WorkspaceService;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
@@ -48,12 +49,10 @@ public class WorkspaceController {
 	}
 
 	@GetMapping("/me")
-	public ApiResponse<PageResponse<WorkspaceResponse>> listMyWorkspaces(
-		@AuthenticationPrincipal UserPrincipal principal,
-		@RequestParam(defaultValue = "0") int page,
-		@RequestParam(defaultValue = "20") int size
+	public ApiResponse<List<WorkspaceResponse>> listMyWorkspaces(
+		@AuthenticationPrincipal UserPrincipal principal
 	) {
-		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId(), page, size));
+		return ApiResponse.success(workspaceService.listMyWorkspaces(principal.getUserId()));
 	}
 
 	@GetMapping("/{workspaceId}")
@@ -70,11 +69,13 @@ public class WorkspaceController {
 	}
 
 	@GetMapping("/{workspaceId}/members")
-	public ApiResponse<WorkspaceMemberListResponse> listWorkspaceMembers(
+	public ApiResponse<PageResponse<WorkspaceMemberResponse>> listWorkspaceMembers(
 		@PathVariable Long workspaceId,
-		@AuthenticationPrincipal UserPrincipal principal
+		@AuthenticationPrincipal UserPrincipal principal,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "20") int size
 	) {
-		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, principal.getUserId()));
+		return ApiResponse.success(workspaceService.listWorkspaceMembers(workspaceId, principal.getUserId(), page, size));
 	}
 
 	@GetMapping("/{workspaceId}/members/me")

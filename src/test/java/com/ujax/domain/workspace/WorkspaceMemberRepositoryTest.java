@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.domain.user.Password;
@@ -59,5 +60,28 @@ class WorkspaceMemberRepositoryTest {
 
 		// then
 		assertThat(result).hasSize(1);
+	}
+
+	@Test
+	@DisplayName("워크스페이스 멤버를 권한 우선순위와 생성순으로 페이징 조회할 수 있다")
+	void findByWorkspaceIdWithPageableAndRolePriority() {
+		// given
+		User ownerUser = userRepository.save(User.createLocalUser("owner@example.com", Password.ofEncoded("password"), "오너"));
+		User managerUser = userRepository.save(User.createLocalUser("manager@example.com", Password.ofEncoded("password"), "매니저"));
+		User memberUser = userRepository.save(User.createLocalUser("member@example.com", Password.ofEncoded("password"), "멤버"));
+		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+		workspaceMemberRepository.save(WorkspaceMember.create(workspace, memberUser, WorkspaceMemberRole.MEMBER));
+		workspaceMemberRepository.save(WorkspaceMember.create(workspace, ownerUser, WorkspaceMemberRole.OWNER));
+		workspaceMemberRepository.save(WorkspaceMember.create(workspace, managerUser, WorkspaceMemberRole.MANAGER));
+
+		// when
+		var page = workspaceMemberRepository.findByWorkspace_Id(workspace.getId(), PageRequest.of(0, 2));
+
+		// then
+		assertThat(page.getContent())
+			.extracting("role")
+			.containsExactly(WorkspaceMemberRole.OWNER, WorkspaceMemberRole.MANAGER);
+		assertThat(page.getTotalElements()).isEqualTo(3);
+		assertThat(page.getTotalPages()).isEqualTo(2);
 	}
 }

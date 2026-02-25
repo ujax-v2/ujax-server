@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,6 +32,23 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 	Optional<WorkspaceMember> findByWorkspace_IdAndId(Long workspaceId, Long workspaceMemberId);
 
 	List<WorkspaceMember> findByWorkspace_Id(Long workspaceId);
+
+	@Query(
+		value = """
+			SELECT wm FROM WorkspaceMember wm
+			WHERE wm.workspace.id = :workspaceId
+			ORDER BY
+				CASE
+					WHEN wm.role = com.ujax.domain.workspace.WorkspaceMemberRole.OWNER THEN 0
+					WHEN wm.role = com.ujax.domain.workspace.WorkspaceMemberRole.MANAGER THEN 1
+					ELSE 2
+				END,
+				wm.createdAt ASC,
+				wm.id ASC
+			""",
+		countQuery = "SELECT COUNT(wm) FROM WorkspaceMember wm WHERE wm.workspace.id = :workspaceId"
+	)
+	Page<WorkspaceMember> findByWorkspace_Id(@Param("workspaceId") Long workspaceId, Pageable pageable);
 
 	boolean existsByUser_IdAndRole(Long userId, WorkspaceMemberRole role);
 }
