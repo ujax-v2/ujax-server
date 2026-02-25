@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,7 +38,7 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, Long> {
 			WHERE wm.user.id = :userId
 		)
 		""")
-	List<Workspace> findByMemberUserId(@Param("userId") Long userId);
+	List<Workspace> findByMemberUserId(@Param("userId") Long userId, Sort sort);
 
 	boolean existsByName(String name);
 
