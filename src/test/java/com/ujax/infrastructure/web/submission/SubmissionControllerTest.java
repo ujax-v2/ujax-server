@@ -22,7 +22,6 @@ import com.ujax.support.TestSecurityConfig;
 import com.ujax.infrastructure.web.submission.dto.SubmissionRequest;
 import com.ujax.support.TestSecurityConfig;
 
-@Import(TestSecurityConfig.class)
 @WebMvcTest(SubmissionController.class)
 @Import(TestSecurityConfig.class)
 class SubmissionControllerTest {
