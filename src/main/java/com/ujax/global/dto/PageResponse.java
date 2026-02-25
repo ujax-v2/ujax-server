@@ -2,6 +2,8 @@ package com.ujax.global.dto;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,6 +21,11 @@ public class PageResponse<T> {
 
 	public static <T> PageResponse<T> of(List<T> content, PageInfo pageInfo) {
 		return new PageResponse<>(content, pageInfo);
+	}
+
+	public static <T> PageResponse<T> of(List<T> content, Page<?> page) {
+		return new PageResponse<>(content,
+			new PageInfo(page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages()));
 	}
 
 	@Getter
