@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.domain.user.Password;
@@ -69,7 +70,7 @@ class WorkspaceRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("유저가 속한 워크스페이스를 조회할 수 있다")
+	@DisplayName("유저가 속한 워크스페이스를 정렬 조건으로 조회할 수 있다")
 	void findByMemberUserId() {
 		// given
 		User user = userRepository.save(User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저"));
@@ -77,12 +78,37 @@ class WorkspaceRepositoryTest {
 		workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER));
 
 		// when
-		var result = workspaceRepository.findByMemberUserId(user.getId());
+		var result = workspaceRepository.findByMemberUserId(
+			user.getId(),
+			Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+		);
 
 		// then
 		assertThat(result)
 			.extracting("id")
 			.containsExactly(workspace.getId());
+	}
+
+	@Test
+	@DisplayName("유저 워크스페이스 목록을 최신순으로 정렬할 수 있다")
+	void findByMemberUserIdOrderedByLatest() {
+		// given
+		User user = userRepository.save(User.createLocalUser("sorted@example.com", Password.ofEncoded("password"), "유저"));
+		Workspace older = workspaceRepository.save(Workspace.create("오래된 워크스페이스", "소개"));
+		Workspace newer = workspaceRepository.save(Workspace.create("새 워크스페이스", "소개"));
+		workspaceMemberRepository.save(WorkspaceMember.create(older, user, WorkspaceMemberRole.MEMBER));
+		workspaceMemberRepository.save(WorkspaceMember.create(newer, user, WorkspaceMemberRole.MEMBER));
+
+		// when
+		var result = workspaceRepository.findByMemberUserId(
+			user.getId(),
+			Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+		);
+
+		// then
+		assertThat(result)
+			.extracting("id")
+			.containsExactly(newer.getId(), older.getId());
 	}
 
 	@Test

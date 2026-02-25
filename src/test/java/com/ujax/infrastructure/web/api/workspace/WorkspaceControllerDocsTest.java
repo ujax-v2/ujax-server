@@ -36,7 +36,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.workspace.WorkspaceService;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
@@ -173,13 +172,11 @@ class WorkspaceControllerDocsTest {
 	void listMyWorkspacesByMe() throws Exception {
 		// given
 		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
-		PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
-		given(workspaceService.listMyWorkspaces(anyLong(), anyInt(), anyInt())).willReturn(response);
+		List<WorkspaceResponse> response = List.of(workspace);
+		given(workspaceService.listMyWorkspaces(anyLong())).willReturn(response);
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/me")
-				.param("page", "0")
-				.param("size", "20")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -190,25 +187,13 @@ class WorkspaceControllerDocsTest {
 					.tag("Workspace")
 					.summary("내 워크스페이스 목록 조회")
 					.description("유저가 속한 워크스페이스 목록을 조회합니다 (/me)")
-					.queryParameters(
-						parameterWithName("page").optional().description("페이지 번호"),
-						parameterWithName("size").optional().description("페이지 크기")
-					)
-					.responseSchema(Schema.schema("ApiResponse-WorkspaceMyPage"))
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceMyList"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
-						fieldWithPath("data.content").type(JsonFieldType.ARRAY).description("워크스페이스 목록"),
-						fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
-						fieldWithPath("data.content[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
-						fieldWithPath("data.content[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
-						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
-						fieldWithPath("data.page.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
-						fieldWithPath("data.page.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
-						fieldWithPath("data.page.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
-						fieldWithPath("data.page.first").type(JsonFieldType.BOOLEAN).description("첫 페이지 여부"),
-						fieldWithPath("data.page.last").type(JsonFieldType.BOOLEAN).description("마지막 페이지 여부"),
+						fieldWithPath("data").type(JsonFieldType.ARRAY).description("응답 데이터"),
+						fieldWithPath("data[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
+						fieldWithPath("data[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
+						fieldWithPath("data[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -352,11 +337,13 @@ class WorkspaceControllerDocsTest {
 	void listWorkspaceMembers() throws Exception {
 		// given
 		WorkspaceMemberResponse member = new WorkspaceMemberResponse(1L, "닉네임", WorkspaceMemberRole.MEMBER);
-		WorkspaceMemberListResponse response = WorkspaceMemberListResponse.of(List.of(member));
-		given(workspaceService.listWorkspaceMembers(anyLong(), anyLong())).willReturn(response);
+		PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
+		given(workspaceService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
+				.param("page", "0")
+				.param("size", "20")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isOk())
@@ -366,18 +353,29 @@ class WorkspaceControllerDocsTest {
 				resource(ResourceSnippetParameters.builder()
 					.tag("Workspace")
 					.summary("워크스페이스 멤버 목록 조회")
-					.description("워크스페이스에 속한 멤버 목록을 조회합니다")
+					.description("워크스페이스 멤버를 권한(OWNER→MANAGER→MEMBER), 생성일/ID 오름차순으로 조회합니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
 					)
-					.responseSchema(Schema.schema("ApiResponse-WorkspaceMemberList"))
+					.queryParameters(
+						parameterWithName("page").optional().description("페이지 번호"),
+						parameterWithName("size").optional().description("페이지 크기")
+					)
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceMemberPage"))
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
 						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
-						fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("멤버 목록"),
-						fieldWithPath("data.items[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
-						fieldWithPath("data.items[].nickname").type(JsonFieldType.STRING).description("닉네임"),
-						fieldWithPath("data.items[].role").type(JsonFieldType.STRING).description("권한"),
+						fieldWithPath("data.content").type(JsonFieldType.ARRAY).description("멤버 목록"),
+						fieldWithPath("data.content[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+						fieldWithPath("data.content[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.content[].role").type(JsonFieldType.STRING).description("권한"),
+						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
+						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
+						fieldWithPath("data.page.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+						fieldWithPath("data.page.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
+						fieldWithPath("data.page.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
+						fieldWithPath("data.page.first").type(JsonFieldType.BOOLEAN).description("첫 페이지 여부"),
+						fieldWithPath("data.page.last").type(JsonFieldType.BOOLEAN).description("마지막 페이지 여부"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -389,11 +387,13 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 멤버 목록 조회 API - 권한 없음")
 	void listWorkspaceMembersForbidden() throws Exception {
 		// given
-		given(workspaceService.listWorkspaceMembers(anyLong(), anyLong()))
+		given(workspaceService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt()))
 			.willThrow(new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
+				.param("page", "0")
+				.param("size", "20")
 				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isForbidden())

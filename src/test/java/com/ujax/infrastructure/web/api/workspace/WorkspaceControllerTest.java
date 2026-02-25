@@ -24,9 +24,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.ujax.application.workspace.WorkspaceService;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
+import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.workspace.WorkspaceController;
@@ -57,6 +60,75 @@ class WorkspaceControllerTest {
 		SecurityContextHolder.getContext().setAuthentication(
 			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
 		);
+	}
+
+	@Nested
+	@DisplayName("내 워크스페이스 목록 조회")
+	class ListMyWorkspaces {
+
+		@Test
+		@DisplayName("페이지 파라미터 없이 내 워크스페이스 목록을 조회한다")
+		void listMyWorkspaces() throws Exception {
+			// given
+			WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
+			given(workspaceService.listMyWorkspaces(anyLong())).willReturn(List.of(workspace));
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/me"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data[0].id").value(1))
+				.andExpect(jsonPath("$.data[0].name").value("워크스페이스"));
+
+			then(workspaceService).should().listMyWorkspaces(1L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 멤버 목록 조회")
+	class ListWorkspaceMembers {
+
+		@Test
+		@DisplayName("page/size를 반영해 멤버 목록을 조회한다")
+		void listWorkspaceMembers() throws Exception {
+			// given
+			WorkspaceMemberResponse member = new WorkspaceMemberResponse(1L, "닉네임", WorkspaceMemberRole.MEMBER);
+			PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
+			given(workspaceService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 3L)
+					.param("page", "0")
+					.param("size", "20"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.content[0].workspaceMemberId").value(1))
+				.andExpect(jsonPath("$.data.page.page").value(0))
+				.andExpect(jsonPath("$.data.page.size").value(20));
+
+			then(workspaceService).should().listWorkspaceMembers(3L, 1L, 0, 20);
+		}
+
+		@Test
+		@DisplayName("page/size가 없으면 기본값(0,20)으로 조회한다")
+		void listWorkspaceMembersDefaultPageable() throws Exception {
+			// given
+			PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(), 0, 20, 0L, 0);
+			given(workspaceService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.content").isArray())
+				.andExpect(jsonPath("$.data.page.page").value(0))
+				.andExpect(jsonPath("$.data.page.size").value(20));
+
+			then(workspaceService).should().listWorkspaceMembers(3L, 1L, 0, 20);
+		}
 	}
 
 	@Nested
