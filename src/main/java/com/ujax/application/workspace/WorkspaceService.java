@@ -10,11 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
+import com.ujax.domain.workspace.WorkspaceJoinRequest;
+import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
+import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -45,6 +52,7 @@ public class WorkspaceService {
 
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
+	private final WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceInviteMailer workspaceInviteMailer;
 
@@ -113,6 +121,108 @@ public class WorkspaceService {
 		WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);
 		workspaceMemberRepository.save(member);
 		workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
+	}
+
+	@Transactional
+	public WorkspaceJoinRequestResponse createJoinRequest(Long workspaceId, Long userId) {
+		Workspace workspace = findWorkspaceById(workspaceId);
+		User user = findUserById(userId);
+
+		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
+			throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
+		}
+		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
+			workspaceId,
+			userId,
+			WorkspaceJoinRequestStatus.PENDING
+		)) {
+			throw new ConflictException(ErrorCode.WORKSPACE_JOIN_REQUEST_ALREADY_PENDING);
+		}
+
+		WorkspaceJoinRequest created = workspaceJoinRequestRepository.save(WorkspaceJoinRequest.create(workspace, user));
+		return WorkspaceJoinRequestResponse.from(created);
+	}
+
+	public WorkspaceMyJoinRequestStatusResponse getMyJoinRequestStatus(Long workspaceId, Long userId) {
+		findWorkspaceById(workspaceId);
+
+		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
+			return WorkspaceMyJoinRequestStatusResponse.of(true, WorkspaceMyJoinRequestStatus.MEMBER, false);
+		}
+		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
+			workspaceId,
+			userId,
+			WorkspaceJoinRequestStatus.PENDING
+		)) {
+			return WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.PENDING, false);
+		}
+
+		return workspaceJoinRequestRepository.findTopByWorkspace_IdAndUser_IdOrderByCreatedAtDesc(workspaceId, userId)
+			.filter(request -> request.getStatus() == WorkspaceJoinRequestStatus.REJECTED)
+			.map(request -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.REJECTED, true))
+			.orElseGet(() -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.NONE, true));
+	}
+
+	public PageResponse<WorkspaceJoinRequestListItemResponse> listJoinRequests(
+		Long workspaceId,
+		Long userId,
+		int page,
+		int size
+	) {
+		findWorkspaceById(workspaceId);
+		validatePageable(page, size);
+		validateOwner(workspaceId, userId);
+
+		Page<WorkspaceJoinRequest> joinRequests = workspaceJoinRequestRepository.findByWorkspace_IdAndStatusOrderByCreatedAtDesc(
+			workspaceId,
+			WorkspaceJoinRequestStatus.PENDING,
+			PageRequest.of(page, size)
+		);
+
+		return PageResponse.of(
+			joinRequests.getContent().stream().map(WorkspaceJoinRequestListItemResponse::from).toList(),
+			joinRequests.getNumber(),
+			joinRequests.getSize(),
+			joinRequests.getTotalElements(),
+			joinRequests.getTotalPages()
+		);
+	}
+
+	@Transactional
+	public void approveJoinRequest(Long workspaceId, Long userId, Long requestId) {
+		Workspace workspace = findWorkspaceById(workspaceId);
+		validateOwner(workspaceId, userId);
+
+		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
+		joinRequest.approve();
+
+		User applicant = joinRequest.getUser();
+
+		workspaceMemberRepository.findByWorkspaceIdAndUserIdIncludingDeleted(workspaceId, applicant.getId())
+			.ifPresent(member -> {
+				if (!member.isDeleted()) {
+					throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
+				}
+				member.restore();
+				member.updateRole(WorkspaceMemberRole.MEMBER);
+				member.updateNickname(applicant.getName());
+			});
+
+		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, applicant.getId()).isPresent()) {
+			return;
+		}
+
+		WorkspaceMember member = WorkspaceMember.create(workspace, applicant, WorkspaceMemberRole.MEMBER);
+		workspaceMemberRepository.save(member);
+	}
+
+	@Transactional
+	public void rejectJoinRequest(Long workspaceId, Long userId, Long requestId) {
+		findWorkspaceById(workspaceId);
+		validateOwner(workspaceId, userId);
+
+		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
+		joinRequest.reject();
 	}
 
 	public WorkspaceResponse getWorkspace(Long workspaceId) {
@@ -244,6 +354,11 @@ public class WorkspaceService {
 	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long workspaceMemberId) {
 		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_MEMBER_NOT_FOUND));
+	}
+
+	private WorkspaceJoinRequest findWorkspaceJoinRequestById(Long workspaceId, Long requestId) {
+		return workspaceJoinRequestRepository.findByIdAndWorkspace_Id(requestId, workspaceId)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_JOIN_REQUEST_NOT_FOUND));
 	}
 
 	private void validateName(String name) {

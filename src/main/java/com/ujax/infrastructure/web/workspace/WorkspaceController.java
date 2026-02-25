@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.workspace.WorkspaceService;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.global.dto.PageResponse;
@@ -100,6 +103,52 @@ public class WorkspaceController {
 		@Valid @RequestBody InviteWorkspaceMemberRequest request
 	) {
 		workspaceService.inviteWorkspaceMember(workspaceId, principal.getUserId(), request.email());
+		return ApiResponse.success();
+	}
+
+	@PostMapping("/{workspaceId}/join-requests")
+	public ApiResponse<WorkspaceJoinRequestResponse> createJoinRequest(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		return ApiResponse.success(workspaceService.createJoinRequest(workspaceId, principal.getUserId()));
+	}
+
+	@GetMapping("/{workspaceId}/join-requests/me")
+	public ApiResponse<WorkspaceMyJoinRequestStatusResponse> getMyJoinRequestStatus(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		return ApiResponse.success(workspaceService.getMyJoinRequestStatus(workspaceId, principal.getUserId()));
+	}
+
+	@GetMapping("/{workspaceId}/join-requests")
+	public ApiResponse<PageResponse<WorkspaceJoinRequestListItemResponse>> listJoinRequests(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "20") int size
+	) {
+		return ApiResponse.success(workspaceService.listJoinRequests(workspaceId, principal.getUserId(), page, size));
+	}
+
+	@PostMapping("/{workspaceId}/join-requests/{requestId}/approve")
+	public ApiResponse<Void> approveJoinRequest(
+		@PathVariable Long workspaceId,
+		@PathVariable Long requestId,
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		workspaceService.approveJoinRequest(workspaceId, principal.getUserId(), requestId);
+		return ApiResponse.success();
+	}
+
+	@PostMapping("/{workspaceId}/join-requests/{requestId}/reject")
+	public ApiResponse<Void> rejectJoinRequest(
+		@PathVariable Long workspaceId,
+		@PathVariable Long requestId,
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		workspaceService.rejectJoinRequest(workspaceId, principal.getUserId(), requestId);
 		return ApiResponse.success();
 	}
 
