@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -28,6 +29,7 @@ import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
+import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
@@ -128,6 +130,186 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.data.page.size").value(20));
 
 			then(workspaceService).should().listWorkspaceMembers(3L, 1L, 0, 20);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 탐색 목록 조회")
+	class ListWorkspaces {
+
+		@Test
+		@DisplayName("검색어와 페이지 파라미터를 반영해 탐색 목록을 조회한다")
+		void listWorkspaces() throws Exception {
+			// given
+			WorkspaceResponse workspace = new WorkspaceResponse(3L, "알고리즘 스터디", "소개");
+			PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
+			given(workspaceService.listWorkspaces(any(), anyInt(), anyInt())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/explore")
+					.param("name", "알고리즘")
+					.param("page", "0")
+					.param("size", "20"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.content[0].id").value(3))
+				.andExpect(jsonPath("$.data.content[0].name").value("알고리즘 스터디"))
+				.andExpect(jsonPath("$.data.page.page").value(0))
+				.andExpect(jsonPath("$.data.page.size").value(20));
+
+			then(workspaceService).should().listWorkspaces("알고리즘", 0, 20);
+		}
+
+		@Test
+		@DisplayName("파라미터가 없으면 기본값(0,20)으로 탐색 목록을 조회한다")
+		void listWorkspacesWithDefaultPageable() throws Exception {
+			// given
+			PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(), 0, 20, 0L, 0);
+			given(workspaceService.listWorkspaces(any(), anyInt(), anyInt())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/explore"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.content").isArray())
+				.andExpect(jsonPath("$.data.page.page").value(0))
+				.andExpect(jsonPath("$.data.page.size").value(20));
+
+			then(workspaceService).should().listWorkspaces(isNull(), eq(0), eq(20));
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 상세 조회")
+	class GetWorkspace {
+
+		@Test
+		@DisplayName("워크스페이스 상세 정보를 조회한다")
+		void getWorkspace() throws Exception {
+			// given
+			WorkspaceResponse response = new WorkspaceResponse(3L, "알고리즘 스터디", "소개");
+			given(workspaceService.getWorkspace(anyLong())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.id").value(3))
+				.andExpect(jsonPath("$.data.name").value("알고리즘 스터디"));
+
+			then(workspaceService).should().getWorkspace(3L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 설정 조회")
+	class GetWorkspaceSettings {
+
+		@Test
+		@DisplayName("워크스페이스 설정 정보를 조회한다")
+		void getWorkspaceSettings() throws Exception {
+			// given
+			WorkspaceSettingsResponse response = new WorkspaceSettingsResponse(
+				3L,
+				"알고리즘 스터디",
+				"소개",
+				"https://hook.example.com"
+			);
+			given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/settings", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.id").value(3))
+				.andExpect(jsonPath("$.data.mmWebhookUrl").value("https://hook.example.com"));
+
+			then(workspaceService).should().getWorkspaceSettings(3L, 1L);
+		}
+	}
+
+	@Nested
+	@DisplayName("내 워크스페이스 멤버 정보 조회")
+	class GetMyWorkspaceMember {
+
+		@Test
+		@DisplayName("내 워크스페이스 멤버 정보를 조회한다")
+		void getMyWorkspaceMember() throws Exception {
+			// given
+			WorkspaceMemberResponse response = new WorkspaceMemberResponse(11L, "테스터", WorkspaceMemberRole.MEMBER);
+			given(workspaceService.getMyWorkspaceMember(anyLong(), anyLong())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members/me", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.workspaceMemberId").value(11))
+				.andExpect(jsonPath("$.data.nickname").value("테스터"))
+				.andExpect(jsonPath("$.data.role").value("MEMBER"));
+
+			then(workspaceService).should().getMyWorkspaceMember(3L, 1L);
+		}
+	}
+
+	@Nested
+	@DisplayName("내 워크스페이스 닉네임 수정")
+	class UpdateMyWorkspaceNickname {
+
+		@Test
+		@DisplayName("내 워크스페이스 닉네임을 수정한다")
+		void updateMyWorkspaceNickname() throws Exception {
+			// given
+			WorkspaceMemberResponse response = new WorkspaceMemberResponse(11L, "변경닉", WorkspaceMemberRole.MEMBER);
+			given(workspaceService.updateMyWorkspaceNickname(anyLong(), anyLong(), anyString())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/me/nickname", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"nickname\":\"변경닉\"}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.nickname").value("변경닉"));
+
+			then(workspaceService).should().updateMyWorkspaceNickname(3L, 1L, "변경닉");
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 멤버 초대")
+	class InviteWorkspaceMember {
+
+		@Test
+		@DisplayName("이메일로 워크스페이스 멤버를 초대한다")
+		void inviteWorkspaceMember() throws Exception {
+			// given
+			willDoNothing().given(workspaceService).inviteWorkspaceMember(anyLong(), anyLong(), anyString());
+
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/members/invite", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"member@example.com\"}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceService).should().inviteWorkspaceMember(3L, 1L, "member@example.com");
+		}
+
+		@Test
+		@DisplayName("이메일 형식이 잘못되면 400을 반환한다")
+		void inviteWorkspaceMemberWithInvalidEmail() throws Exception {
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/members/invite", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"invalid-email\"}"))
+				.andDo(print())
+				.andExpect(status().isBadRequest());
 		}
 	}
 
@@ -238,6 +420,8 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content[0].requestId").value(10))
 				.andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+
+			then(workspaceService).should().listJoinRequests(3L, 1L, 0, 20);
 		}
 	}
 
@@ -258,6 +442,145 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.success").value(true));
 
 			then(workspaceService).should().rejectJoinRequest(3L, 1L, 10L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 생성")
+	class CreateWorkspace {
+
+		@Test
+		@DisplayName("워크스페이스를 생성한다")
+		void createWorkspace() throws Exception {
+			// given
+			WorkspaceResponse response = new WorkspaceResponse(20L, "신규 워크스페이스", "소개");
+			given(workspaceService.createWorkspace(anyString(), any(), anyLong())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"신규 워크스페이스\",\"description\":\"소개\"}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.id").value(20))
+				.andExpect(jsonPath("$.data.name").value("신규 워크스페이스"));
+
+			then(workspaceService).should().createWorkspace("신규 워크스페이스", "소개", 1L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 수정")
+	class UpdateWorkspace {
+
+		@Test
+		@DisplayName("워크스페이스 정보를 수정한다")
+		void updateWorkspace() throws Exception {
+			// given
+			WorkspaceResponse response = new WorkspaceResponse(3L, "수정된 워크스페이스", "수정된 소개");
+			given(workspaceService.updateWorkspace(anyLong(), anyLong(), any(), any(), any())).willReturn(response);
+
+			// when & then
+			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"수정된 워크스페이스\",\"description\":\"수정된 소개\",\"mmWebhookUrl\":\"https://hook.example.com\"}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.id").value(3))
+				.andExpect(jsonPath("$.data.name").value("수정된 워크스페이스"));
+
+			then(workspaceService).should().updateWorkspace(
+				3L,
+				1L,
+				"수정된 워크스페이스",
+				"수정된 소개",
+				"https://hook.example.com"
+			);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 삭제")
+	class DeleteWorkspace {
+
+		@Test
+		@DisplayName("워크스페이스를 삭제한다")
+		void deleteWorkspace() throws Exception {
+			// given
+			willDoNothing().given(workspaceService).deleteWorkspace(anyLong(), anyLong());
+
+			// when & then
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceService).should().deleteWorkspace(3L, 1L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 멤버 권한 수정")
+	class UpdateWorkspaceMemberRole {
+
+		@Test
+		@DisplayName("멤버 권한을 수정한다")
+		void updateWorkspaceMemberRole() throws Exception {
+			// given
+			willDoNothing().given(workspaceService)
+				.updateWorkspaceMemberRole(anyLong(), anyLong(), anyLong(), any(WorkspaceMemberRole.class));
+
+			// when & then
+			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}/role", 3L, 11L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"role\":\"MANAGER\"}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceService).should().updateWorkspaceMemberRole(3L, 1L, 11L, WorkspaceMemberRole.MANAGER);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 멤버 제거")
+	class RemoveWorkspaceMember {
+
+		@Test
+		@DisplayName("워크스페이스 멤버를 제거한다")
+		void removeWorkspaceMember() throws Exception {
+			// given
+			willDoNothing().given(workspaceService).removeWorkspaceMember(anyLong(), anyLong(), anyLong());
+
+			// when & then
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/{workspaceMemberId}", 3L, 11L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceService).should().removeWorkspaceMember(3L, 1L, 11L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 탈퇴")
+	class LeaveWorkspace {
+
+		@Test
+		@DisplayName("현재 워크스페이스에서 탈퇴한다")
+		void leaveWorkspace() throws Exception {
+			// given
+			willDoNothing().given(workspaceService).leaveWorkspace(anyLong(), anyLong());
+
+			// when & then
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/members/me", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceService).should().leaveWorkspace(3L, 1L);
 		}
 	}
 }
