@@ -30,10 +30,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.user.UserService;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.user.UserController;
+import com.ujax.infrastructure.web.user.dto.request.ProfileImageUploadRequest;
 import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 import com.ujax.support.TestSecurityConfig;
 
@@ -104,6 +106,52 @@ class UserControllerDocsTest {
 						fieldWithPath("data.profileImageUrl").type(JsonFieldType.STRING).description("프로필 이미지 URL").optional(),
 						fieldWithPath("data.provider").type(JsonFieldType.STRING).description("인증 제공자 (GOOGLE, KAKAO, LOCAL)"),
 						fieldWithPath("data.baekjoonId").type(JsonFieldType.STRING).description("백준 아이디").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("프로필 이미지 Presigned URL 생성 API")
+	void createProfileImagePresignedUrl() throws Exception {
+		// given
+		ProfileImageUploadRequest request = new ProfileImageUploadRequest("image/png", 1048576L);
+		PresignedUrlResponse response = new PresignedUrlResponse(
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/presigned?X-Amz-Algorithm=...",
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/users/1/profile/uuid.png"
+		);
+		given(userService.createProfileImagePresignedUrl(anyLong(), any(ProfileImageUploadRequest.class)))
+			.willReturn(response);
+
+		// when & then
+		mockMvc.perform(post("/api/v1/users/me/profile-image/presigned-url")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.presignedUrl").isNotEmpty())
+			.andExpect(jsonPath("$.data.imageUrl").isNotEmpty())
+			.andDo(document("user-create-profile-image-presigned-url",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("User")
+					.summary("프로필 이미지 업로드 Presigned URL 생성")
+					.description("S3에 프로필 이미지를 업로드하기 위한 Presigned URL을 생성합니다. JPEG, PNG, WEBP만 허용되며 최대 5MB입니다.")
+					.requestSchema(Schema.schema("ProfileImageUploadRequest"))
+					.responseSchema(Schema.schema("ApiResponse-PresignedUrlResponse"))
+					.requestFields(
+						fieldWithPath("contentType").type(JsonFieldType.STRING).description("이미지 Content-Type (image/jpeg, image/png, image/webp)"),
+						fieldWithPath("fileSize").type(JsonFieldType.NUMBER).description("파일 크기 (바이트, 최대 5MB)")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.presignedUrl").type(JsonFieldType.STRING).description("S3 업로드용 Presigned URL"),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("업로드 완료 후 이미지 접근 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()

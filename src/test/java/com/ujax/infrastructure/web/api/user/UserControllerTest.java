@@ -25,6 +25,7 @@ import com.ujax.application.user.dto.response.UserResponse;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.user.UserController;
+import com.ujax.infrastructure.web.user.dto.request.ProfileImageUploadRequest;
 import com.ujax.infrastructure.web.user.dto.request.UserUpdateRequest;
 import com.ujax.support.TestSecurityConfig;
 
@@ -56,6 +57,39 @@ class UserControllerTest {
 		SecurityContextHolder.getContext().setAuthentication(
 			new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
 		);
+	}
+
+	@Nested
+	@DisplayName("프로필 이미지 Presigned URL 생성")
+	class CreateProfileImagePresignedUrl {
+
+		@Test
+		@DisplayName("contentType이 비어있으면 실패한다")
+		void failsWithBlankContentType() throws Exception {
+			// given
+			ProfileImageUploadRequest request = new ProfileImageUploadRequest("", 1024L);
+
+			// when & then
+			mockMvc.perform(post("/api/v1/users/me/profile-image/presigned-url")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(request)))
+				.andDo(print())
+				.andExpect(status().isBadRequest());
+		}
+
+		@Test
+		@DisplayName("fileSize가 null이면 실패한다")
+		void failsWithNullFileSize() throws Exception {
+			// given
+			ProfileImageUploadRequest request = new ProfileImageUploadRequest("image/png", null);
+
+			// when & then
+			mockMvc.perform(post("/api/v1/users/me/profile-image/presigned-url")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(request)))
+				.andDo(print())
+				.andExpect(status().isBadRequest());
+		}
 	}
 
 	@Nested

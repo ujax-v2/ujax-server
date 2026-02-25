@@ -28,6 +28,12 @@ app:
     secret: ${JWT_SECRET:defaultDevSecretKeyThatIsAtLeast256BitsLongForHmacSha256Algorithm}
     access-expiration: 1800000
     refresh-expiration: 2592000000
+  s3:
+    bucket: ${S3_BUCKET:ujax-profile-images}
+    region: ${S3_REGION:ap-northeast-2}
+    access-key: ${S3_ACCESS_KEY:s3-access-key}
+    secret-key: ${S3_SECRET_KEY:s3-secret-key}
+    presigned-url-expiry: ${S3_PRESIGNED_URL_EXPIRY:300}
   ujax:
     base-url: ${UJAX_BASE_URL:https://ujax.site}
     frontend-callback-url: ${UJAX_FRONTEND_CALLBACK:https://ujax.site/auth/callback}
