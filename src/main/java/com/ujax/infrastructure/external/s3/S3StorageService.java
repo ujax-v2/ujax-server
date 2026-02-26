@@ -33,23 +33,23 @@ public class S3StorageService {
 	private final S3Properties s3Properties;
 
 	public PresignedUrlResult generatePresignedUrl(Long userId, String contentType, long fileSize) {
+		String key = getUserProfileKey(userId, contentType);
+		return generatePresignedUrlByKey(key, contentType, fileSize);
+	}
+
+	public PresignedUrlResult generateWorkspaceImagePresignedUrl(Long workspaceId, String contentType, long fileSize) {
+		String key = getWorkspaceImageKey(workspaceId, contentType);
+		return generatePresignedUrlByKey(key, contentType, fileSize);
+	}
+
+	private PresignedUrlResult generatePresignedUrlByKey(String key, String contentType, long fileSize) {
 		validateContentType(contentType);
 		validateFileSize(fileSize);
-
-		String key = getKey(userId, contentType);
 
 		String imageUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
 			s3Properties.bucket(), s3Properties.region(), key);
 		PresignedPutObjectRequest presigned = getPresigned(contentType, fileSize, key);
 		return new PresignedUrlResult(presigned.url().toString(), imageUrl);
-	}
-
-	public PresignedUrlResult generateWorkspaceImagePresignedUrl(Long workspaceId, String contentType, long fileSize) {
-		// TODO
-		// 1) contentType/fileSize 유효성 검증
-		// 2) workspaces/{workspaceId}/image/{UUID}.{ext} 키 생성
-		// 3) presigned URL + image URL 생성/반환
-		throw new UnsupportedOperationException("TODO: generate workspace image presigned url");
 	}
 
 	public void deleteByUrl(String imageUrl) {
@@ -68,9 +68,14 @@ public class S3StorageService {
 		}
 	}
 
-	private String getKey(Long userId, String contentType) {
+	private String getUserProfileKey(Long userId, String contentType) {
 		String extension = contentType.substring(contentType.indexOf('/') + 1);
 		return "users/" + userId + "/profile/" + UUID.randomUUID() + "." + extension;
+	}
+
+	private String getWorkspaceImageKey(Long workspaceId, String contentType) {
+		String extension = contentType.substring(contentType.indexOf('/') + 1);
+		return "workspaces/" + workspaceId + "/image/" + UUID.randomUUID() + "." + extension;
 	}
 
 	private PresignedPutObjectRequest getPresigned(String contentType, long fileSize, String key) {
