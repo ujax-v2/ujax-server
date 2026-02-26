@@ -15,6 +15,7 @@ import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -31,6 +32,9 @@ import com.ujax.global.exception.common.BadRequestException;
 import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
+import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -54,6 +58,7 @@ public class WorkspaceService {
 	private final WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceInviteMailer workspaceInviteMailer;
+	private final S3StorageService s3StorageService;
 
 	public PageResponse<WorkspaceResponse> listWorkspaces(String name, int page, int size) {
 		validatePageable(page, size);
@@ -231,6 +236,21 @@ public class WorkspaceService {
 		return WorkspaceResponse.from(findWorkspaceById(workspaceId));
 	}
 
+	public PresignedUrlResponse createWorkspaceImagePresignedUrl(
+		Long workspaceId,
+		Long userId,
+		WorkspaceImageUploadRequest request
+	) {
+		findWorkspaceById(workspaceId);
+		validateOwner(workspaceId, userId);
+		PresignedUrlResult result = s3StorageService.generateWorkspaceImagePresignedUrl(
+			workspaceId,
+			request.contentType(),
+			request.fileSize()
+		);
+		return new PresignedUrlResponse(result.presignedUrl(), result.imageUrl());
+	}
+
 	@Transactional
 	public WorkspaceResponse createWorkspace(String name, String description, Long userId) {
 		validateName(name);
@@ -247,11 +267,18 @@ public class WorkspaceService {
 	}
 
 	@Transactional
-	public WorkspaceResponse updateWorkspace(Long workspaceId, Long userId, String name, String description, String mmWebhookUrl) {
+	public WorkspaceResponse updateWorkspace(
+		Long workspaceId,
+		Long userId,
+		String name,
+		String description,
+		String mmWebhookUrl,
+		String imageUrl
+	) {
 		Workspace workspace = findWorkspaceById(workspaceId);
 		validateOwner(workspaceId, userId);
 
-		if (name == null && description == null && mmWebhookUrl == null) {
+		if (name == null && description == null && mmWebhookUrl == null && imageUrl == null) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 		if (name != null) {
@@ -262,7 +289,7 @@ public class WorkspaceService {
 			validateDescription(description);
 		}
 
-		workspace.update(name, description, mmWebhookUrl);
+		workspace.update(name, description, mmWebhookUrl, imageUrl);
 		return WorkspaceResponse.from(workspace);
 	}
 

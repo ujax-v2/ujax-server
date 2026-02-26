@@ -93,6 +93,33 @@ class S3StorageServiceTest {
 	}
 
 	@Nested
+	@DisplayName("워크스페이스 이미지 Presigned URL 생성")
+	class GenerateWorkspaceImagePresignedUrl {
+
+		@Test
+		@DisplayName("유효한 요청이면 워크스페이스 경로로 presigned URL을 생성한다")
+		void successWithValidRequest() throws Exception {
+			// given
+			given(s3Properties.bucket()).willReturn("test-bucket");
+			given(s3Properties.region()).willReturn("ap-northeast-2");
+			given(s3Properties.presignedUrlExpiry()).willReturn(300L);
+
+			PresignedPutObjectRequest presignedRequest = mock(PresignedPutObjectRequest.class);
+			given(presignedRequest.url()).willReturn(URI.create("https://test-bucket.s3.ap-northeast-2.amazonaws.com/presigned").toURL());
+			given(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).willReturn(presignedRequest);
+
+			// when
+			PresignedUrlResult result = s3StorageService.generateWorkspaceImagePresignedUrl(7L, "image/webp", 1024);
+
+			// then
+			assertThat(result.presignedUrl()).contains("test-bucket");
+			assertThat(result.imageUrl())
+				.startsWith("https://test-bucket.s3.ap-northeast-2.amazonaws.com/workspaces/7/image/")
+				.endsWith(".webp");
+		}
+	}
+
+	@Nested
 	@DisplayName("S3 이미지 삭제")
 	class DeleteByUrl {
 
