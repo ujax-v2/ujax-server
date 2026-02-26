@@ -55,7 +55,7 @@ class WorkspaceProblemRepositoryTest {
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 		WorkspaceMember member = workspaceMemberRepository.save(
 			WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
-		ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집", "설명"));
+		ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, "문제집", "설명"));
 
 		Problem problem1 = problemRepository.save(
 			Problem.create(1000, "A+B", "Bronze V", "1초", "256MB", "설명", "입력", "출력", "https://boj.kr/1000"));
@@ -84,7 +84,7 @@ class WorkspaceProblemRepositoryTest {
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 		WorkspaceMember member = workspaceMemberRepository.save(
 			WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
-		ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집", "설명"));
+		ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, "문제집", "설명"));
 		Problem problem = problemRepository.save(
 			Problem.create(1000, "A+B", "Bronze V", "1초", "256MB", "설명", "입력", "출력", "https://boj.kr/1000"));
 		workspaceProblemRepository.save(WorkspaceProblem.create(problemBox, problem, null, null));

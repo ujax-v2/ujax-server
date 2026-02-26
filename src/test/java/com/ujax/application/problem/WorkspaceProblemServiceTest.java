@@ -101,8 +101,8 @@ class WorkspaceProblemServiceTest {
 		return workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, role));
 	}
 
-	private ProblemBox createProblemBox(Workspace workspace, WorkspaceMember member) {
-		return problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집", "설명"));
+	private ProblemBox createProblemBox(Workspace workspace) {
+		return problemBoxRepository.save(ProblemBox.create(workspace, "문제집", "설명"));
 	}
 
 	private Problem createProblem(int problemNumber, String title) {
@@ -122,7 +122,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			LocalDateTime deadline = LocalDateTime.of(2026, 3, 1, 0, 0);
@@ -144,7 +144,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			workspaceProblemService.createWorkspaceProblem(
@@ -166,7 +166,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 
 			// when & then
 			assertThatThrownBy(() -> workspaceProblemService.createWorkspaceProblem(
@@ -185,7 +185,7 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.MEMBER);
 			User owner = createUser("owner@example.com");
 			WorkspaceMember ownerMember = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, ownerMember);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			// when & then
@@ -208,7 +208,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
@@ -237,7 +237,7 @@ class WorkspaceProblemServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember ownerMember = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
 			createMember(workspace, member, WorkspaceMemberRole.MEMBER);
-			ProblemBox problemBox = createProblemBox(workspace, ownerMember);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
@@ -264,7 +264,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
@@ -290,7 +290,7 @@ class WorkspaceProblemServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember ownerMember = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
 			createMember(workspace, member, WorkspaceMemberRole.MEMBER);
-			ProblemBox problemBox = createProblemBox(workspace, ownerMember);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
 
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
@@ -316,7 +316,7 @@ class WorkspaceProblemServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem1 = createProblem(1000, "A+B");
 			Problem problem2 = createProblem(1001, "A-B");
 
@@ -343,7 +343,7 @@ class WorkspaceProblemServiceTest {
 			User outsider = createUser("outsider@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
-			ProblemBox problemBox = createProblemBox(workspace, member);
+			ProblemBox problemBox = createProblemBox(workspace);
 
 			// when & then
 			assertThatThrownBy(() -> workspaceProblemService.listWorkspaceProblems(

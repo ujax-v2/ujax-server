@@ -37,8 +37,8 @@ public class WorkspaceProblemService {
 
 	public PageResponse<WorkspaceProblemResponse> listWorkspaceProblems(Long workspaceId, Long problemBoxId,
 		Long userId, int page, int size) {
-		validateMember(workspaceId, userId);
-		findProblemBoxByIdAndWorkspaceId(problemBoxId, workspaceId);
+		findWorkspaceMember(workspaceId, userId);
+		findProblemBox(problemBoxId, workspaceId);
 
 		Page<WorkspaceProblem> result = workspaceProblemRepository.findByProblemBoxIdWithProblem(
 			problemBoxId, PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
@@ -53,8 +53,8 @@ public class WorkspaceProblemService {
 	public WorkspaceProblemResponse createWorkspaceProblem(Long workspaceId, Long problemBoxId, Long userId,
 		CreateWorkspaceProblemRequest request) {
 		findManagerOrOwner(workspaceId, userId);
-		ProblemBox problemBox = findProblemBoxByIdAndWorkspaceId(problemBoxId, workspaceId);
 
+		ProblemBox problemBox = findProblemBox(problemBoxId, workspaceId);
 		Problem problem = problemRepository.findById(request.problemId())
 			.orElseThrow(() -> new NotFoundException(ErrorCode.PROBLEM_NOT_FOUND));
 
@@ -73,9 +73,8 @@ public class WorkspaceProblemService {
 	public WorkspaceProblemResponse updateWorkspaceProblem(Long workspaceId, Long problemBoxId,
 		Long workspaceProblemId, Long userId, UpdateWorkspaceProblemRequest request) {
 		findManagerOrOwner(workspaceId, userId);
-		ProblemBox problemBox = findProblemBoxByIdAndWorkspaceId(problemBoxId, workspaceId);
 
-		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceProblemId, problemBoxId);
+		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
 		workspaceProblem.update(request.deadline(), request.scheduledAt());
 
 		return WorkspaceProblemResponse.from(workspaceProblem);
@@ -84,29 +83,28 @@ public class WorkspaceProblemService {
 	@Transactional
 	public void deleteWorkspaceProblem(Long workspaceId, Long problemBoxId, Long workspaceProblemId, Long userId) {
 		findManagerOrOwner(workspaceId, userId);
-		ProblemBox problemBox = findProblemBoxByIdAndWorkspaceId(problemBoxId, workspaceId);
 
-		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceProblemId, problemBoxId);
+		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
 		workspaceProblemRepository.delete(workspaceProblem);
 	}
 
-	private void validateMember(Long workspaceId, Long userId) {
-		workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
+	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long userId) {
+		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
 			.orElseThrow(() -> new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 	}
 
 	private void findManagerOrOwner(Long workspaceId, Long userId) {
-		WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-			.orElseThrow(() -> new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
+		WorkspaceMember member = findWorkspaceMember(workspaceId, userId);
 		member.validateManagerOrOwner();
 	}
 
-	private ProblemBox findProblemBoxByIdAndWorkspaceId(Long problemBoxId, Long workspaceId) {
+	private ProblemBox findProblemBox(Long problemBoxId, Long workspaceId) {
 		return problemBoxRepository.findByIdAndWorkspace_Id(problemBoxId, workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.PROBLEM_BOX_NOT_FOUND));
 	}
 
-	private WorkspaceProblem findWorkspaceProblem(Long workspaceProblemId, Long problemBoxId) {
+	private WorkspaceProblem findWorkspaceProblem(Long workspaceId, Long workspaceProblemId, Long problemBoxId) {
+		findProblemBox(problemBoxId, workspaceId);
 		return workspaceProblemRepository.findByIdAndProblemBox_Id(workspaceProblemId, problemBoxId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_PROBLEM_NOT_FOUND));
 	}

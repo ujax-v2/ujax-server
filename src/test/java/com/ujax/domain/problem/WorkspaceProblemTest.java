@@ -7,18 +7,12 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.ujax.domain.user.Password;
-import com.ujax.domain.user.User;
 import com.ujax.domain.workspace.Workspace;
-import com.ujax.domain.workspace.WorkspaceMember;
-import com.ujax.domain.workspace.WorkspaceMemberRole;
 
 class WorkspaceProblemTest {
 
 	private final Workspace workspace = Workspace.create("워크스페이스", "소개");
-	private final User user = User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저");
-	private final WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER);
-	private final ProblemBox problemBox = ProblemBox.create(workspace, member, "문제집", "설명");
+	private final ProblemBox problemBox = ProblemBox.create(workspace, "문제집", "설명");
 	private final Problem problem = Problem.create(1000, "A+B", "Bronze V", "1초", "256MB",
 		"설명", "입력", "출력", "https://boj.kr/1000");
 

@@ -151,7 +151,7 @@ class ProblemBoxServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, member, "원래 제목", "원래 설명"));
+			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "원래 제목", "원래 설명"));
 
 			// when
 			ProblemBoxResponse response = problemBoxService.updateProblemBox(
@@ -172,7 +172,7 @@ class ProblemBoxServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember ownerMember = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
 			createMember(workspace, member, WorkspaceMemberRole.MEMBER);
-			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, ownerMember, "제목", "설명"));
+			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "제목", "설명"));
 
 			// when & then
 			assertThatThrownBy(() -> problemBoxService.updateProblemBox(
@@ -194,7 +194,7 @@ class ProblemBoxServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, member, "제목", "설명"));
+			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "제목", "설명"));
 
 			// when
 			problemBoxService.deleteProblemBox(workspace.getId(), saved.getId(), user.getId());
@@ -215,7 +215,7 @@ class ProblemBoxServiceTest {
 			Workspace workspace = createWorkspace();
 			WorkspaceMember ownerMember = createMember(workspace, owner, WorkspaceMemberRole.OWNER);
 			createMember(workspace, member, WorkspaceMemberRole.MEMBER);
-			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, ownerMember, "제목", "설명"));
+			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "제목", "설명"));
 
 			// when & then
 			assertThatThrownBy(() -> problemBoxService.deleteProblemBox(
@@ -236,7 +236,7 @@ class ProblemBoxServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, member, "제목", "설명"));
+			ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "제목", "설명"));
 
 			// when
 			ProblemBoxResponse response = problemBoxService.getProblemBox(
@@ -274,8 +274,8 @@ class ProblemBoxServiceTest {
 			User user = createUser("owner@example.com");
 			Workspace workspace = createWorkspace();
 			WorkspaceMember member = createMember(workspace, user, WorkspaceMemberRole.OWNER);
-			problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집1", "설명1"));
-			problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집2", "설명2"));
+			problemBoxRepository.save(ProblemBox.create(workspace, "문제집1", "설명1"));
+			problemBoxRepository.save(ProblemBox.create(workspace, "문제집2", "설명2"));
 
 			// when
 			PageResponse<?> response = problemBoxService.listProblemBoxes(
