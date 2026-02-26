@@ -1,6 +1,8 @@
 package com.ujax.application.workspace;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
@@ -30,6 +33,9 @@ import com.ujax.global.exception.common.BadRequestException;
 import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
+import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -55,6 +61,9 @@ class WorkspaceServiceTest {
 
 	@MockitoBean
 	private WorkspaceInviteMailer workspaceInviteMailer;
+
+	@MockitoBean
+	private S3StorageService s3StorageService;
 
 	@BeforeEach
 	void setUp() {
@@ -85,6 +94,7 @@ class WorkspaceServiceTest {
 
 			// then
 			assertThat(member.getRole()).isEqualTo(WorkspaceMemberRole.OWNER);
+			assertThat(workspace.getImageUrl()).isEqualTo(Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
 		@Test
@@ -149,6 +159,56 @@ class WorkspaceServiceTest {
 	}
 
 	@Nested
+	@DisplayName("워크스페이스 이미지 Presigned URL 생성")
+	class CreateWorkspaceImagePresignedUrl {
+
+		@Test
+		@DisplayName("오너는 이미지 Presigned URL을 생성할 수 있다")
+		void createWorkspaceImagePresignedUrl() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-image@example.com", Password.ofEncoded("password"), "오너"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			WorkspaceImageUploadRequest request = new WorkspaceImageUploadRequest("image/png", 1024L);
+
+			given(s3StorageService.generateWorkspaceImagePresignedUrl(workspace.getId(), "image/png", 1024L))
+				.willReturn(new PresignedUrlResult("https://presigned-url", "https://image-url"));
+
+			// when
+			PresignedUrlResponse response = workspaceService.createWorkspaceImagePresignedUrl(
+				workspace.getId(),
+				owner.getId(),
+				request
+			);
+
+			// then
+			assertThat(response).extracting("presignedUrl", "imageUrl")
+				.containsExactly("https://presigned-url", "https://image-url");
+		}
+
+		@Test
+		@DisplayName("오너가 아니면 오류가 발생한다")
+		void createWorkspaceImagePresignedUrlForbidden() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-image2@example.com", Password.ofEncoded("password"), "오너"));
+			User member = userRepository.save(User.createLocalUser("member-image@example.com", Password.ofEncoded("password"), "멤버"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, member, WorkspaceMemberRole.MEMBER));
+			WorkspaceImageUploadRequest request = new WorkspaceImageUploadRequest("image/png", 1024L);
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.createWorkspaceImagePresignedUrl(
+				workspace.getId(),
+				member.getId(),
+				request
+			))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
+		}
+	}
+
+	@Nested
 	@DisplayName("워크스페이스 수정")
 	class UpdateWorkspace {
 
@@ -205,8 +265,8 @@ class WorkspaceServiceTest {
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
-			assertThat(updated).extracting("name", "description", "mmWebhookUrl")
-				.containsExactly("새 이름", "새 소개", null);
+			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+				.containsExactly("새 이름", "새 소개", null, Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
 		@Test
@@ -222,8 +282,32 @@ class WorkspaceServiceTest {
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
-			assertThat(updated).extracting("name", "description", "mmWebhookUrl")
-				.containsExactly("워크스페이스", "소개", "https://hook.example.com");
+			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+				.containsExactly("워크스페이스", "소개", "https://hook.example.com", Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
+		}
+
+		@Test
+		@DisplayName("이미지를 수정할 수 있다")
+		void updateWorkspaceOnlyImage() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-image-update@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when
+			workspaceService.updateWorkspace(
+				workspace.getId(),
+				owner.getId(),
+				null,
+				null,
+				null,
+				"https://new-image.com/workspace.png"
+			);
+
+			// then
+			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
+			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+				.containsExactly("워크스페이스", "소개", null, "https://new-image.com/workspace.png");
 		}
 
 		@Test

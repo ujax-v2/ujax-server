@@ -41,6 +41,7 @@ import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
@@ -55,6 +56,7 @@ import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRe
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberNicknameRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 import com.ujax.support.TestSecurityConfig;
 
 import io.jsonwebtoken.Claims;
@@ -555,6 +557,52 @@ class WorkspaceControllerDocsTest {
 	}
 
 	@Test
+	@DisplayName("워크스페이스 이미지 Presigned URL 생성 API")
+	void createWorkspaceImagePresignedUrl() throws Exception {
+		// given
+		WorkspaceImageUploadRequest request = new WorkspaceImageUploadRequest("image/png", 1048576L);
+		PresignedUrlResponse response = new PresignedUrlResponse(
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/presigned?X-Amz-Algorithm=...",
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/workspaces/1/image/uuid.png"
+		);
+		given(workspaceService.createWorkspaceImagePresignedUrl(anyLong(), anyLong(), any(WorkspaceImageUploadRequest.class)))
+			.willReturn(response);
+
+		// when & then
+		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/image/presigned-url", 1L)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("workspace-create-image-presigned-url",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("워크스페이스 이미지 업로드 Presigned URL 생성")
+					.description("S3에 워크스페이스 이미지를 업로드하기 위한 Presigned URL을 생성합니다. JPEG, PNG, WEBP만 허용되며 최대 5MB입니다.")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.requestSchema(Schema.schema("WorkspaceImageUploadRequest"))
+					.responseSchema(Schema.schema("ApiResponse-PresignedUrlResponse"))
+					.requestFields(
+						fieldWithPath("contentType").type(JsonFieldType.STRING).description("이미지 Content-Type (image/jpeg, image/png, image/webp)"),
+						fieldWithPath("fileSize").type(JsonFieldType.NUMBER).description("파일 크기 (바이트, 최대 5MB)")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.presignedUrl").type(JsonFieldType.STRING).description("S3 업로드용 Presigned URL"),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("업로드 완료 후 이미지 접근 URL"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
 	@DisplayName("워크스페이스 생성 API")
 	void createWorkspace() throws Exception {
 		// given
@@ -629,9 +677,14 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 수정 API")
 	void updateWorkspace() throws Exception {
 		// given
-		UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("새 이름", "새 소개", "https://hook.example.com");
+		UpdateWorkspaceRequest request = new UpdateWorkspaceRequest(
+			"새 이름",
+			"새 소개",
+			"https://hook.example.com",
+			"https://new-image.com/workspace.png"
+		);
 		WorkspaceResponse response = new WorkspaceResponse(1L, "새 이름", "새 소개");
-		given(workspaceService.updateWorkspace(anyLong(), anyLong(), anyString(), any(), any())).willReturn(response);
+		given(workspaceService.updateWorkspace(anyLong(), anyLong(), anyString(), any(), any(), any())).willReturn(response);
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 1)
@@ -653,7 +706,8 @@ class WorkspaceControllerDocsTest {
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
 						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional()
+						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
+						fieldWithPath("imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL").optional()
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceResponse"))
 					.responseFields(
@@ -673,10 +727,10 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 수정 API - 유효성 오류")
 	void updateWorkspaceValidationError() throws Exception {
 		// given
-		UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("", "새 소개", null);
+		UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("", "새 소개", null, null);
 		willThrow(new com.ujax.global.exception.common.BadRequestException(ErrorCode.INVALID_INPUT))
 			.given(workspaceService)
-			.updateWorkspace(anyLong(), anyLong(), any(), any(), any());
+			.updateWorkspace(anyLong(), anyLong(), any(), any(), any(), any());
 
 		// when & then
 		mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 1)
@@ -698,7 +752,8 @@ class WorkspaceControllerDocsTest {
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
 						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional()
+						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
+						fieldWithPath("imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL").optional()
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Validation"))
 					.responseFields(problemDetailFields())

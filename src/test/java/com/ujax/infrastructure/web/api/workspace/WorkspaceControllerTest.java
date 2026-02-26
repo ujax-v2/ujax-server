@@ -30,11 +30,13 @@ import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.workspace.WorkspaceController;
+import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 import com.ujax.support.TestSecurityConfig;
 
 import io.jsonwebtoken.Claims;
@@ -314,6 +316,44 @@ class WorkspaceControllerTest {
 	}
 
 	@Nested
+	@DisplayName("워크스페이스 이미지 Presigned URL 생성")
+	class CreateWorkspaceImagePresignedUrl {
+
+		@Test
+		@DisplayName("오너가 업로드용 Presigned URL을 생성한다")
+		void createWorkspaceImagePresignedUrl() throws Exception {
+			// given
+			PresignedUrlResponse response = new PresignedUrlResponse("https://presigned-url", "https://image-url");
+			given(workspaceService.createWorkspaceImagePresignedUrl(anyLong(), anyLong(), any(WorkspaceImageUploadRequest.class)))
+				.willReturn(response);
+
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/image/presigned-url", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"contentType\":\"image/png\",\"fileSize\":1024}"))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.presignedUrl").value("https://presigned-url"))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://image-url"));
+
+			then(workspaceService).should()
+				.createWorkspaceImagePresignedUrl(eq(3L), eq(1L), any(WorkspaceImageUploadRequest.class));
+		}
+
+		@Test
+		@DisplayName("요청 값이 비어 있으면 400을 반환한다")
+		void createWorkspaceImagePresignedUrlValidationError() throws Exception {
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/image/presigned-url", 3L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"contentType\":\"\",\"fileSize\":null}"))
+				.andDo(print())
+				.andExpect(status().isBadRequest());
+		}
+	}
+
+	@Nested
 	@DisplayName("가입 신청 생성")
 	class CreateJoinRequest {
 
@@ -479,12 +519,12 @@ class WorkspaceControllerTest {
 		void updateWorkspace() throws Exception {
 			// given
 			WorkspaceResponse response = new WorkspaceResponse(3L, "수정된 워크스페이스", "수정된 소개");
-			given(workspaceService.updateWorkspace(anyLong(), anyLong(), any(), any(), any())).willReturn(response);
+			given(workspaceService.updateWorkspace(anyLong(), anyLong(), any(), any(), any(), any())).willReturn(response);
 
 			// when & then
 			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"name\":\"수정된 워크스페이스\",\"description\":\"수정된 소개\",\"mmWebhookUrl\":\"https://hook.example.com\"}"))
+					.content("{\"name\":\"수정된 워크스페이스\",\"description\":\"수정된 소개\",\"mmWebhookUrl\":\"https://hook.example.com\",\"imageUrl\":\"https://new-image.com/workspace.png\"}"))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
@@ -496,7 +536,8 @@ class WorkspaceControllerTest {
 				1L,
 				"수정된 워크스페이스",
 				"수정된 소개",
-				"https://hook.example.com"
+				"https://hook.example.com",
+				"https://new-image.com/workspace.png"
 			);
 		}
 	}
