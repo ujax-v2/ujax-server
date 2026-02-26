@@ -1,7 +1,6 @@
 package com.ujax.application.workspace;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -406,8 +405,8 @@ class WorkspaceServiceTest {
 			var response = workspaceService.getWorkspace(workspace.getId());
 
 			// then
-			assertThat(response).extracting("id", "name", "description")
-				.containsExactly(workspace.getId(), "워크스페이스", "소개");
+			assertThat(response).extracting("id", "name", "description", "imageUrl")
+				.containsExactly(workspace.getId(), "워크스페이스", "소개", Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
 		@Test
@@ -428,13 +427,15 @@ class WorkspaceServiceTest {
 		@DisplayName("탐색 목록을 조회한다")
 		void listWorkspaces() {
 			// given
-			workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 
 			// when
 			PageResponse<?> response = workspaceService.listWorkspaces(null, 0, 20);
 
 			// then
-			assertThat(response.getContent()).hasSize(1);
+			assertThat(response.getContent())
+				.extracting("id", "imageUrl")
+				.containsExactly(tuple(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL));
 			assertThat(response.getPage().getTotalElements()).isEqualTo(1);
 		}
 
@@ -981,8 +982,8 @@ class WorkspaceServiceTest {
 			var response = workspaceService.listMyWorkspaces(user.getId());
 
 			// then
-			assertThat(response).extracting("id")
-				.containsExactly(workspace.getId());
+			assertThat(response).extracting("id", "imageUrl")
+				.containsExactly(tuple(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL));
 		}
 
 		@Test
@@ -1048,8 +1049,8 @@ class WorkspaceServiceTest {
 			WorkspaceSettingsResponse response = workspaceService.getWorkspaceSettings(workspace.getId(), owner.getId());
 
 			// then
-			assertThat(response).extracting("id", "mmWebhookUrl")
-				.containsExactly(workspace.getId(), "https://hook.example.com");
+			assertThat(response).extracting("id", "imageUrl", "mmWebhookUrl")
+				.containsExactly(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL, "https://hook.example.com");
 		}
 
 		@Test

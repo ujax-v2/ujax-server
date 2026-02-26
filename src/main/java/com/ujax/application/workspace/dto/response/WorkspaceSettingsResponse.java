@@ -6,6 +6,7 @@ public record WorkspaceSettingsResponse(
 	Long id,
 	String name,
 	String description,
+	String imageUrl,
 	String mmWebhookUrl
 ) {
 
@@ -14,6 +15,7 @@ public record WorkspaceSettingsResponse(
 			workspace.getId(),
 			workspace.getName(),
 			workspace.getDescription(),
+			workspace.getImageUrl(),
 			workspace.getMmWebhookUrl()
 		);
 	}

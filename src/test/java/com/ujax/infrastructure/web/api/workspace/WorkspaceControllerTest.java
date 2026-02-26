@@ -74,7 +74,12 @@ class WorkspaceControllerTest {
 		@DisplayName("페이지 파라미터 없이 내 워크스페이스 목록을 조회한다")
 		void listMyWorkspaces() throws Exception {
 			// given
-			WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
+			WorkspaceResponse workspace = new WorkspaceResponse(
+				1L,
+				"워크스페이스",
+				"소개",
+				"https://image.example.com/workspaces/1.png"
+			);
 			given(workspaceService.listMyWorkspaces(anyLong())).willReturn(List.of(workspace));
 
 			// when & then
@@ -83,7 +88,8 @@ class WorkspaceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data[0].id").value(1))
-				.andExpect(jsonPath("$.data[0].name").value("워크스페이스"));
+				.andExpect(jsonPath("$.data[0].name").value("워크스페이스"))
+				.andExpect(jsonPath("$.data[0].imageUrl").value("https://image.example.com/workspaces/1.png"));
 
 			then(workspaceService).should().listMyWorkspaces(1L);
 		}
@@ -143,7 +149,12 @@ class WorkspaceControllerTest {
 		@DisplayName("검색어와 페이지 파라미터를 반영해 탐색 목록을 조회한다")
 		void listWorkspaces() throws Exception {
 			// given
-			WorkspaceResponse workspace = new WorkspaceResponse(3L, "알고리즘 스터디", "소개");
+			WorkspaceResponse workspace = new WorkspaceResponse(
+				3L,
+				"알고리즘 스터디",
+				"소개",
+				"https://image.example.com/workspaces/3.png"
+			);
 			PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
 			given(workspaceService.listWorkspaces(any(), anyInt(), anyInt())).willReturn(response);
 
@@ -157,6 +168,7 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content[0].id").value(3))
 				.andExpect(jsonPath("$.data.content[0].name").value("알고리즘 스터디"))
+				.andExpect(jsonPath("$.data.content[0].imageUrl").value("https://image.example.com/workspaces/3.png"))
 				.andExpect(jsonPath("$.data.page.page").value(0))
 				.andExpect(jsonPath("$.data.page.size").value(20));
 
@@ -191,7 +203,12 @@ class WorkspaceControllerTest {
 		@DisplayName("워크스페이스 상세 정보를 조회한다")
 		void getWorkspace() throws Exception {
 			// given
-			WorkspaceResponse response = new WorkspaceResponse(3L, "알고리즘 스터디", "소개");
+			WorkspaceResponse response = new WorkspaceResponse(
+				3L,
+				"알고리즘 스터디",
+				"소개",
+				"https://image.example.com/workspaces/3.png"
+			);
 			given(workspaceService.getWorkspace(anyLong())).willReturn(response);
 
 			// when & then
@@ -200,7 +217,8 @@ class WorkspaceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(3))
-				.andExpect(jsonPath("$.data.name").value("알고리즘 스터디"));
+				.andExpect(jsonPath("$.data.name").value("알고리즘 스터디"))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/3.png"));
 
 			then(workspaceService).should().getWorkspace(3L);
 		}
@@ -218,6 +236,7 @@ class WorkspaceControllerTest {
 				3L,
 				"알고리즘 스터디",
 				"소개",
+				"https://image.example.com/workspaces/3.png",
 				"https://hook.example.com"
 			);
 			given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
@@ -228,6 +247,7 @@ class WorkspaceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(3))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/3.png"))
 				.andExpect(jsonPath("$.data.mmWebhookUrl").value("https://hook.example.com"));
 
 			then(workspaceService).should().getWorkspaceSettings(3L, 1L);
@@ -493,7 +513,12 @@ class WorkspaceControllerTest {
 		@DisplayName("워크스페이스를 생성한다")
 		void createWorkspace() throws Exception {
 			// given
-			WorkspaceResponse response = new WorkspaceResponse(20L, "신규 워크스페이스", "소개");
+			WorkspaceResponse response = new WorkspaceResponse(
+				20L,
+				"신규 워크스페이스",
+				"소개",
+				"https://image.example.com/workspaces/20.png"
+			);
 			given(workspaceService.createWorkspace(anyString(), any(), anyLong())).willReturn(response);
 
 			// when & then
@@ -504,7 +529,8 @@ class WorkspaceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(20))
-				.andExpect(jsonPath("$.data.name").value("신규 워크스페이스"));
+				.andExpect(jsonPath("$.data.name").value("신규 워크스페이스"))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/20.png"));
 
 			then(workspaceService).should().createWorkspace("신규 워크스페이스", "소개", 1L);
 		}
@@ -518,7 +544,12 @@ class WorkspaceControllerTest {
 		@DisplayName("워크스페이스 정보를 수정한다")
 		void updateWorkspace() throws Exception {
 			// given
-			WorkspaceResponse response = new WorkspaceResponse(3L, "수정된 워크스페이스", "수정된 소개");
+			WorkspaceResponse response = new WorkspaceResponse(
+				3L,
+				"수정된 워크스페이스",
+				"수정된 소개",
+				"https://new-image.com/workspace.png"
+			);
 			given(workspaceService.updateWorkspace(anyLong(), anyLong(), any(), any(), any(), any())).willReturn(response);
 
 			// when & then
@@ -529,7 +560,8 @@ class WorkspaceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(3))
-				.andExpect(jsonPath("$.data.name").value("수정된 워크스페이스"));
+				.andExpect(jsonPath("$.data.name").value("수정된 워크스페이스"))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://new-image.com/workspace.png"));
 
 			then(workspaceService).should().updateWorkspace(
 				3L,

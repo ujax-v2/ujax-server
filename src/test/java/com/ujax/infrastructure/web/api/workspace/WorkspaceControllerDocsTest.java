@@ -95,7 +95,12 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 탐색 목록 조회 API")
 	void listWorkspaces() throws Exception {
 		// given
-		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
+		WorkspaceResponse workspace = new WorkspaceResponse(
+			1L,
+			"워크스페이스",
+			"소개",
+			"https://image.example.com/workspaces/1.png"
+		);
 		PageResponse<WorkspaceResponse> response = PageResponse.of(List.of(workspace), 0, 20, 1L, 1);
 		given(workspaceService.listWorkspaces(any(), anyInt(), anyInt())).willReturn(response);
 
@@ -127,6 +132,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.content[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.content[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data.content[].imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
 						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
 						fieldWithPath("data.page.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
@@ -173,7 +179,12 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("내 워크스페이스 목록 조회 API (/me)")
 	void listMyWorkspacesByMe() throws Exception {
 		// given
-		WorkspaceResponse workspace = new WorkspaceResponse(1L, "워크스페이스", "소개");
+		WorkspaceResponse workspace = new WorkspaceResponse(
+			1L,
+			"워크스페이스",
+			"소개",
+			"https://image.example.com/workspaces/1.png"
+		);
 		List<WorkspaceResponse> response = List.of(workspace);
 		given(workspaceService.listMyWorkspaces(anyLong())).willReturn(response);
 
@@ -196,6 +207,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data[].id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data[].name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data[].description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data[].imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -207,7 +219,12 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 단건 조회 API")
 	void getWorkspace() throws Exception {
 		// given
-		WorkspaceResponse response = new WorkspaceResponse(1L, "워크스페이스", "소개");
+		WorkspaceResponse response = new WorkspaceResponse(
+			1L,
+			"워크스페이스",
+			"소개",
+			"https://image.example.com/workspaces/1.png"
+		);
 		given(workspaceService.getWorkspace(anyLong())).willReturn(response);
 
 		// when & then
@@ -232,6 +249,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -272,7 +290,13 @@ class WorkspaceControllerDocsTest {
 	@DisplayName("워크스페이스 설정 조회 API")
 	void getWorkspaceSettings() throws Exception {
 		// given
-		WorkspaceSettingsResponse response = new WorkspaceSettingsResponse(1L, "워크스페이스", "소개", "https://hook.example.com");
+		WorkspaceSettingsResponse response = new WorkspaceSettingsResponse(
+			1L,
+			"워크스페이스",
+			"소개",
+			"https://image.example.com/workspaces/1.png",
+			"https://hook.example.com"
+		);
 		given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
 
 		// when & then
@@ -297,6 +321,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("data.mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
@@ -607,7 +632,12 @@ class WorkspaceControllerDocsTest {
 	void createWorkspace() throws Exception {
 		// given
 		CreateWorkspaceRequest request = new CreateWorkspaceRequest("워크스페이스", "소개");
-		WorkspaceResponse response = new WorkspaceResponse(1L, "워크스페이스", "소개");
+		WorkspaceResponse response = new WorkspaceResponse(
+			1L,
+			"워크스페이스",
+			"소개",
+			"https://image.example.com/workspaces/1.png"
+		);
 		given(workspaceService.createWorkspace(anyString(), any(), anyLong())).willReturn(response);
 
 		// when & then
@@ -635,6 +665,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -683,7 +714,12 @@ class WorkspaceControllerDocsTest {
 			"https://hook.example.com",
 			"https://new-image.com/workspace.png"
 		);
-		WorkspaceResponse response = new WorkspaceResponse(1L, "새 이름", "새 소개");
+		WorkspaceResponse response = new WorkspaceResponse(
+			1L,
+			"새 이름",
+			"새 소개",
+			"https://new-image.com/workspace.png"
+		);
 		given(workspaceService.updateWorkspace(anyLong(), anyLong(), anyString(), any(), any(), any())).willReturn(response);
 
 		// when & then
@@ -716,6 +752,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
