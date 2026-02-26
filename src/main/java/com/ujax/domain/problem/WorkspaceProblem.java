@@ -43,7 +43,6 @@ public class WorkspaceProblem extends BaseEntity {
 	@JoinColumn(name = "problem_id", nullable = false)
 	private Problem problem;
 
-	@Column(nullable = false)
 	private LocalDateTime deadline;
 
 	private LocalDateTime scheduledAt;
@@ -59,5 +58,10 @@ public class WorkspaceProblem extends BaseEntity {
 	public static WorkspaceProblem create(ProblemBox problemBox, Problem problem, LocalDateTime deadline,
 		LocalDateTime scheduledAt) {
 		return new WorkspaceProblem(problemBox, problem, deadline, scheduledAt);
+	}
+
+	public void update(LocalDateTime deadline, LocalDateTime scheduledAt) {
+		this.deadline = deadline;
+		this.scheduledAt = scheduledAt;
 	}
 }

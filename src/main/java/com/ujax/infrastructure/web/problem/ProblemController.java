@@ -1,7 +1,9 @@
 package com.ujax.infrastructure.web.problem;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,17 +21,18 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/problems")
 @RequiredArgsConstructor
+@Validated
 public class ProblemController {
 
 	private final ProblemService problemService;
 
 	@GetMapping("/{problemId}")
-	public ApiResponse<ProblemResponse> getProblem(@PathVariable Long problemId) {
+	public ApiResponse<ProblemResponse> getProblem(@PathVariable @Positive Long problemId) {
 		return ApiResponse.success(problemService.getProblem(problemId));
 	}
 
 	@GetMapping("/number/{problemNumber}")
-	public ApiResponse<ProblemResponse> getProblemByNumber(@PathVariable int problemNumber) {
+	public ApiResponse<ProblemResponse> getProblemByNumber(@PathVariable @Positive int problemNumber) {
 		return ApiResponse.success(problemService.getProblemByNumber(problemNumber));
 	}
 
