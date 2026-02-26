@@ -13,13 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.ujax.domain.user.Password;
-import com.ujax.domain.user.User;
-import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
-import com.ujax.domain.workspace.WorkspaceMember;
-import com.ujax.domain.workspace.WorkspaceMemberRepository;
-import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.infrastructure.persistence.jpa.JpaAuditingConfig;
 
@@ -34,23 +28,14 @@ class ProblemBoxRepositoryTest {
 	@Autowired
 	private WorkspaceRepository workspaceRepository;
 
-	@Autowired
-	private WorkspaceMemberRepository workspaceMemberRepository;
-
-	@Autowired
-	private UserRepository userRepository;
-
 	@Test
 	@DisplayName("워크스페이스 ID로 문제집 목록을 페이징 조회한다")
 	void findByWorkspaceId() {
 		// given
-		User user = userRepository.save(User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저"));
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
-		WorkspaceMember member = workspaceMemberRepository.save(
-			WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
 
-		problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집1", "설명1"));
-		problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집2", "설명2"));
+		problemBoxRepository.save(ProblemBox.create(workspace, "문제집1", "설명1"));
+		problemBoxRepository.save(ProblemBox.create(workspace, "문제집2", "설명2"));
 
 		// when
 		Page<ProblemBox> result = problemBoxRepository.findByWorkspace_IdOrderByUpdatedAtDescIdDesc(
@@ -66,11 +51,8 @@ class ProblemBoxRepositoryTest {
 	@DisplayName("ID와 워크스페이스 ID로 문제집을 조회한다")
 	void findByIdAndWorkspaceId() {
 		// given
-		User user = userRepository.save(User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저"));
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
-		WorkspaceMember member = workspaceMemberRepository.save(
-			WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
-		ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, member, "문제집", "설명"));
+		ProblemBox saved = problemBoxRepository.save(ProblemBox.create(workspace, "문제집", "설명"));
 
 		// when
 		Optional<ProblemBox> result = problemBoxRepository.findByIdAndWorkspace_Id(saved.getId(), workspace.getId());

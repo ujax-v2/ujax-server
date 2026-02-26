@@ -82,7 +82,7 @@ public class SecurityConfig {
 
 	private CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of(baseUrl));
+		configuration.setAllowedOriginPatterns(List.of(baseUrl, "chrome-extension://*"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("*"));
 		configuration.setAllowCredentials(true);

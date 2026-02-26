@@ -5,7 +5,6 @@ import org.hibernate.annotations.SQLDelete;
 
 import com.ujax.domain.common.BaseEntity;
 import com.ujax.domain.workspace.Workspace;
-import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.global.exception.common.InvalidParameterException;
 
 import jakarta.persistence.Column;
@@ -40,27 +39,21 @@ public class ProblemBox extends BaseEntity {
 	@JoinColumn(name = "workspace_id", nullable = false)
 	private Workspace workspace;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "workspace_member_id", nullable = false)
-	private WorkspaceMember workspaceMember;
-
 	@Column(nullable = false, length = 30)
 	private String title;
 
 	private String description;
 
-	private ProblemBox(Workspace workspace, WorkspaceMember workspaceMember, String title, String description) {
+	private ProblemBox(Workspace workspace, String title, String description) {
 		this.workspace = workspace;
-		this.workspaceMember = workspaceMember;
 		this.title = title;
 		this.description = description;
 	}
 
-	public static ProblemBox create(Workspace workspace, WorkspaceMember workspaceMember, String title,
-		String description) {
+	public static ProblemBox create(Workspace workspace, String title, String description) {
 		validateTitle(title);
 		validateDescription(description);
-		return new ProblemBox(workspace, workspaceMember, title, description);
+		return new ProblemBox(workspace, title, description);
 	}
 
 	public void update(String title, String description) {
