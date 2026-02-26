@@ -1,5 +1,7 @@
 package com.ujax.domain.workspace;
 
+import java.util.List;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -14,4 +16,8 @@ public enum WorkspaceMemberRole {
 	;
 
 	private final String text;
+
+	public boolean isManagerOrOwner() {
+		return this == OWNER || this == MANAGER;
+	}
 }

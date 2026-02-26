@@ -5,6 +5,8 @@ import org.hibernate.annotations.SQLDelete;
 
 import com.ujax.domain.common.BaseEntity;
 import com.ujax.domain.user.User;
+import com.ujax.global.exception.ErrorCode;
+import com.ujax.global.exception.common.ForbiddenException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,5 +74,11 @@ public class WorkspaceMember extends BaseEntity {
 
 	public void updateNickname(String nickname) {
 		this.nickname = nickname;
+	}
+
+	public void validateManagerOrOwner() {
+		if (!role.isManagerOrOwner()) {
+			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN);
+		}
 	}
 }

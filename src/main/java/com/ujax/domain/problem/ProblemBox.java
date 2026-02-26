@@ -6,6 +6,7 @@ import org.hibernate.annotations.SQLDelete;
 import com.ujax.domain.common.BaseEntity;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceMember;
+import com.ujax.global.exception.common.InvalidParameterException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -57,6 +58,27 @@ public class ProblemBox extends BaseEntity {
 
 	public static ProblemBox create(Workspace workspace, WorkspaceMember workspaceMember, String title,
 		String description) {
+		validateTitle(title);
+		validateDescription(description);
 		return new ProblemBox(workspace, workspaceMember, title, description);
+	}
+
+	public void update(String title, String description) {
+		validateTitle(title);
+		validateDescription(description);
+		this.title = title;
+		this.description = description;
+	}
+
+	private static void validateTitle(String title) {
+		if (title.length() > 30) {
+			throw new InvalidParameterException("문제집 제목은 30자를 초과할 수 없습니다.");
+		}
+	}
+
+	private static void validateDescription(String description) {
+		if (description != null && description.length() > 255) {
+			throw new InvalidParameterException("문제집 설명은 255자를 초과할 수 없습니다.");
+		}
 	}
 }
