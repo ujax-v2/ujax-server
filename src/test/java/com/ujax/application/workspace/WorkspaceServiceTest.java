@@ -228,6 +228,7 @@ class WorkspaceServiceTest {
 				memberUser.getId(),
 				"새 이름",
 				null,
+				null,
 				null
 			))
 				.isInstanceOf(ForbiddenException.class)
@@ -246,6 +247,7 @@ class WorkspaceServiceTest {
 				owner.getId(),
 				"새 이름",
 				null,
+				null,
 				null
 			))
 				.isInstanceOf(NotFoundException.class)
@@ -261,7 +263,7 @@ class WorkspaceServiceTest {
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
 			// when
-			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), "새 이름", "새 소개", null);
+			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), "새 이름", "새 소개", null, null);
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
@@ -278,7 +280,7 @@ class WorkspaceServiceTest {
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
 			// when
-			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com");
+			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com", null);
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
@@ -319,7 +321,7 @@ class WorkspaceServiceTest {
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
 
 			// when & then
-			assertThatThrownBy(() -> workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, null))
+			assertThatThrownBy(() -> workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, null, null))
 				.isInstanceOf(BadRequestException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
 		}
@@ -338,6 +340,7 @@ class WorkspaceServiceTest {
 				workspace.getId(),
 				owner.getId(),
 				"중복",
+				null,
 				null,
 				null
 			))
@@ -358,6 +361,7 @@ class WorkspaceServiceTest {
 				workspace.getId(),
 				owner.getId(),
 				" ",
+				null,
 				null,
 				null
 			))
@@ -380,6 +384,7 @@ class WorkspaceServiceTest {
 				owner.getId(),
 				null,
 				longDescription,
+				null,
 				null
 			))
 				.isInstanceOf(BadRequestException.class)
@@ -1037,7 +1042,7 @@ class WorkspaceServiceTest {
 			User owner = userRepository.save(User.createLocalUser("owner3@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
-			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com");
+			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com", null);
 
 			// when
 			WorkspaceSettingsResponse response = workspaceService.getWorkspaceSettings(workspace.getId(), owner.getId());
