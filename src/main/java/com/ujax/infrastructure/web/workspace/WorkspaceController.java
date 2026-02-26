@@ -20,6 +20,7 @@ import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.security.UserPrincipal;
@@ -28,6 +29,7 @@ import com.ujax.infrastructure.web.workspace.dto.request.InviteWorkspaceMemberRe
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberRoleRequest;
 import com.ujax.infrastructure.web.workspace.dto.request.UpdateWorkspaceMemberNicknameRequest;
+import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +109,17 @@ public class WorkspaceController {
 		return ApiResponse.success();
 	}
 
+	@PostMapping("/{workspaceId}/image/presigned-url")
+	public ApiResponse<PresignedUrlResponse> createWorkspaceImagePresignedUrl(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal,
+		@Valid @RequestBody WorkspaceImageUploadRequest request
+	) {
+		return ApiResponse.success(
+			workspaceService.createWorkspaceImagePresignedUrl(workspaceId, principal.getUserId(), request)
+		);
+	}
+
 	@PostMapping("/{workspaceId}/join-requests")
 	public ApiResponse<WorkspaceJoinRequestResponse> createJoinRequest(
 		@PathVariable Long workspaceId,
@@ -175,7 +188,8 @@ public class WorkspaceController {
 				principal.getUserId(),
 				request.name(),
 				request.description(),
-				request.mmWebhookUrl()
+				request.mmWebhookUrl(),
+				request.imageUrl()
 			)
 		);
 	}
