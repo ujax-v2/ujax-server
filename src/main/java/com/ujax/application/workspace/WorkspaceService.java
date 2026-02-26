@@ -33,6 +33,7 @@ import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
 import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
 
 import lombok.RequiredArgsConstructor;
@@ -240,12 +241,14 @@ public class WorkspaceService {
 		Long userId,
 		WorkspaceImageUploadRequest request
 	) {
-		// todo
-		// 1) 워크스페이스 존재 검증
-		// 2) 오너 권한 검증
-		// 3) S3 워크스페이스 이미지 Presigned URL 생성 호출
-		// 4) 응답 DTO 변환/반환
-		throw new UnsupportedOperationException("TODO: create workspace image presigned url");
+		findWorkspaceById(workspaceId);
+		validateOwner(workspaceId, userId);
+		PresignedUrlResult result = s3StorageService.generateWorkspaceImagePresignedUrl(
+			workspaceId,
+			request.contentType(),
+			request.fileSize()
+		);
+		return new PresignedUrlResponse(result.presignedUrl(), result.imageUrl());
 	}
 
 	@Transactional
