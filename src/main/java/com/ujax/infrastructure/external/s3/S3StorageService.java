@@ -44,6 +44,14 @@ public class S3StorageService {
 		return new PresignedUrlResult(presigned.url().toString(), imageUrl);
 	}
 
+	public PresignedUrlResult generateWorkspaceImagePresignedUrl(Long workspaceId, String contentType, long fileSize) {
+		// TODO
+		// 1) contentType/fileSize 유효성 검증
+		// 2) workspaces/{workspaceId}/image/{UUID}.{ext} 키 생성
+		// 3) presigned URL + image URL 생성/반환
+		throw new UnsupportedOperationException("TODO: generate workspace image presigned url");
+	}
+
 	public void deleteByUrl(String imageUrl) {
 		try {
 			String key = URI
