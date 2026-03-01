@@ -39,8 +39,8 @@ public class Workspace extends BaseEntity {
 	@Column(length = 200)
 	private String description;
 
-	/** MM 웹훅 URL (미설정 시 null) */
-	private String mmWebhookUrl;
+	/** 알림 Hook URL (미설정 시 null) */
+	private String hookUrl;
 
 	@Column(length = 500)
 	private String imageUrl;
@@ -59,15 +59,15 @@ public class Workspace extends BaseEntity {
 		return new Workspace(name, description, imageUrl);
 	}
 
-	public void update(String name, String description, String mmWebhookUrl, String imageUrl) {
+	public void update(String name, String description, String hookUrl, String imageUrl) {
 		if (name != null) {
 			this.name = name;
 		}
 		if (description != null) {
 			this.description = description;
 		}
-		if (mmWebhookUrl != null) {
-			this.mmWebhookUrl = mmWebhookUrl;
+		if (hookUrl != null) {
+			this.hookUrl = hookUrl;
 		}
 		if (imageUrl != null) {
 			this.imageUrl = imageUrl;

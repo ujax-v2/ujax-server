@@ -322,7 +322,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
-						fieldWithPath("data.mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
+						fieldWithPath("data.hookUrl").type(JsonFieldType.STRING).description("Hook URL").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()
@@ -741,8 +741,8 @@ class WorkspaceControllerDocsTest {
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
-						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
+							fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+							fieldWithPath("hookUrl").type(JsonFieldType.STRING).description("Hook URL").optional(),
 						fieldWithPath("imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL").optional()
 					)
 					.responseSchema(Schema.schema("ApiResponse-WorkspaceResponse"))
@@ -788,8 +788,8 @@ class WorkspaceControllerDocsTest {
 					.requestSchema(Schema.schema("UpdateWorkspaceRequest"))
 					.requestFields(
 						fieldWithPath("name").type(JsonFieldType.STRING).description("워크스페이스 이름").optional(),
-						fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
-						fieldWithPath("mmWebhookUrl").type(JsonFieldType.STRING).description("MM 웹훅 URL").optional(),
+							fieldWithPath("description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
+							fieldWithPath("hookUrl").type(JsonFieldType.STRING).description("Hook URL").optional(),
 						fieldWithPath("imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL").optional()
 					)
 					.responseSchema(Schema.schema("ProblemDetail-Validation"))

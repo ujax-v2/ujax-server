@@ -272,13 +272,13 @@ public class WorkspaceService {
 		Long userId,
 		String name,
 		String description,
-		String mmWebhookUrl,
+		String hookUrl,
 		String imageUrl
 	) {
 		Workspace workspace = findWorkspaceById(workspaceId);
 		validateOwner(workspaceId, userId);
 
-		if (name == null && description == null && mmWebhookUrl == null && imageUrl == null) {
+		if (name == null && description == null && hookUrl == null && imageUrl == null) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 		if (name != null) {
@@ -289,7 +289,7 @@ public class WorkspaceService {
 			validateDescription(description);
 		}
 
-		workspace.update(name, description, mmWebhookUrl, imageUrl);
+		workspace.update(name, description, hookUrl, imageUrl);
 		return WorkspaceResponse.from(workspace);
 	}
 

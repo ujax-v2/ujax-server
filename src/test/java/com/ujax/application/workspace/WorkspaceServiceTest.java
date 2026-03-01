@@ -266,7 +266,7 @@ class WorkspaceServiceTest {
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
-			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("새 이름", "새 소개", null, Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
@@ -283,7 +283,7 @@ class WorkspaceServiceTest {
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
-			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("워크스페이스", "소개", "https://hook.example.com", Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
@@ -307,7 +307,7 @@ class WorkspaceServiceTest {
 
 			// then
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
-			assertThat(updated).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("워크스페이스", "소개", null, "https://new-image.com/workspace.png");
 		}
 
@@ -1049,7 +1049,7 @@ class WorkspaceServiceTest {
 			WorkspaceSettingsResponse response = workspaceService.getWorkspaceSettings(workspace.getId(), owner.getId());
 
 			// then
-			assertThat(response).extracting("id", "imageUrl", "mmWebhookUrl")
+			assertThat(response).extracting("id", "imageUrl", "hookUrl")
 				.containsExactly(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL, "https://hook.example.com");
 		}
 
