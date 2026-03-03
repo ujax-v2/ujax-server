@@ -38,7 +38,7 @@ public record SubmissionRequest(
                 .map(tc -> {
                     Map<String, Object> s = new LinkedHashMap<>();
                     s.put("language_id", languageId);
-                    s.put("source_code", sourceCode);
+                    s.put("source_code", encodeToBase64(sourceCode));
                     s.put("stdin", encodeToBase64(tc.input));
                     s.put("expected_output", encodeToBase64(tc.expected));
                     return s;
