@@ -20,16 +20,32 @@ class WebhookAlertTest {
 		@Test
 		@DisplayName("생성 시 PENDING 상태와 기본값을 가진다")
 		void createPending() {
-			// given
 			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 2, 10, 0);
 
-			// when
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID, scheduledAt);
 
-			// then
-			assertThat(alert).extracting("workspaceProblemId", "workspaceId", "scheduledAt", "status", "attemptNo",
-					"sendAt", "lastAttemptAt", "errMsg")
-				.containsExactly(WORKSPACE_PROBLEM_ID, WORKSPACE_ID, scheduledAt, WebhookAlertStatus.PENDING, 0, null, null, null);
+			assertThat(alert).extracting(
+				"workspaceProblemId",
+				"workspaceId",
+				"scheduledAt",
+				"nextScheduledAt",
+				"status",
+				"attemptNo"
+			).containsExactly(
+				WORKSPACE_PROBLEM_ID,
+				WORKSPACE_ID,
+				scheduledAt,
+				null,
+				WebhookAlertStatus.PENDING,
+				0
+			);
+		}
+
+		@Test
+		@DisplayName("scheduledAt 없이 생성할 수 없다")
+		void createWithoutScheduledAt() {
+			assertThatThrownBy(() -> WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID, null))
+				.isInstanceOf(NullPointerException.class);
 		}
 	}
 
@@ -39,98 +55,117 @@ class WebhookAlertTest {
 
 		@Test
 		@DisplayName("PENDING 상태에서 PROCESSING으로 전환할 수 있다")
-		void startProcessing() {
-			// given
+		void markProcessing() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 
-			// when
-			alert.startProcessing();
+			alert.markProcessing();
 
-			// then
 			assertThat(alert.getStatus()).isEqualTo(WebhookAlertStatus.PROCESSING);
 		}
 
 		@Test
-		@DisplayName("PROCESSING 상태에서 DONE으로 전환하면 sendAt과 lastAttemptAt을 기록한다")
-		void markDone() {
-			// given
+		@DisplayName("PENDING 상태에서는 scheduledAt을 즉시 갱신하고 attemptNo를 초기화한다")
+		void applyScheduleUpdateImmediatelyWhenPending() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
-			LocalDateTime attemptedAt = LocalDateTime.of(2026, 3, 2, 10, 1);
-			alert.startProcessing();
+			alert.markProcessing();
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1));
 
-			// when
-			alert.markDone(attemptedAt);
+			LocalDateTime updatedAt = LocalDateTime.of(2026, 3, 2, 11, 0);
+			alert.applyScheduleUpdate(updatedAt);
 
-			// then
-			assertThat(alert).extracting("status", "sendAt", "lastAttemptAt", "errMsg")
-				.containsExactly(WebhookAlertStatus.DONE, attemptedAt, attemptedAt, null);
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(updatedAt, null, WebhookAlertStatus.PENDING, 0);
 		}
 
 		@Test
-		@DisplayName("PROCESSING 상태에서 재시도하면 다음 배치 대상(PENDING)으로 돌아가고 attemptNo가 증가한다")
+		@DisplayName("PROCESSING 상태에서는 nextScheduledAt에만 보류 저장한다")
+		void applyScheduleUpdateDeferredWhenProcessing() {
+			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
+				LocalDateTime.of(2026, 3, 2, 10, 0));
+			alert.markProcessing();
+			LocalDateTime deferredAt = LocalDateTime.of(2026, 3, 2, 11, 0);
+
+			alert.applyScheduleUpdate(deferredAt);
+
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(
+					LocalDateTime.of(2026, 3, 2, 10, 0),
+					deferredAt,
+					WebhookAlertStatus.PROCESSING,
+					0
+				);
+		}
+
+		@Test
+		@DisplayName("retry 시 attemptNo를 증가시키고 다음 배치 대상으로 되돌린다")
 		void markRetry() {
-			// given
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
-			LocalDateTime attemptedAt = LocalDateTime.of(2026, 3, 2, 10, 1);
-			alert.startProcessing();
+			LocalDateTime retryAt = LocalDateTime.of(2026, 3, 2, 10, 1);
+			alert.markProcessing();
 
-			// when
-			alert.markRetry(attemptedAt, "timeout");
+			alert.markRetry(retryAt);
 
-			// then
-			assertThat(alert).extracting("status", "attemptNo", "lastAttemptAt", "scheduledAt", "errMsg")
-				.containsExactly(WebhookAlertStatus.PENDING, 1, attemptedAt, attemptedAt, "timeout");
+			assertThat(alert).extracting("status", "attemptNo", "scheduledAt", "nextScheduledAt")
+				.containsExactly(WebhookAlertStatus.PENDING, 1, retryAt, null);
 		}
 
 		@Test
-		@DisplayName("PROCESSING 상태에서 최종 실패 처리하면 FAILED로 전환되고 sendAt을 기록한다")
-		void markFailed() {
-			// given
+		@DisplayName("복구 시 nextScheduledAt이 있으면 그 값을 우선 적용한다")
+		void recoverToPendingUsesDeferredScheduleFirst() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
-			LocalDateTime attemptedAt = LocalDateTime.of(2026, 3, 2, 10, 5);
-			alert.startProcessing();
+			alert.markProcessing();
+			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1));
+			alert.markProcessing();
+			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 12, 0));
 
-			// when
-			alert.markFailed(attemptedAt, "connection refused");
+			alert.recoverToPending(LocalDateTime.of(2026, 3, 2, 12, 30));
 
-			// then
-			assertThat(alert).extracting("status", "sendAt", "lastAttemptAt", "errMsg")
-				.containsExactly(WebhookAlertStatus.FAILED, attemptedAt, attemptedAt, "connection refused");
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(
+					LocalDateTime.of(2026, 3, 2, 12, 0),
+					null,
+					WebhookAlertStatus.PENDING,
+					0
+				);
 		}
 
 		@Test
-		@DisplayName("PROCESSING 상태가 오래 지속되면 PENDING으로 복구할 수 있다")
-		void recoverToPending() {
-			// given
+		@DisplayName("복구 시 nextScheduledAt이 없으면 현재 시각 기준으로 PENDING 복귀한다")
+		void recoverToPendingUsesFallbackWhenNoDeferredSchedule() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
+			alert.markProcessing();
 			LocalDateTime recoveredAt = LocalDateTime.of(2026, 3, 2, 10, 10);
-			alert.startProcessing();
 
-			// when
 			alert.recoverToPending(recoveredAt);
 
-			// then
-			assertThat(alert).extracting("status", "scheduledAt")
-				.containsExactly(WebhookAlertStatus.PENDING, recoveredAt);
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(recoveredAt, null, WebhookAlertStatus.PENDING, 0);
 		}
 
 		@Test
-		@DisplayName("PENDING 상태에서 CANCELLED로 전환할 수 있다")
-		void cancelPendingAlert() {
-			// given
+		@DisplayName("보류된 schedule이 있으면 전송 전 반영할 수 있다")
+		void applyDeferredScheduleIfPresent() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
+			alert.markProcessing();
+			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
 
-			// when
-			alert.cancel();
+			boolean applied = alert.applyDeferredScheduleIfPresent();
 
-			// then
-			assertThat(alert.getStatus()).isEqualTo(WebhookAlertStatus.CANCELLED);
+			assertThat(applied).isTrue();
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(
+					LocalDateTime.of(2026, 3, 2, 11, 0),
+					null,
+					WebhookAlertStatus.PENDING,
+					0
+				);
 		}
 	}
 
@@ -139,49 +174,32 @@ class WebhookAlertTest {
 	class InvalidTransitionWebhookAlert {
 
 		@Test
-		@DisplayName("PENDING이 아닌 상태에서 PROCESSING 전환을 시도하면 예외가 발생한다")
-		void startProcessingOnlyPending() {
-			// given
+		@DisplayName("이미 PROCESSING이면 중복 선점할 수 없다")
+		void markProcessingOnlyPending() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
-			alert.cancel();
+			alert.markProcessing();
 
-			// when & then
-			assertThatThrownBy(alert::startProcessing)
+			assertThatThrownBy(alert::markProcessing)
 				.isInstanceOf(IllegalStateException.class);
 		}
 
 		@Test
 		@DisplayName("재시도 횟수가 최대치이면 추가 재시도 전환을 할 수 없다")
 		void retryExhausted() {
-			// given
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			LocalDateTime base = LocalDateTime.of(2026, 3, 2, 10, 0);
 
 			for (int i = 0; i < WebhookAlert.MAX_ATTEMPT; i++) {
-				alert.startProcessing();
-				alert.markRetry(base.plusMinutes(i + 1), "err");
+				alert.markProcessing();
+				alert.markRetry(base.plusMinutes(i + 1));
 			}
-			alert.startProcessing();
+			alert.markProcessing();
 
-			// when & then
-			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10), "err"))
+			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10)))
 				.isInstanceOf(IllegalStateException.class);
 			assertThat(alert.isRetryExhausted()).isTrue();
-		}
-
-		@Test
-		@DisplayName("PENDING이 아닌 상태에서 CANCELLED 전환을 시도하면 예외가 발생한다")
-		void cancelOnlyPending() {
-			// given
-			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
-				LocalDateTime.of(2026, 3, 2, 10, 0));
-			alert.startProcessing();
-
-			// when & then
-			assertThatThrownBy(alert::cancel)
-				.isInstanceOf(IllegalStateException.class);
 		}
 	}
 }
