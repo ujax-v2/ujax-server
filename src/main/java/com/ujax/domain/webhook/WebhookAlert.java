@@ -28,7 +28,8 @@ import lombok.NoArgsConstructor;
 @Table(
 	name = "webhook_alert",
 	indexes = {
-		@Index(name = "idx_webhook_alert_due", columnList = "status,scheduled_at")
+		@Index(name = "idx_webhook_alert_due", columnList = "status,scheduled_at"),
+		@Index(name = "idx_webhook_alert_workspace", columnList = "workspace_id")
 	},
 	uniqueConstraints = {
 		@UniqueConstraint(
@@ -56,21 +57,15 @@ public class WebhookAlert {
 	@Column(name = "scheduled_at", nullable = false)
 	private LocalDateTime scheduledAt;
 
+	@Column(name = "next_scheduled_at")
+	private LocalDateTime nextScheduledAt;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private WebhookAlertStatus status;
 
 	@Column(name = "attempt_no", nullable = false)
 	private int attemptNo;
-
-	@Column(name = "send_at")
-	private LocalDateTime sendAt;
-
-	@Column(name = "last_attempt_at")
-	private LocalDateTime lastAttemptAt;
-
-	@Column(name = "err_msg", length = 255)
-	private String errMsg;
 
 	@CreatedDate
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -92,58 +87,51 @@ public class WebhookAlert {
 		return new WebhookAlert(workspaceProblemId, workspaceId, scheduledAt);
 	}
 
-	public void startProcessing() {
+	public void markProcessing() {
 		validateStatus(WebhookAlertStatus.PENDING);
 		this.status = WebhookAlertStatus.PROCESSING;
 	}
 
-	public void markDone(LocalDateTime attemptedAt) {
-		validateStatus(WebhookAlertStatus.PROCESSING);
-		LocalDateTime now = Objects.requireNonNull(attemptedAt);
-		this.status = WebhookAlertStatus.DONE;
-		this.lastAttemptAt = now;
-		this.sendAt = now;
-		this.errMsg = null;
+	public void applyScheduleUpdate(LocalDateTime scheduledAt) {
+		LocalDateTime newScheduledAt = Objects.requireNonNull(scheduledAt);
+		if (this.status == WebhookAlertStatus.PROCESSING) {
+			this.nextScheduledAt = newScheduledAt;
+			return;
+		}
+		validateStatus(WebhookAlertStatus.PENDING);
+		this.scheduledAt = newScheduledAt;
+		this.nextScheduledAt = null;
+		this.attemptNo = 0;
 	}
 
-	public void markRetry(LocalDateTime attemptedAt, String errMsg) {
+	public void markRetry(LocalDateTime retryAt) {
 		validateStatus(WebhookAlertStatus.PROCESSING);
 		if (isRetryExhausted()) {
 			throw new IllegalStateException("retry attempts exhausted");
 		}
-		LocalDateTime now = Objects.requireNonNull(attemptedAt);
-		this.status = WebhookAlertStatus.PENDING;
 		this.attemptNo = this.attemptNo + 1;
-		this.lastAttemptAt = now;
-		this.scheduledAt = now;
-		this.errMsg = normalizeErrMsg(errMsg);
-		this.sendAt = null;
-	}
-
-	public void markFailed(LocalDateTime attemptedAt, String errMsg) {
-		validateStatus(WebhookAlertStatus.PROCESSING);
-		LocalDateTime now = Objects.requireNonNull(attemptedAt);
-		this.status = WebhookAlertStatus.FAILED;
-		this.lastAttemptAt = now;
-		this.sendAt = now;
-		this.errMsg = normalizeErrMsg(errMsg);
-	}
-
-	public void recoverToPending(LocalDateTime scheduledAt) {
-		validateStatus(WebhookAlertStatus.PROCESSING);
+		this.scheduledAt = Objects.requireNonNull(retryAt);
 		this.status = WebhookAlertStatus.PENDING;
-		this.scheduledAt = Objects.requireNonNull(scheduledAt);
-		this.errMsg = null;
-		this.sendAt = null;
 	}
 
-	public void cancel() {
-		validateStatus(WebhookAlertStatus.PENDING);
-		this.status = WebhookAlertStatus.CANCELLED;
+	public void recoverToPending(LocalDateTime fallbackScheduledAt) {
+		validateStatus(WebhookAlertStatus.PROCESSING);
+		if (applyDeferredScheduleIfPresent()) {
+			return;
+		}
+		this.scheduledAt = Objects.requireNonNull(fallbackScheduledAt);
+		this.status = WebhookAlertStatus.PENDING;
 	}
 
-	public void reschedule(LocalDateTime scheduledAt) {
-		this.scheduledAt = Objects.requireNonNull(scheduledAt);
+	public boolean applyDeferredScheduleIfPresent() {
+		if (this.nextScheduledAt == null) {
+			return false;
+		}
+		this.scheduledAt = this.nextScheduledAt;
+		this.nextScheduledAt = null;
+		this.attemptNo = 0;
+		this.status = WebhookAlertStatus.PENDING;
+		return true;
 	}
 
 	public boolean isRetryExhausted() {
@@ -154,12 +142,5 @@ public class WebhookAlert {
 		if (this.status != expected) {
 			throw new IllegalStateException("invalid webhook alert state");
 		}
-	}
-
-	private String normalizeErrMsg(String errMsg) {
-		if (errMsg == null) {
-			return null;
-		}
-		return errMsg.length() <= 255 ? errMsg : errMsg.substring(0, 255);
 	}
 }
