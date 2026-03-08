@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ujax.domain.problem.Problem;
+import com.ujax.domain.problem.ProblemBox;
+import com.ujax.domain.problem.WorkspaceProblem;
+import com.ujax.domain.problem.WorkspaceProblemRepository;
 import com.ujax.domain.webhook.WebhookAlert;
 import com.ujax.domain.webhook.WebhookAlertLog;
 import com.ujax.domain.webhook.WebhookAlertLogActorType;
@@ -34,6 +39,7 @@ class WebhookAlertServiceTest {
 	private static final Long WORKSPACE_PROBLEM_ID = 101L;
 	private static final Long WORKSPACE_ID = 11L;
 	private static final Long ACTOR_ID = 1L;
+	private static final int MAX_ATTEMPTS = 5;
 
 	@Mock
 	private WebhookAlertRepository webhookAlertRepository;
@@ -45,6 +51,9 @@ class WebhookAlertServiceTest {
 	private WorkspaceRepository workspaceRepository;
 
 	@Mock
+	private WorkspaceProblemRepository workspaceProblemRepository;
+
+	@Mock
 	private WebhookSender webhookSender;
 
 	@InjectMocks
@@ -52,6 +61,14 @@ class WebhookAlertServiceTest {
 
 	private final ArgumentCaptor<WebhookAlert> alertCaptor = ArgumentCaptor.forClass(WebhookAlert.class);
 	private final ArgumentCaptor<WebhookAlertLog> logCaptor = ArgumentCaptor.forClass(WebhookAlertLog.class);
+
+	@BeforeEach
+	void setUp() {
+		ReflectionTestUtils.setField(webhookAlertService, "baseUrl", "https://ujax.site");
+		ReflectionTestUtils.setField(webhookAlertService, "retryDelayMinutes", 1);
+		ReflectionTestUtils.setField(webhookAlertService, "stuckProcessingMinutes", 10);
+		ReflectionTestUtils.setField(webhookAlertService, "maxAttempts", MAX_ATTEMPTS);
+	}
 
 	@Nested
 	@DisplayName("reserveOrUpdate")
@@ -374,15 +391,29 @@ class WebhookAlertServiceTest {
 			WebhookAlert alert = createProcessingAlert();
 			ReflectionTestUtils.setField(alert, "id", 1L);
 			Workspace workspace = createWorkspaceWithHookUrl();
+			WorkspaceProblem workspaceProblem = createWorkspaceProblemDetail(workspace);
 			LocalDateTime now = LocalDateTime.of(2026, 3, 8, 10, 0);
 			given(webhookAlertRepository.findById(1L))
 				.willReturn(Optional.of(alert), Optional.of(alert));
 			given(workspaceRepository.findById(WORKSPACE_ID)).willReturn(Optional.of(workspace));
+			given(workspaceProblemRepository.findById(WORKSPACE_PROBLEM_ID)).willReturn(Optional.of(workspaceProblem));
 
 			webhookAlertService.deliver(1L, now);
 
-			then(webhookSender).should().send("https://hook.example.com", WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
-				LocalDateTime.of(2026, 3, 8, 9, 0));
+			then(webhookSender).should().send(
+				eq("https://hook.example.com"),
+				argThat(message ->
+					message.workspaceProblemId().equals(WORKSPACE_PROBLEM_ID)
+						&& message.workspaceId().equals(WORKSPACE_ID)
+						&& message.workspaceName().equals("워크스페이스")
+					&& message.problemTitle().equals("1000. 백준 1000 A+B")
+						&& message.deadline().equals(LocalDateTime.of(2026, 3, 8, 12, 0))
+						&& message.scheduledAt().equals(LocalDateTime.of(2026, 3, 8, 9, 0))
+						&& message.problemLink().equals(
+							"https://ujax.site/workspaces/11/problem-boxes/7/problems/101"
+						)
+				)
+			);
 			then(webhookAlertLogRepository).should().save(logCaptor.capture());
 			assertThat(logCaptor.getValue()).extracting(
 				"webhookAlertId",
@@ -410,13 +441,15 @@ class WebhookAlertServiceTest {
 			WebhookAlert alert = createProcessingAlert();
 			ReflectionTestUtils.setField(alert, "id", 1L);
 			Workspace workspace = createWorkspaceWithHookUrl();
+			WorkspaceProblem workspaceProblem = createWorkspaceProblemDetail(workspace);
 			LocalDateTime now = LocalDateTime.of(2026, 3, 8, 10, 0);
 			given(webhookAlertRepository.findById(1L))
 				.willReturn(Optional.of(alert), Optional.of(alert));
 			given(workspaceRepository.findById(WORKSPACE_ID)).willReturn(Optional.of(workspace));
+			given(workspaceProblemRepository.findById(WORKSPACE_PROBLEM_ID)).willReturn(Optional.of(workspaceProblem));
 			willThrow(new RuntimeException("network timeout"))
 				.given(webhookSender)
-				.send(anyString(), anyLong(), anyLong(), any(LocalDateTime.class));
+				.send(anyString(), any(WebhookAlertMessage.class));
 
 			webhookAlertService.deliver(1L, now);
 
@@ -485,13 +518,15 @@ class WebhookAlertServiceTest {
 			WebhookAlert alert = createProcessingAlert(1L);
 			exhaustAttempts(alert, LocalDateTime.of(2026, 3, 8, 9, 0));
 			Workspace workspace = createWorkspaceWithHookUrl();
+			WorkspaceProblem workspaceProblem = createWorkspaceProblemDetail(workspace);
 			LocalDateTime now = LocalDateTime.of(2026, 3, 8, 10, 0);
 			given(webhookAlertRepository.findById(1L))
 				.willReturn(Optional.of(alert), Optional.of(alert));
 			given(workspaceRepository.findById(WORKSPACE_ID)).willReturn(Optional.of(workspace));
+			given(workspaceProblemRepository.findById(WORKSPACE_PROBLEM_ID)).willReturn(Optional.of(workspaceProblem));
 			willThrow(new RuntimeException("final failure"))
 				.given(webhookSender)
-				.send(anyString(), anyLong(), anyLong(), any(LocalDateTime.class));
+				.send(anyString(), any(WebhookAlertMessage.class));
 
 			webhookAlertService.deliver(1L, now);
 
@@ -541,13 +576,28 @@ class WebhookAlertServiceTest {
 	private Workspace createWorkspaceWithHookUrl() {
 		Workspace workspace = Workspace.create("워크스페이스", "소개");
 		workspace.update(null, null, "https://hook.example.com", null);
+		ReflectionTestUtils.setField(workspace, "id", WORKSPACE_ID);
 		return workspace;
 	}
 
+	private WorkspaceProblem createWorkspaceProblemDetail(Workspace workspace) {
+		Problem problem = Problem.create(1000, "백준 1000 A+B", "BRONZE", "1", "128", "desc", "in", "out", "url");
+		ProblemBox problemBox = ProblemBox.create(workspace, "1주차", "설명");
+		ReflectionTestUtils.setField(problemBox, "id", 7L);
+		WorkspaceProblem workspaceProblem = WorkspaceProblem.create(
+			problemBox,
+			problem,
+			LocalDateTime.of(2026, 3, 8, 12, 0),
+			LocalDateTime.of(2026, 3, 8, 9, 0)
+		);
+		ReflectionTestUtils.setField(workspaceProblem, "id", WORKSPACE_PROBLEM_ID);
+		return workspaceProblem;
+	}
+
 	private void exhaustAttempts(WebhookAlert alert, LocalDateTime base) {
-		for (int i = 0; i < WebhookAlert.MAX_ATTEMPT; i++) {
-			alert.markRetry(base.plusMinutes(i + 1));
-			if (i < WebhookAlert.MAX_ATTEMPT - 1) {
+		for (int i = 0; i < MAX_ATTEMPTS; i++) {
+			alert.markRetry(base.plusMinutes(i + 1), MAX_ATTEMPTS);
+			if (i < MAX_ATTEMPTS - 1) {
 				alert.markProcessing();
 			}
 		}

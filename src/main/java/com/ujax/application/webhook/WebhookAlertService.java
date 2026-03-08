@@ -4,10 +4,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.ujax.domain.problem.WorkspaceProblem;
+import com.ujax.domain.problem.WorkspaceProblemRepository;
 import com.ujax.domain.webhook.WebhookAlert;
 import com.ujax.domain.webhook.WebhookAlertLog;
 import com.ujax.domain.webhook.WebhookAlertLogActorType;
@@ -24,13 +27,23 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class WebhookAlertService {
 
-	private static final int RETRY_DELAY_MINUTES = 1;
-	private static final int STUCK_PROCESSING_MINUTES = 10;
-
 	private final WebhookAlertRepository webhookAlertRepository;
 	private final WebhookAlertLogRepository webhookAlertLogRepository;
+	private final WorkspaceProblemRepository workspaceProblemRepository;
 	private final WorkspaceRepository workspaceRepository;
 	private final WebhookSender webhookSender;
+
+	@Value("${app.ujax.base-url:https://ujax.site}")
+	private String baseUrl;
+
+	@Value("${app.webhook-alert.delivery.retry-delay-minutes:1}")
+	private int retryDelayMinutes;
+
+	@Value("${app.webhook-alert.delivery.stuck-processing-minutes:10}")
+	private int stuckProcessingMinutes;
+
+	@Value("${app.webhook-alert.delivery.max-attempts:5}")
+	private int maxAttempts;
 
 	@Transactional
 	public void reserveOrUpdate(Long workspaceProblemId, Long workspaceId, LocalDateTime scheduledAt, Long actorId) {
@@ -104,7 +117,7 @@ public class WebhookAlertService {
 	public void recoverStuckProcessing(LocalDateTime now) {
 		List<WebhookAlert> stuckAlerts = webhookAlertRepository.findAllByStatusAndUpdatedAtBefore(
 			WebhookAlertStatus.PROCESSING,
-			now.minusMinutes(STUCK_PROCESSING_MINUTES)
+			now.minusMinutes(stuckProcessingMinutes)
 		);
 
 		for (WebhookAlert alert : stuckAlerts) {
@@ -193,7 +206,7 @@ public class WebhookAlertService {
 		}
 
 		try {
-			webhookSender.send(hookUrl, alert.getWorkspaceProblemId(), alert.getWorkspaceId(), alert.getScheduledAt());
+			webhookSender.send(hookUrl, buildWebhookAlertMessage(alert));
 
 			Optional<WebhookAlert> refreshedAlert = webhookAlertRepository.findById(alertId);
 			if (refreshedAlert.isEmpty()) {
@@ -230,7 +243,7 @@ public class WebhookAlertService {
 			if (currentAlert.getStatus() != WebhookAlertStatus.PROCESSING) {
 				return;
 			}
-			if (currentAlert.isRetryExhausted()) {
+			if (currentAlert.isRetryExhausted(maxAttempts)) {
 				deleteWithLog(
 					currentAlert,
 					WebhookAlertLogEventType.FAILED,
@@ -244,7 +257,7 @@ public class WebhookAlertService {
 			}
 
 			WebhookAlertStatus fromStatus = currentAlert.getStatus();
-			currentAlert.markRetry(now.plusMinutes(RETRY_DELAY_MINUTES));
+			currentAlert.markRetry(now.plusMinutes(retryDelayMinutes), maxAttempts);
 			webhookAlertRepository.save(currentAlert);
 			saveLog(
 				currentAlert,
@@ -322,6 +335,54 @@ public class WebhookAlertService {
 		return workspaceRepository.findById(workspaceId)
 			.map(workspace -> workspace.getHookUrl())
 			.orElse(null);
+	}
+
+	private WebhookAlertMessage buildWebhookAlertMessage(WebhookAlert alert) {
+		String workspaceName = workspaceRepository.findById(alert.getWorkspaceId())
+			.map(workspace -> workspace.getName())
+			.orElse("워크스페이스 #" + alert.getWorkspaceId());
+
+		Optional<WorkspaceProblem> optionalWorkspaceProblem = workspaceProblemRepository.findById(
+			alert.getWorkspaceProblemId()
+		);
+		if (optionalWorkspaceProblem.isEmpty()) {
+			return new WebhookAlertMessage(
+				alert.getWorkspaceProblemId(),
+				alert.getWorkspaceId(),
+				workspaceName,
+				"문제 #" + alert.getWorkspaceProblemId(),
+				null,
+				alert.getScheduledAt(),
+				buildWorkspaceLink(alert.getWorkspaceId())
+			);
+		}
+
+		WorkspaceProblem workspaceProblem = optionalWorkspaceProblem.get();
+		return new WebhookAlertMessage(
+			alert.getWorkspaceProblemId(),
+			alert.getWorkspaceId(),
+			workspaceName,
+			"%d. %s".formatted(
+				workspaceProblem.getProblem().getProblemNumber(),
+				workspaceProblem.getProblem().getTitle()
+			),
+			workspaceProblem.getDeadline(),
+			alert.getScheduledAt(),
+			buildWorkspaceProblemLink(
+				alert.getWorkspaceId(),
+				workspaceProblem.getProblemBox().getId(),
+				workspaceProblem.getId()
+			)
+		);
+	}
+
+	private String buildWorkspaceLink(Long workspaceId) {
+		return "%s/workspaces/%d".formatted(baseUrl, workspaceId);
+	}
+
+	private String buildWorkspaceProblemLink(Long workspaceId, Long problemBoxId, Long workspaceProblemId) {
+		return "%s/workspaces/%d/problem-boxes/%d/problems/%d"
+			.formatted(baseUrl, workspaceId, problemBoxId, workspaceProblemId);
 	}
 
 }
