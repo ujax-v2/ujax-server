@@ -162,7 +162,7 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.OWNER);
 			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 10, 9, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
 
 			WorkspaceProblemResponse response = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
@@ -180,7 +180,25 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.OWNER);
 			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 10, 9, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
+
+			assertThatThrownBy(() -> workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt)))
+				.isInstanceOf(BusinessRuleViolationException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
+			then(webhookAlertService).shouldHaveNoInteractions();
+		}
+
+		@Test
+		@DisplayName("scheduledAt이 현재 시각 기준 1분 이내면 오류가 발생한다")
+		void createWithScheduledAtWithinOneMinute() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspaceWithHookUrl();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000, "A+B");
+			LocalDateTime scheduledAt = LocalDateTime.now().plusSeconds(30);
 
 			assertThatThrownBy(() -> workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
@@ -198,7 +216,7 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.OWNER);
 			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 10, 9, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
 
 			assertThatThrownBy(() -> workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
@@ -280,7 +298,7 @@ class WorkspaceProblemServiceTest {
 				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
 
 			LocalDateTime newDeadline = LocalDateTime.of(2026, 4, 1, 0, 0);
-			LocalDateTime newScheduledAt = LocalDateTime.of(2026, 3, 15, 0, 0);
+			LocalDateTime newScheduledAt = LocalDateTime.now().plusDays(1);
 
 			WorkspaceProblemResponse response = workspaceProblemService.updateWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), created.id(), user.getId(),
@@ -300,7 +318,7 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.OWNER);
 			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 15, 0, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
 
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
@@ -327,7 +345,29 @@ class WorkspaceProblemServiceTest {
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
 				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 20, 9, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
+
+			assertThatThrownBy(() -> workspaceProblemService.updateWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), created.id(), user.getId(),
+				new UpdateWorkspaceProblemRequest(null, scheduledAt)))
+				.isInstanceOf(BusinessRuleViolationException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
+			then(webhookAlertService).shouldHaveNoInteractions();
+		}
+
+		@Test
+		@DisplayName("scheduledAt으로 수정하는데 현재 시각 기준 1분 이내면 오류가 발생한다")
+		void updateWithScheduledAtWithinOneMinute() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspaceWithHookUrl();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000, "A+B");
+
+			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
+			LocalDateTime scheduledAt = LocalDateTime.now().plusSeconds(30);
 
 			assertThatThrownBy(() -> workspaceProblemService.updateWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), created.id(), user.getId(),
@@ -349,7 +389,7 @@ class WorkspaceProblemServiceTest {
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
 				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
-			LocalDateTime scheduledAt = LocalDateTime.of(2026, 3, 20, 9, 0);
+			LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
 
 			assertThatThrownBy(() -> workspaceProblemService.updateWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), created.id(), user.getId(),

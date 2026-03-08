@@ -1,5 +1,7 @@
 package com.ujax.application.problem;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -34,6 +36,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class WorkspaceProblemService {
 
+	private static final int MIN_SCHEDULE_LEAD_MINUTES = 1;
+
 	private final WorkspaceProblemRepository workspaceProblemRepository;
 	private final ProblemBoxRepository problemBoxRepository;
 	private final ProblemRepository problemRepository;
@@ -67,6 +71,7 @@ public class WorkspaceProblemService {
 			throw new ConflictException(ErrorCode.DUPLICATE_WORKSPACE_PROBLEM);
 		}
 		if (request.scheduledAt() != null) {
+			validateScheduledAt(request.scheduledAt());
 			validateWorkspaceHookUrl(member.getWorkspace());
 		}
 
@@ -92,10 +97,15 @@ public class WorkspaceProblemService {
 		WorkspaceMember member = findManagerOrOwner(workspaceId, userId);
 
 		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
+
+		if (request.scheduledAt() != null) {
+			validateScheduledAt(request.scheduledAt());
+			validateWorkspaceHookUrl(member.getWorkspace());
+		}
+
 		workspaceProblem.update(request.deadline(), request.scheduledAt());
 
 		if (workspaceProblem.getScheduledAt() != null) {
-			validateWorkspaceHookUrl(member.getWorkspace());
 			webhookAlertService.reserveOrUpdate(
 				workspaceProblem.getId(),
 				workspaceId,
@@ -143,6 +153,14 @@ public class WorkspaceProblemService {
 	private void validateWorkspaceHookUrl(Workspace workspace) {
 		if (!StringUtils.hasText(workspace.getHookUrl())) {
 			throw new BusinessRuleViolationException("scheduledAt 사용 시 workspace hookUrl이 필요합니다.");
+		}
+	}
+
+	private void validateScheduledAt(LocalDateTime scheduledAt) {
+		if (scheduledAt.isBefore(LocalDateTime.now().plusMinutes(MIN_SCHEDULE_LEAD_MINUTES))) {
+			throw new BusinessRuleViolationException(
+				"scheduledAt은 현재 시각 기준 %d분 이후여야 합니다.".formatted(MIN_SCHEDULE_LEAD_MINUTES)
+			);
 		}
 	}
 }
