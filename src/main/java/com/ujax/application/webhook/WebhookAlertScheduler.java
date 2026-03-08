@@ -20,8 +20,6 @@ public class WebhookAlertScheduler {
 	@Scheduled(fixedDelayString = "${app.webhook-alert.scheduler.fixed-delay-millis:60000}")
 	public void runWebhookAlertBatch() {
 		LocalDateTime now = LocalDateTime.now();
-
-		// TODO(issue-23): 실제 WebhookSender 구현이 들어가면 enabled=true 전환을 검토한다.
 		webhookAlertService.recoverStuckProcessing(now);
 
 		List<Long> reservedAlertIds = webhookAlertService.reserveDueAlertIds(now, properties.batchSize());

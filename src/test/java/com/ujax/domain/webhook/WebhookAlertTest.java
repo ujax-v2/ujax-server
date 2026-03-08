@@ -12,6 +12,7 @@ class WebhookAlertTest {
 
 	private static final Long WORKSPACE_PROBLEM_ID = 101L;
 	private static final Long WORKSPACE_ID = 11L;
+	private static final int MAX_ATTEMPTS = 5;
 
 	@Nested
 	@DisplayName("WebhookAlert 생성")
@@ -70,7 +71,7 @@ class WebhookAlertTest {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
-			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1));
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS);
 
 			LocalDateTime updatedAt = LocalDateTime.of(2026, 3, 2, 11, 0);
 			alert.applyScheduleUpdate(updatedAt);
@@ -106,7 +107,7 @@ class WebhookAlertTest {
 			LocalDateTime retryAt = LocalDateTime.of(2026, 3, 2, 10, 1);
 			alert.markProcessing();
 
-			alert.markRetry(retryAt);
+			alert.markRetry(retryAt, MAX_ATTEMPTS);
 
 			assertThat(alert).extracting("status", "attemptNo", "scheduledAt", "nextScheduledAt")
 				.containsExactly(WebhookAlertStatus.PENDING, 1, retryAt, null);
@@ -119,7 +120,7 @@ class WebhookAlertTest {
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
 			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
-			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1));
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS);
 			alert.markProcessing();
 			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 12, 0));
 
@@ -191,15 +192,15 @@ class WebhookAlertTest {
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			LocalDateTime base = LocalDateTime.of(2026, 3, 2, 10, 0);
 
-			for (int i = 0; i < WebhookAlert.MAX_ATTEMPT; i++) {
+			for (int i = 0; i < MAX_ATTEMPTS; i++) {
 				alert.markProcessing();
-				alert.markRetry(base.plusMinutes(i + 1));
+				alert.markRetry(base.plusMinutes(i + 1), MAX_ATTEMPTS);
 			}
 			alert.markProcessing();
 
-			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10)))
+			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10), MAX_ATTEMPTS))
 				.isInstanceOf(IllegalStateException.class);
-			assertThat(alert.isRetryExhausted()).isTrue();
+			assertThat(alert.isRetryExhausted(MAX_ATTEMPTS)).isTrue();
 		}
 	}
 }

@@ -41,8 +41,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WebhookAlert {
 
-	public static final int MAX_ATTEMPT = 5;
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "webhook_alert_id")
@@ -104,9 +102,9 @@ public class WebhookAlert {
 		this.attemptNo = 0;
 	}
 
-	public void markRetry(LocalDateTime retryAt) {
+	public void markRetry(LocalDateTime retryAt, int maxAttempt) {
 		validateStatus(WebhookAlertStatus.PROCESSING);
-		if (isRetryExhausted()) {
+		if (isRetryExhausted(maxAttempt)) {
 			throw new IllegalStateException("retry attempts exhausted");
 		}
 		this.attemptNo = this.attemptNo + 1;
@@ -134,8 +132,11 @@ public class WebhookAlert {
 		return true;
 	}
 
-	public boolean isRetryExhausted() {
-		return this.attemptNo >= MAX_ATTEMPT;
+	public boolean isRetryExhausted(int maxAttempt) {
+		if (maxAttempt <= 0) {
+			throw new IllegalArgumentException("maxAttempt must be greater than zero");
+		}
+		return this.attemptNo >= maxAttempt;
 	}
 
 	private void validateStatus(WebhookAlertStatus expected) {
