@@ -102,34 +102,182 @@ public class WebhookAlertService {
 
 	@Transactional
 	public void recoverStuckProcessing(LocalDateTime now) {
-		// TODO(issue-23):
-		// 1) 오래된 PROCESSING alert 목록 조회
-		// 2) nextScheduledAt 우선 적용 또는 now 기준 scheduledAt 복구
-		// 3) status=PENDING 복귀
-		// 4) RECOVERED 로그 적재
-		throw new UnsupportedOperationException("TODO(issue-23): recover stuck processing alerts");
+		List<WebhookAlert> stuckAlerts = webhookAlertRepository.findAllByStatusAndUpdatedAtBefore(
+			WebhookAlertStatus.PROCESSING,
+			now.minusMinutes(STUCK_PROCESSING_MINUTES)
+		);
+
+		for (WebhookAlert alert : stuckAlerts) {
+			WebhookAlertStatus fromStatus = alert.getStatus();
+			alert.recoverToPending(now);
+			webhookAlertRepository.save(alert);
+			saveLog(
+				alert,
+				WebhookAlertLogEventType.RECOVERED,
+				fromStatus,
+				alert.getStatus(),
+				null,
+				now,
+				null,
+				WebhookAlertLogActorType.SYSTEM,
+				null
+			);
+		}
 	}
 
 	@Transactional
 	public List<Long> reserveDueAlertIds(LocalDateTime now, int limit) {
-		// TODO(issue-23):
-		// 1) due PENDING alert 조회 (scheduledAt <= now, limit 적용)
-		// 2) 각 alert를 PROCESSING으로 전환
-		// 3) PROCESSING_STARTED 로그 적재
-		// 4) reserved alert id 목록 반환
-		throw new UnsupportedOperationException("TODO(issue-23): reserve due webhook alerts");
+		if (limit <= 0) {
+			return List.of();
+		}
+
+		List<WebhookAlert> dueAlerts = webhookAlertRepository
+			.findAllByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAsc(WebhookAlertStatus.PENDING, now)
+			.stream()
+			.limit(limit)
+			.toList();
+
+		for (WebhookAlert alert : dueAlerts) {
+			WebhookAlertStatus fromStatus = alert.getStatus();
+			alert.markProcessing();
+			saveLog(
+				alert,
+				WebhookAlertLogEventType.PROCESSING_STARTED,
+				fromStatus,
+				alert.getStatus(),
+				null,
+				now,
+				null,
+				WebhookAlertLogActorType.BATCH,
+				null
+			);
+		}
+
+		if (!dueAlerts.isEmpty()) {
+			webhookAlertRepository.saveAll(dueAlerts);
+		}
+
+		return dueAlerts.stream()
+			.map(WebhookAlert::getId)
+			.toList();
 	}
 
+	@Transactional
 	public void deliver(Long alertId, LocalDateTime now) {
-		// TODO(issue-23):
-		// 1) alert 존재 및 PROCESSING 상태 검증
-		// 2) workspace hookUrl 조회 및 전송 가능 여부 검증
-		// 3) nextScheduledAt 존재 시 HTTP 호출 없이 재예약 처리
-		// 4) HTTP 호출 수행 (트랜잭션 외부)
-		// 5) 결과 반영 직전 alert 재조회
-		// 6) nextScheduledAt 재확인 후 재예약 우선 또는 성공/재시도/최종실패 반영
-		// 7) 상태 변화에 맞는 로그 적재 및 필요 시 hard delete
-		throw new UnsupportedOperationException("TODO(issue-23): deliver webhook alert");
+		Optional<WebhookAlert> optionalAlert = webhookAlertRepository.findById(alertId);
+		if (optionalAlert.isEmpty()) {
+			return;
+		}
+
+		WebhookAlert alert = optionalAlert.get();
+		if (alert.getStatus() != WebhookAlertStatus.PROCESSING) {
+			return;
+		}
+
+		if (applyDeferredScheduleIfPresent(alert, now)) {
+			return;
+		}
+
+		String hookUrl = findHookUrl(alert.getWorkspaceId());
+		if (!StringUtils.hasText(hookUrl)) {
+			deleteWithLog(
+				alert,
+				WebhookAlertLogEventType.FAILED,
+				WebhookAlertLogActorType.BATCH,
+				null,
+				null,
+				now,
+				"workspace hookUrl is missing"
+			);
+			return;
+		}
+
+		try {
+			webhookSender.send(hookUrl, alert.getWorkspaceProblemId(), alert.getWorkspaceId(), alert.getScheduledAt());
+
+			Optional<WebhookAlert> refreshedAlert = webhookAlertRepository.findById(alertId);
+			if (refreshedAlert.isEmpty()) {
+				return;
+			}
+
+			WebhookAlert currentAlert = refreshedAlert.get();
+			if (applyDeferredScheduleIfPresent(currentAlert, now)) {
+				return;
+			}
+			if (currentAlert.getStatus() != WebhookAlertStatus.PROCESSING) {
+				return;
+			}
+
+			deleteWithLog(
+				currentAlert,
+				WebhookAlertLogEventType.DELIVERED,
+				WebhookAlertLogActorType.BATCH,
+				null,
+				now,
+				now,
+				null
+			);
+		} catch (RuntimeException exception) {
+			Optional<WebhookAlert> refreshedAlert = webhookAlertRepository.findById(alertId);
+			if (refreshedAlert.isEmpty()) {
+				return;
+			}
+
+			WebhookAlert currentAlert = refreshedAlert.get();
+			if (applyDeferredScheduleIfPresent(currentAlert, now)) {
+				return;
+			}
+			if (currentAlert.getStatus() != WebhookAlertStatus.PROCESSING) {
+				return;
+			}
+			if (currentAlert.isRetryExhausted()) {
+				deleteWithLog(
+					currentAlert,
+					WebhookAlertLogEventType.FAILED,
+					WebhookAlertLogActorType.BATCH,
+					null,
+					null,
+					now,
+					exception.getMessage()
+				);
+				return;
+			}
+
+			WebhookAlertStatus fromStatus = currentAlert.getStatus();
+			currentAlert.markRetry(now.plusMinutes(RETRY_DELAY_MINUTES));
+			webhookAlertRepository.save(currentAlert);
+			saveLog(
+				currentAlert,
+				WebhookAlertLogEventType.RETRY_SCHEDULED,
+				fromStatus,
+				currentAlert.getStatus(),
+				null,
+				now,
+				exception.getMessage(),
+				WebhookAlertLogActorType.BATCH,
+				null
+			);
+		}
+	}
+
+	private boolean applyDeferredScheduleIfPresent(WebhookAlert alert, LocalDateTime attemptedAt) {
+		if (!alert.applyDeferredScheduleIfPresent()) {
+			return false;
+		}
+
+		webhookAlertRepository.save(alert);
+		saveLog(
+			alert,
+			WebhookAlertLogEventType.SCHEDULE_UPDATED,
+			WebhookAlertStatus.PROCESSING,
+			alert.getStatus(),
+			null,
+			attemptedAt,
+			null,
+			WebhookAlertLogActorType.BATCH,
+			null
+		);
+		return true;
 	}
 
 	private void deleteWithLog(
@@ -168,6 +316,12 @@ public class WebhookAlertService {
 			actorId
 		);
 		webhookAlertLogRepository.save(log);
+	}
+
+	private String findHookUrl(Long workspaceId) {
+		return workspaceRepository.findById(workspaceId)
+			.map(workspace -> workspace.getHookUrl())
+			.orElse(null);
 	}
 
 }

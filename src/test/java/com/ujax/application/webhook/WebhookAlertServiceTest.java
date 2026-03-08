@@ -282,6 +282,39 @@ class WebhookAlertServiceTest {
 		}
 
 		@Test
+		@DisplayName("stuck PROCESSING에 nextScheduledAt이 없으면 now 기준으로 복구한다")
+		void recoverStuckProcessingUsesFallbackNowWhenDeferredScheduleMissing() {
+			LocalDateTime now = LocalDateTime.of(2026, 3, 8, 10, 0);
+			WebhookAlert alert = createProcessingAlert();
+			given(webhookAlertRepository.findAllByStatusAndUpdatedAtBefore(
+				eq(WebhookAlertStatus.PROCESSING),
+				any(LocalDateTime.class)
+			)).willReturn(List.of(alert));
+
+			webhookAlertService.recoverStuckProcessing(now);
+
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+				.containsExactly(now, null, WebhookAlertStatus.PENDING, 0);
+			then(webhookAlertRepository).should().save(alert);
+			then(webhookAlertLogRepository).should().save(logCaptor.capture());
+			assertThat(logCaptor.getValue()).extracting(
+				"eventType",
+				"fromStatus",
+				"toStatus",
+				"scheduledAt",
+				"actorType",
+				"actorId"
+			).containsExactly(
+				WebhookAlertLogEventType.RECOVERED,
+				WebhookAlertStatus.PROCESSING,
+				WebhookAlertStatus.PENDING,
+				now,
+				WebhookAlertLogActorType.SYSTEM,
+				null
+			);
+		}
+
+		@Test
 		@DisplayName("due alert reserve 시 PROCESSING_STARTED 로그를 남긴다")
 		void reserveDueAlertIdsMarksProcessingAndWritesLog() {
 			LocalDateTime now = LocalDateTime.of(2026, 3, 8, 10, 0);
@@ -298,23 +331,36 @@ class WebhookAlertServiceTest {
 			assertThat(first.getStatus()).isEqualTo(WebhookAlertStatus.PROCESSING);
 			assertThat(second.getStatus()).isEqualTo(WebhookAlertStatus.PENDING);
 
-			then(webhookAlertRepository).should().saveAll(List.of(first));
-			then(webhookAlertLogRepository).should().save(logCaptor.capture());
-			assertThat(logCaptor.getValue()).extracting(
-				"webhookAlertId",
-				"eventType",
-				"fromStatus",
-				"toStatus",
-				"actorType",
-				"actorId"
-			).containsExactly(
-				1L,
-				WebhookAlertLogEventType.PROCESSING_STARTED,
-				WebhookAlertStatus.PENDING,
-				WebhookAlertStatus.PROCESSING,
-				WebhookAlertLogActorType.BATCH,
-				null
+				then(webhookAlertRepository).should().saveAll(List.of(first));
+				then(webhookAlertLogRepository).should().save(logCaptor.capture());
+				assertThat(logCaptor.getValue()).extracting(
+					"webhookAlertId",
+					"eventType",
+					"fromStatus",
+					"toStatus",
+					"actorType",
+					"actorId"
+				).containsExactly(
+					1L,
+					WebhookAlertLogEventType.PROCESSING_STARTED,
+					WebhookAlertStatus.PENDING,
+					WebhookAlertStatus.PROCESSING,
+					WebhookAlertLogActorType.BATCH,
+					null
+				);
+			}
+
+		@Test
+		@DisplayName("limit이 0 이하면 빈 목록을 반환하고 조회하지 않는다")
+		void reserveDueAlertIdsReturnsEmptyWhenLimitIsZero() {
+			List<Long> reservedIds = webhookAlertService.reserveDueAlertIds(
+				LocalDateTime.of(2026, 3, 8, 10, 0),
+				0
 			);
+
+			assertThat(reservedIds).isEmpty();
+			then(webhookAlertRepository).shouldHaveNoInteractions();
+			then(webhookAlertLogRepository).shouldHaveNoInteractions();
 		}
 	}
 
