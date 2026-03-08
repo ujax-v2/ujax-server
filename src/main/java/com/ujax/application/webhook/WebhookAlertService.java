@@ -100,6 +100,38 @@ public class WebhookAlertService {
 			));
 	}
 
+	@Transactional
+	public void recoverStuckProcessing(LocalDateTime now) {
+		// TODO(issue-23):
+		// 1) 오래된 PROCESSING alert 목록 조회
+		// 2) nextScheduledAt 우선 적용 또는 now 기준 scheduledAt 복구
+		// 3) status=PENDING 복귀
+		// 4) RECOVERED 로그 적재
+		throw new UnsupportedOperationException("TODO(issue-23): recover stuck processing alerts");
+	}
+
+	@Transactional
+	public List<Long> reserveDueAlertIds(LocalDateTime now, int limit) {
+		// TODO(issue-23):
+		// 1) due PENDING alert 조회 (scheduledAt <= now, limit 적용)
+		// 2) 각 alert를 PROCESSING으로 전환
+		// 3) PROCESSING_STARTED 로그 적재
+		// 4) reserved alert id 목록 반환
+		throw new UnsupportedOperationException("TODO(issue-23): reserve due webhook alerts");
+	}
+
+	public void deliver(Long alertId, LocalDateTime now) {
+		// TODO(issue-23):
+		// 1) alert 존재 및 PROCESSING 상태 검증
+		// 2) workspace hookUrl 조회 및 전송 가능 여부 검증
+		// 3) nextScheduledAt 존재 시 HTTP 호출 없이 재예약 처리
+		// 4) HTTP 호출 수행 (트랜잭션 외부)
+		// 5) 결과 반영 직전 alert 재조회
+		// 6) nextScheduledAt 재확인 후 재예약 우선 또는 성공/재시도/최종실패 반영
+		// 7) 상태 변화에 맞는 로그 적재 및 필요 시 hard delete
+		throw new UnsupportedOperationException("TODO(issue-23): deliver webhook alert");
+	}
+
 	private void deleteWithLog(
 		WebhookAlert alert,
 		WebhookAlertLogEventType eventType,
