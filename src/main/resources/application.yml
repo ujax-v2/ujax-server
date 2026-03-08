@@ -39,6 +39,11 @@ app:
     frontend-callback-url: ${UJAX_FRONTEND_CALLBACK:https://ujax.site/auth/callback}
     mail:
       from: ${UJAX_MAIL_FROM:noreply@ujax.site}
+  webhook-alert:
+    scheduler:
+      enabled: false
+      fixed-delay-millis: 60000
+      batch-size: 100
 
 spring.security.oauth2.client:
   registration:
