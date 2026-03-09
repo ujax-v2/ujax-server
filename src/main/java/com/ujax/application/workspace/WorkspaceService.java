@@ -8,20 +8,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
-import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
-import com.ujax.domain.workspace.WorkspaceJoinRequest;
-import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
-import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -46,8 +38,6 @@ public class WorkspaceService {
 	private static final int NAME_MIN = 1;
 	private static final int NAME_MAX = 50;
 	private static final int DESCRIPTION_MAX = 200;
-	private static final int NICKNAME_MIN = 1;
-	private static final int NICKNAME_MAX = 30;
 	private static final Sort WORKSPACE_DEFAULT_SORT = Sort.by(
 		Sort.Order.desc("createdAt"),
 		Sort.Order.desc("id")
@@ -55,9 +45,7 @@ public class WorkspaceService {
 
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
-	private final WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
 	private final UserRepository userRepository;
-	private final WorkspaceInviteMailer workspaceInviteMailer;
 	private final S3StorageService s3StorageService;
 
 	public PageResponse<WorkspaceResponse> listWorkspaces(String name, int page, int size) {
@@ -78,158 +66,6 @@ public class WorkspaceService {
 		return workspaceRepository.findByMemberUserId(userId, WORKSPACE_DEFAULT_SORT).stream()
 			.map(WorkspaceResponse::from)
 			.toList();
-	}
-
-	public PageResponse<WorkspaceMemberResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
-		validatePageable(page, size);
-		validateMember(workspaceId, userId);
-		Page<WorkspaceMember> members = workspaceMemberRepository.findByWorkspace_Id(
-			workspaceId,
-			PageRequest.of(page, size)
-		);
-
-		return PageResponse.of(
-			members.getContent().stream().map(WorkspaceMemberResponse::from).toList(),
-			members.getNumber(),
-			members.getSize(),
-			members.getTotalElements(),
-			members.getTotalPages()
-		);
-	}
-
-	public WorkspaceMemberResponse getMyWorkspaceMember(Long workspaceId, Long userId) {
-		WorkspaceMember member = validateMember(workspaceId, userId);
-		return WorkspaceMemberResponse.from(member);
-	}
-
-	@Transactional
-	public void inviteWorkspaceMember(Long workspaceId, Long userId, String email) {
-		validateOwner(workspaceId, userId);
-		Workspace workspace = findWorkspaceById(workspaceId);
-
-		User user = userRepository.findByEmail(email)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-
-		workspaceMemberRepository.findByWorkspaceIdAndUserIdIncludingDeleted(workspaceId, user.getId())
-			.ifPresent(member -> {
-				if (!member.isDeleted()) {
-					throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
-				}
-				member.restore();
-				member.updateRole(WorkspaceMemberRole.MEMBER);
-				member.updateNickname(user.getName());
-			});
-
-		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, user.getId()).isPresent()) {
-			workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
-			return;
-		}
-
-		WorkspaceMember member = WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER);
-		workspaceMemberRepository.save(member);
-		workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
-	}
-
-	@Transactional
-	public WorkspaceJoinRequestResponse createJoinRequest(Long workspaceId, Long userId) {
-		Workspace workspace = findWorkspaceById(workspaceId);
-		User user = findUserById(userId);
-
-		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
-			throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
-		}
-		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
-			workspaceId,
-			userId,
-			WorkspaceJoinRequestStatus.PENDING
-		)) {
-			throw new ConflictException(ErrorCode.WORKSPACE_JOIN_REQUEST_ALREADY_PENDING);
-		}
-
-		WorkspaceJoinRequest created = workspaceJoinRequestRepository.save(WorkspaceJoinRequest.create(workspace, user));
-		return WorkspaceJoinRequestResponse.from(created);
-	}
-
-	public WorkspaceMyJoinRequestStatusResponse getMyJoinRequestStatus(Long workspaceId, Long userId) {
-		findWorkspaceById(workspaceId);
-
-		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
-			return WorkspaceMyJoinRequestStatusResponse.of(true, WorkspaceMyJoinRequestStatus.MEMBER, false);
-		}
-		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
-			workspaceId,
-			userId,
-			WorkspaceJoinRequestStatus.PENDING
-		)) {
-			return WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.PENDING, false);
-		}
-
-		return workspaceJoinRequestRepository.findTopByWorkspace_IdAndUser_IdOrderByCreatedAtDesc(workspaceId, userId)
-			.filter(request -> request.getStatus() == WorkspaceJoinRequestStatus.REJECTED)
-			.map(request -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.REJECTED, true))
-			.orElseGet(() -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.NONE, true));
-	}
-
-	public PageResponse<WorkspaceJoinRequestListItemResponse> listJoinRequests(
-		Long workspaceId,
-		Long userId,
-		int page,
-		int size
-	) {
-		findWorkspaceById(workspaceId);
-		validatePageable(page, size);
-		validateOwner(workspaceId, userId);
-
-		Page<WorkspaceJoinRequest> joinRequests = workspaceJoinRequestRepository.findByWorkspace_IdAndStatusOrderByCreatedAtDesc(
-			workspaceId,
-			WorkspaceJoinRequestStatus.PENDING,
-			PageRequest.of(page, size)
-		);
-
-		return PageResponse.of(
-			joinRequests.getContent().stream().map(WorkspaceJoinRequestListItemResponse::from).toList(),
-			joinRequests.getNumber(),
-			joinRequests.getSize(),
-			joinRequests.getTotalElements(),
-			joinRequests.getTotalPages()
-		);
-	}
-
-	@Transactional
-	public void approveJoinRequest(Long workspaceId, Long userId, Long requestId) {
-		Workspace workspace = findWorkspaceById(workspaceId);
-		validateOwner(workspaceId, userId);
-
-		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
-		joinRequest.approve();
-
-		User applicant = joinRequest.getUser();
-
-		workspaceMemberRepository.findByWorkspaceIdAndUserIdIncludingDeleted(workspaceId, applicant.getId())
-			.ifPresent(member -> {
-				if (!member.isDeleted()) {
-					throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
-				}
-				member.restore();
-				member.updateRole(WorkspaceMemberRole.MEMBER);
-				member.updateNickname(applicant.getName());
-			});
-
-		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, applicant.getId()).isPresent()) {
-			return;
-		}
-
-		WorkspaceMember member = WorkspaceMember.create(workspace, applicant, WorkspaceMemberRole.MEMBER);
-		workspaceMemberRepository.save(member);
-	}
-
-	@Transactional
-	public void rejectJoinRequest(Long workspaceId, Long userId, Long requestId) {
-		findWorkspaceById(workspaceId);
-		validateOwner(workspaceId, userId);
-
-		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
-		joinRequest.reject();
 	}
 
 	public WorkspaceResponse getWorkspace(Long workspaceId) {
@@ -308,68 +144,6 @@ public class WorkspaceService {
 		return WorkspaceSettingsResponse.from(workspace);
 	}
 
-	@Transactional
-	public void updateWorkspaceMemberRole(Long workspaceId, Long userId, Long workspaceMemberId, WorkspaceMemberRole role) {
-		WorkspaceMember owner = validateOwner(workspaceId, userId);
-		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
-
-		if (target.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자 권한은 변경할 수 없습니다.");
-		}
-
-		if (role == WorkspaceMemberRole.OWNER) {
-			if (owner.getId().equals(target.getId())) {
-				throw new BadRequestException(ErrorCode.INVALID_INPUT);
-			}
-			target.updateRole(WorkspaceMemberRole.OWNER);
-			owner.updateRole(WorkspaceMemberRole.MANAGER);
-			return;
-		}
-
-		target.updateRole(role);
-	}
-
-	@Transactional
-	public void removeWorkspaceMember(Long workspaceId, Long userId, Long workspaceMemberId) {
-		WorkspaceMember actor = validateMember(workspaceId, userId);
-		WorkspaceMember target = findWorkspaceMember(workspaceId, workspaceMemberId);
-
-		if (actor.getRole() == WorkspaceMemberRole.MEMBER) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "멤버는 다른 사용자를 추방할 수 없습니다.");
-		}
-
-		if (target.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자는 추방할 수 없습니다.");
-		}
-
-		if (actor.getRole() == WorkspaceMemberRole.MANAGER && target.getRole() != WorkspaceMemberRole.MEMBER) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "매니저는 멤버만 추방할 수 있습니다.");
-		}
-
-		if (actor.getId().equals(target.getId())) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "자기 자신은 추방할 수 없습니다.");
-		}
-
-		workspaceMemberRepository.delete(target);
-	}
-
-	@Transactional
-	public void leaveWorkspace(Long workspaceId, Long userId) {
-		WorkspaceMember member = validateMember(workspaceId, userId);
-		if (member.getRole() == WorkspaceMemberRole.OWNER) {
-			throw new ForbiddenException(ErrorCode.WORKSPACE_FORBIDDEN, "소유자는 워크스페이스를 탈퇴할 수 없습니다.");
-		}
-		workspaceMemberRepository.delete(member);
-	}
-
-	@Transactional
-	public WorkspaceMemberResponse updateMyWorkspaceNickname(Long workspaceId, Long userId, String nickname) {
-		WorkspaceMember member = validateMember(workspaceId, userId);
-		validateNickname(nickname);
-		member.updateNickname(nickname);
-		return WorkspaceMemberResponse.from(member);
-	}
-
 	private Workspace findWorkspaceById(Long workspaceId) {
 		return workspaceRepository.findById(workspaceId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_NOT_FOUND));
@@ -378,16 +152,6 @@ public class WorkspaceService {
 	private User findUserById(Long userId) {
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-	}
-
-	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long workspaceMemberId) {
-		return workspaceMemberRepository.findByWorkspace_IdAndId(workspaceId, workspaceMemberId)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_MEMBER_NOT_FOUND));
-	}
-
-	private WorkspaceJoinRequest findWorkspaceJoinRequestById(Long workspaceId, Long requestId) {
-		return workspaceJoinRequestRepository.findByIdAndWorkspace_Id(requestId, workspaceId)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_JOIN_REQUEST_NOT_FOUND));
 	}
 
 	private void validateName(String name) {
@@ -415,16 +179,6 @@ public class WorkspaceService {
 		}
 	}
 
-	private void validateNickname(String nickname) {
-		if (nickname == null || nickname.isBlank()) {
-			throw new BadRequestException(ErrorCode.INVALID_INPUT);
-		}
-		int length = nickname.length();
-		if (length < NICKNAME_MIN || length > NICKNAME_MAX) {
-			throw new BadRequestException(ErrorCode.INVALID_INPUT);
-		}
-	}
-
 	private void validateNameDuplicate(String name, String currentName) {
 		if (currentName != null && currentName.equals(name)) {
 			return;
@@ -442,10 +196,5 @@ public class WorkspaceService {
 			throw new ForbiddenException(ErrorCode.WORKSPACE_OWNER_REQUIRED);
 		}
 		return member;
-	}
-
-	private WorkspaceMember validateMember(Long workspaceId, Long userId) {
-		return workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-			.orElseThrow(() -> new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 	}
 }
