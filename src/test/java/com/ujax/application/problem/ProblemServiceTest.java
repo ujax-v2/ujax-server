@@ -185,7 +185,7 @@ class ProblemServiceTest {
 		void createProblem_CleanTitle() {
 			// given
 			ProblemIngestRequest request = new ProblemIngestRequest(
-				1000, "A+B\tBronze V", "Bronze V", "2 초", "128 MB",
+				1000, "A+B\t성공\t다국어", "Bronze V", "2 초", "128 MB",
 				null, null, null, null, null, null
 			);
 
