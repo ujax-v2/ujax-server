@@ -32,8 +32,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.solution.SolutionCommentService;
+import com.ujax.application.solution.SolutionLikeService;
 import com.ujax.application.solution.SolutionService;
+import com.ujax.application.solution.dto.response.SolutionCommentResponse;
+import com.ujax.application.solution.dto.response.SolutionLikeStatusResponse;
+import com.ujax.application.solution.dto.response.SolutionMemberSummaryResponse;
 import com.ujax.application.solution.dto.response.SolutionResponse;
+import com.ujax.application.solution.dto.response.SolutionVersionResponse;
 import com.ujax.domain.solution.ProgrammingLanguage;
 import com.ujax.domain.solution.SolutionStatus;
 import com.ujax.global.dto.PageResponse;
@@ -64,6 +70,12 @@ class SolutionControllerDocsTest {
 
 	@MockitoBean
 	private SolutionService solutionService;
+
+	@MockitoBean
+	private SolutionLikeService solutionLikeService;
+
+	@MockitoBean
+	private SolutionCommentService solutionCommentService;
 
 	@BeforeEach
 	void setUpSecurityContext() {
@@ -306,6 +318,275 @@ class SolutionControllerDocsTest {
 			));
 	}
 
+	@Test
+	@DisplayName("풀이 멤버 요약 목록 조회 API")
+	void getSolutionMembers() throws Exception {
+		List<SolutionMemberSummaryResponse> response = List.of(
+			new SolutionMemberSummaryResponse(
+				11L,
+				"pythonista",
+				ProgrammingLanguage.PYTHON,
+				SolutionStatus.ACCEPTED,
+				2L,
+				1L,
+				LocalDateTime.now()
+			)
+		);
+
+		given(solutionService.getSolutionMembers(anyLong(), anyLong(), anyLong(), anyLong()))
+			.willReturn(response);
+
+		mockMvc.perform(get(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members",
+				1, 2, 3
+			))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-member-list",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 멤버 요약 목록 조회")
+					.description("문제를 푼 멤버별 최신 풀이 요약을 조회합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionMemberSummaryList"))
+					.responseFields(solutionMemberSummaryFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 버전 목록 조회 API")
+	void getSolutionVersions() throws Exception {
+		SolutionVersionResponse item = new SolutionVersionResponse(
+			12005L,
+			"print(sum(map(int, input().split())))",
+			SolutionStatus.ACCEPTED,
+			"28 ms",
+			"31120 KB",
+			"34 B",
+			LocalDateTime.now(),
+			1L,
+			true,
+			0L
+		);
+
+		PageResponse<SolutionVersionResponse> response = PageResponse.of(List.of(item), 0, 1, 2L, 2);
+		given(solutionService.getSolutionVersions(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyInt(), anyInt()))
+			.willReturn(response);
+
+		mockMvc.perform(get(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions",
+				1, 2, 3, 4
+			).param("page", "0").param("size", "1"))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-version-list",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 버전 목록 조회")
+					.description("특정 멤버의 제출 버전 목록을 최신순으로 조회합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID")
+					)
+					.queryParameters(
+						parameterWithName("page").optional().description("페이지 번호"),
+						parameterWithName("size").optional().description("페이지 크기")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionVersionList"))
+					.responseFields(solutionVersionFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 좋아요 등록 API")
+	void likeSolution() throws Exception {
+		given(solutionLikeService.like(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong()))
+			.willReturn(SolutionLikeStatusResponse.of(1L, true));
+
+		mockMvc.perform(put(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/likes",
+				1, 2, 3, 4, 5
+			))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-like",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 좋아요 등록")
+					.description("특정 제출 버전에 좋아요를 등록합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID"),
+						parameterWithName("submissionId").description("백준 제출 번호")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionLikeStatus"))
+					.responseFields(solutionLikeStatusFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 좋아요 취소 API")
+	void unlikeSolution() throws Exception {
+		given(solutionLikeService.unlike(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong()))
+			.willReturn(SolutionLikeStatusResponse.of(0L, false));
+
+		mockMvc.perform(delete(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/likes",
+				1, 2, 3, 4, 5
+			))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-unlike",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 좋아요 취소")
+					.description("특정 제출 버전의 좋아요를 취소합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID"),
+						parameterWithName("submissionId").description("백준 제출 번호")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionLikeStatus"))
+					.responseFields(solutionLikeStatusFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 댓글 목록 조회 API")
+	void getSolutionComments() throws Exception {
+		List<SolutionCommentResponse> response = List.of(
+			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.now())
+		);
+
+		given(solutionCommentService.getComments(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong()))
+			.willReturn(response);
+
+		mockMvc.perform(get(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments",
+				1, 2, 3, 4, 5
+			))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-comment-list",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 댓글 목록 조회")
+					.description("특정 제출 버전의 댓글 목록을 조회합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID"),
+						parameterWithName("submissionId").description("백준 제출 번호")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionCommentList"))
+					.responseFields(solutionCommentListFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 댓글 생성 API")
+	void createSolutionComment() throws Exception {
+		given(solutionCommentService.createComment(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyString()))
+			.willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.now()));
+
+		mockMvc.perform(post(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments",
+				1, 2, 3, 4, 5
+			).contentType(MediaType.APPLICATION_JSON).content("""
+				{"content":"댓글"}
+				"""))
+			.andDo(print())
+			.andExpect(status().isCreated())
+			.andDo(document("solution-comment-create",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 댓글 생성")
+					.description("특정 제출 버전에 댓글을 생성합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID"),
+						parameterWithName("submissionId").description("백준 제출 번호")
+					)
+					.requestFields(
+						fieldWithPath("content").type(JsonFieldType.STRING).description("댓글 내용")
+					)
+					.responseSchema(Schema.schema("ApiResponse-SolutionCommentResponse"))
+					.responseFields(solutionCommentResponseFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("풀이 댓글 삭제 API")
+	void deleteSolutionComment() throws Exception {
+		mockMvc.perform(delete(
+				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments/{commentId}",
+				1, 2, 3, 4, 5, 6
+			))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("solution-comment-delete",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Solution")
+					.summary("풀이 댓글 삭제")
+					.description("특정 제출 버전의 댓글을 삭제합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID"),
+						parameterWithName("problemBoxId").description("문제집 ID"),
+						parameterWithName("workspaceProblemId").description("문제집 문제 ID"),
+						parameterWithName("workspaceMemberId").description("워크스페이스 멤버 ID"),
+						parameterWithName("submissionId").description("백준 제출 번호"),
+						parameterWithName("commentId").description("댓글 ID")
+					)
+					.responseSchema(Schema.schema("ApiResponse-Void"))
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.NULL).description("응답 데이터").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
 	private static FieldDescriptor[] solutionResponseFields() {
 		return new FieldDescriptor[] {
 			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
@@ -320,6 +601,81 @@ class SolutionControllerDocsTest {
 			fieldWithPath("data.programmingLanguage").type(JsonFieldType.STRING).description("프로그래밍 언어"),
 			fieldWithPath("data.codeLength").type(JsonFieldType.STRING).description("코드 길이").optional(),
 			fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+		};
+	}
+
+	private static FieldDescriptor[] solutionMemberSummaryFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+			fieldWithPath("data").type(JsonFieldType.ARRAY).description("응답 데이터"),
+			fieldWithPath("data[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+			fieldWithPath("data[].memberName").type(JsonFieldType.STRING).description("멤버 이름"),
+			fieldWithPath("data[].programmingLanguage").type(JsonFieldType.STRING).description("최신 제출 언어"),
+			fieldWithPath("data[].latestStatus").type(JsonFieldType.STRING).description("최신 제출 상태"),
+			fieldWithPath("data[].submissionCount").type(JsonFieldType.NUMBER).description("총 제출 수"),
+			fieldWithPath("data[].likes").type(JsonFieldType.NUMBER).description("최신 제출 좋아요 수"),
+			fieldWithPath("data[].updatedAt").type(JsonFieldType.STRING).description("최신 제출 시각"),
+			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+		};
+	}
+
+	private static FieldDescriptor[] solutionVersionFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+			fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+			fieldWithPath("data.content").type(JsonFieldType.ARRAY).description("버전 목록"),
+			fieldWithPath("data.content[].submissionId").type(JsonFieldType.NUMBER).description("백준 제출 번호"),
+			fieldWithPath("data.content[].code").type(JsonFieldType.STRING).description("소스 코드").optional(),
+			fieldWithPath("data.content[].status").type(JsonFieldType.STRING).description("채점 상태"),
+			fieldWithPath("data.content[].time").type(JsonFieldType.STRING).description("실행 시간").optional(),
+			fieldWithPath("data.content[].memory").type(JsonFieldType.STRING).description("메모리").optional(),
+			fieldWithPath("data.content[].codeLength").type(JsonFieldType.STRING).description("코드 길이").optional(),
+			fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+			fieldWithPath("data.content[].likes").type(JsonFieldType.NUMBER).description("좋아요 수"),
+			fieldWithPath("data.content[].isLiked").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부"),
+			fieldWithPath("data.content[].commentCount").type(JsonFieldType.NUMBER).description("댓글 수"),
+			fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
+			fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
+			fieldWithPath("data.page.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+			fieldWithPath("data.page.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
+			fieldWithPath("data.page.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
+			fieldWithPath("data.page.first").type(JsonFieldType.BOOLEAN).description("첫 페이지 여부"),
+			fieldWithPath("data.page.last").type(JsonFieldType.BOOLEAN).description("마지막 페이지 여부"),
+			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+		};
+	}
+
+	private static FieldDescriptor[] solutionLikeStatusFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+			fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+			fieldWithPath("data.likes").type(JsonFieldType.NUMBER).description("좋아요 수"),
+			fieldWithPath("data.isLiked").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부"),
+			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+		};
+	}
+
+	private static FieldDescriptor[] solutionCommentResponseFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+			fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+			fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("댓글 ID"),
+			fieldWithPath("data.authorName").type(JsonFieldType.STRING).description("작성자 이름"),
+			fieldWithPath("data.content").type(JsonFieldType.STRING).description("댓글 내용"),
+			fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+		};
+	}
+
+	private static FieldDescriptor[] solutionCommentListFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+			fieldWithPath("data").type(JsonFieldType.ARRAY).description("응답 데이터"),
+			fieldWithPath("data[].id").type(JsonFieldType.NUMBER).description("댓글 ID"),
+			fieldWithPath("data[].authorName").type(JsonFieldType.STRING).description("작성자 이름"),
+			fieldWithPath("data[].content").type(JsonFieldType.STRING).description("댓글 내용"),
+			fieldWithPath("data[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
 			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 		};
 	}

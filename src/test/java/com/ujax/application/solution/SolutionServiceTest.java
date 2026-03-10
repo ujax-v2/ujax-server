@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.ujax.application.solution.dto.response.SolutionMemberSummaryResponse;
 import com.ujax.application.solution.dto.response.SolutionResponse;
+import com.ujax.application.solution.dto.response.SolutionVersionResponse;
 import com.ujax.domain.solution.SolutionStatus;
 import com.ujax.domain.problem.Problem;
 import com.ujax.domain.problem.ProblemBox;
@@ -19,6 +21,10 @@ import com.ujax.domain.problem.ProblemRepository;
 import com.ujax.domain.problem.WorkspaceProblem;
 import com.ujax.domain.problem.WorkspaceProblemRepository;
 import com.ujax.domain.solution.Solution;
+import com.ujax.domain.solution.SolutionLike;
+import com.ujax.domain.solution.SolutionComment;
+import com.ujax.domain.solution.SolutionCommentRepository;
+import com.ujax.domain.solution.SolutionLikeRepository;
 import com.ujax.domain.solution.SolutionRepository;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
@@ -46,6 +52,12 @@ class SolutionServiceTest {
 	private SolutionRepository solutionRepository;
 
 	@Autowired
+	private SolutionLikeRepository solutionLikeRepository;
+
+	@Autowired
+	private SolutionCommentRepository solutionCommentRepository;
+
+	@Autowired
 	private ProblemRepository problemRepository;
 
 	@Autowired
@@ -65,6 +77,8 @@ class SolutionServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		solutionCommentRepository.deleteAllInBatch();
+		solutionLikeRepository.deleteAllInBatch();
 		solutionRepository.deleteAllInBatch();
 		workspaceProblemRepository.deleteAllInBatch();
 		problemBoxRepository.deleteAllInBatch();
@@ -283,6 +297,148 @@ class SolutionServiceTest {
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_PROBLEM_NOT_FOUND);
 
 			assertThat(myProblemBox.getId()).isNotEqualTo(otherProblemBox.getId());
+		}
+	}
+
+	@Nested
+	@DisplayName("풀이 멤버 요약 조회")
+	class GetSolutionMembers {
+
+		@Test
+		@DisplayName("워크스페이스 문제를 푼 멤버별 최신 풀이 요약을 조회한다")
+		void getSolutionMembers_Success() {
+			// given
+			User aliceUser = createUser("alice@example.com");
+			User bobUser = createUser("bob@example.com");
+			Workspace workspace = createWorkspace();
+			WorkspaceMember alice = createMember(workspace, aliceUser, WorkspaceMemberRole.MEMBER);
+			WorkspaceMember bob = createMember(workspace, bobUser, WorkspaceMemberRole.MEMBER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000);
+			WorkspaceProblem wp = workspaceProblemRepository.save(
+				WorkspaceProblem.create(problemBox, problem, null, null));
+
+			solutionRepository.save(Solution.create(
+				wp, alice, 100L, "맞았습니다!!",
+				"0 ms", "2020 KB", "Java 11", "100 B", null));
+			solutionRepository.save(Solution.create(
+				wp, bob, 101L, "맞았습니다!!",
+				"1 ms", "2048 KB", "C++17", "120 B", null));
+			Solution latestAliceSolution = solutionRepository.save(Solution.create(
+				wp, alice, 102L, "틀렸습니다",
+				"2 ms", "2100 KB", "Python 3", "80 B", null));
+			solutionLikeRepository.save(SolutionLike.create(latestAliceSolution, bob));
+
+			// when
+			var response = solutionService.getSolutionMembers(
+				workspace.getId(), problemBox.getId(), wp.getId(), aliceUser.getId());
+
+			// then
+			assertThat(response).hasSize(2);
+			assertThat(response.get(0)).extracting(
+				SolutionMemberSummaryResponse::workspaceMemberId,
+				SolutionMemberSummaryResponse::memberName,
+				SolutionMemberSummaryResponse::programmingLanguage,
+				SolutionMemberSummaryResponse::latestStatus,
+				SolutionMemberSummaryResponse::submissionCount,
+				SolutionMemberSummaryResponse::likes
+			).containsExactly(
+				alice.getId(),
+				alice.getNickname(),
+				com.ujax.domain.solution.ProgrammingLanguage.PYTHON,
+				SolutionStatus.WRONG_ANSWER,
+				2L,
+				1L
+			);
+			assertThat(response.get(1)).extracting(
+				SolutionMemberSummaryResponse::workspaceMemberId,
+				SolutionMemberSummaryResponse::memberName,
+				SolutionMemberSummaryResponse::programmingLanguage,
+				SolutionMemberSummaryResponse::latestStatus,
+				SolutionMemberSummaryResponse::submissionCount
+			).containsExactly(
+				bob.getId(),
+				bob.getNickname(),
+				com.ujax.domain.solution.ProgrammingLanguage.CPP,
+				SolutionStatus.ACCEPTED,
+				1L
+			);
+		}
+
+		@Test
+		@DisplayName("워크스페이스 멤버가 아니면 오류가 발생한다")
+		void getSolutionMembers_NotMember() {
+			// given
+			User owner = createUser("owner@example.com");
+			User outsider = createUser("outsider@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, owner, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000);
+			WorkspaceProblem wp = workspaceProblemRepository.save(
+				WorkspaceProblem.create(problemBox, problem, null, null));
+
+			// when & then
+			assertThatThrownBy(() -> solutionService.getSolutionMembers(
+				workspace.getId(), problemBox.getId(), wp.getId(), outsider.getId()))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_MEMBER_FORBIDDEN);
+		}
+	}
+
+	@Nested
+	@DisplayName("풀이 버전 목록 조회")
+	class GetSolutionVersions {
+
+		@Test
+		@DisplayName("특정 멤버의 제출 버전 목록을 페이징 조회한다")
+		void getSolutionVersions_Success() {
+			User authorUser = createUser("author@example.com");
+			User viewerUser = createUser("viewer@example.com");
+			Workspace workspace = createWorkspace();
+			WorkspaceMember author = createMember(workspace, authorUser, WorkspaceMemberRole.MEMBER);
+			WorkspaceMember viewer = createMember(workspace, viewerUser, WorkspaceMemberRole.MEMBER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000);
+			WorkspaceProblem wp = workspaceProblemRepository.save(
+				WorkspaceProblem.create(problemBox, problem, null, null));
+
+			solutionRepository.save(Solution.create(
+				wp, author, 100L, "틀렸습니다",
+				"1 ms", "2048 KB", "Java 11", "110 B", "old code"));
+			Solution latestSolution = solutionRepository.save(Solution.create(
+				wp, author, 101L, "맞았습니다!!",
+				"0 ms", "2020 KB", "Python 3", "90 B", "new code"));
+			solutionLikeRepository.save(SolutionLike.create(latestSolution, viewer));
+			solutionCommentRepository.save(SolutionComment.create(latestSolution, author, "좋아요"));
+
+			PageResponse<SolutionVersionResponse> response = solutionService.getSolutionVersions(
+				workspace.getId(),
+				problemBox.getId(),
+				wp.getId(),
+				author.getId(),
+				viewerUser.getId(),
+				0,
+				1
+			);
+
+			assertThat(response.getContent()).hasSize(1);
+			assertThat(response.getContent().get(0)).extracting(
+				SolutionVersionResponse::submissionId,
+				SolutionVersionResponse::status,
+				SolutionVersionResponse::likes,
+				SolutionVersionResponse::isLiked,
+				SolutionVersionResponse::commentCount
+			).containsExactly(
+				101L,
+				SolutionStatus.ACCEPTED,
+				1L,
+				true,
+				1L
+			);
+			assertThat(response.getPage().getPage()).isEqualTo(0);
+			assertThat(response.getPage().getSize()).isEqualTo(1);
+			assertThat(response.getPage().getTotalElements()).isEqualTo(2L);
 		}
 	}
 }
