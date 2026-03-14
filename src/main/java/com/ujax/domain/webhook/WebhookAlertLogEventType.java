@@ -1,0 +1,16 @@
+package com.ujax.domain.webhook;
+
+public enum WebhookAlertLogEventType {
+
+	CREATED,
+	SCHEDULE_UPDATED,
+	DEFERRED_SCHEDULED,
+	DEACTIVATED,
+	CANCELLED,
+	PROCESSING_STARTED,
+	DELIVERED,
+	RETRY_SCHEDULED,
+	FAILED,
+	RECOVERED
+
+}
