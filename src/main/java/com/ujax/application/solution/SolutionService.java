@@ -1,5 +1,9 @@
 package com.ujax.application.solution;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -7,10 +11,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.solution.dto.response.SolutionResponse;
+import com.ujax.application.solution.dto.response.SolutionMemberSummaryResponse;
 import com.ujax.domain.problem.WorkspaceProblem;
 import com.ujax.domain.problem.WorkspaceProblemRepository;
+import com.ujax.domain.solution.SolutionCommentRepository;
 import com.ujax.domain.solution.Solution;
+import com.ujax.domain.solution.SolutionLikeRepository;
 import com.ujax.domain.solution.SolutionRepository;
+import com.ujax.application.solution.dto.response.SolutionVersionResponse;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.global.dto.PageResponse;
@@ -28,6 +36,8 @@ import lombok.RequiredArgsConstructor;
 public class SolutionService {
 
 	private final SolutionRepository solutionRepository;
+	private final SolutionLikeRepository solutionLikeRepository;
+	private final SolutionCommentRepository solutionCommentRepository;
 	private final WorkspaceProblemRepository workspaceProblemRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 
@@ -80,6 +90,98 @@ public class SolutionService {
 		);
 	}
 
+	public List<SolutionMemberSummaryResponse> getSolutionMembers(
+		Long workspaceId,
+		Long problemBoxId,
+		Long workspaceProblemId,
+		Long userId
+	) {
+		WorkspaceProblem workspaceProblem = findAccessibleWorkspaceProblem(
+			workspaceId,
+			problemBoxId,
+			workspaceProblemId,
+			userId
+		);
+
+		List<Solution> solutions = solutionRepository.findAllByWorkspaceProblemIdOrderByCreatedAtDescIdDesc(
+			workspaceProblem.getId()
+		);
+
+		LinkedHashMap<Long, Solution> latestSolutionsByMember = new LinkedHashMap<>();
+		LinkedHashMap<Long, Long> submissionCountsByMember = new LinkedHashMap<>();
+		for (Solution solution : solutions) {
+			Long workspaceMemberId = solution.getWorkspaceMember().getId();
+			if (!latestSolutionsByMember.containsKey(workspaceMemberId)) {
+				latestSolutionsByMember.put(workspaceMemberId, solution);
+			}
+			submissionCountsByMember.merge(workspaceMemberId, 1L, Long::sum);
+		}
+		if (latestSolutionsByMember.isEmpty()) {
+			return List.of();
+		}
+
+		List<Long> latestSolutionIds = latestSolutionsByMember.values().stream()
+			.map(Solution::getId)
+			.toList();
+		LinkedHashMap<Long, Long> likeCountsBySolution = toCountMap(
+			solutionLikeRepository.countBySolutionIds(latestSolutionIds)
+		);
+
+		return latestSolutionsByMember.entrySet().stream()
+			.map(entry -> SolutionMemberSummaryResponse.from(
+				entry.getValue(),
+				submissionCountsByMember.getOrDefault(entry.getKey(), 0L),
+				likeCountsBySolution.getOrDefault(entry.getValue().getId(), 0L)
+			))
+			.toList();
+	}
+
+	public PageResponse<SolutionVersionResponse> getSolutionVersions(
+		Long workspaceId,
+		Long problemBoxId,
+		Long workspaceProblemId,
+		Long workspaceMemberId,
+		Long userId,
+		int page,
+		int size
+	) {
+		WorkspaceMember me = findWorkspaceMember(workspaceId, userId);
+		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
+
+		Page<Solution> result = solutionRepository.findByWorkspaceProblemIdAndWorkspaceMemberId(
+			workspaceProblem.getId(),
+			workspaceMemberId,
+			PageRequest.of(page, size, Sort.by(
+				Sort.Order.desc("createdAt"),
+				Sort.Order.desc("id")
+			))
+		);
+
+		if (result.isEmpty()) {
+			return PageResponse.of(List.of(), result);
+		}
+
+		List<Long> solutionIds = result.getContent().stream()
+			.map(Solution::getId)
+			.toList();
+		LinkedHashMap<Long, Long> likeCountsBySolution = toCountMap(solutionLikeRepository.countBySolutionIds(solutionIds));
+		LinkedHashMap<Long, Long> commentCountsBySolution = toCountMap(solutionCommentRepository.countBySolutionIds(solutionIds));
+		HashSet<Long> myLikedSolutionIds = new HashSet<>(
+			solutionLikeRepository.findMyLikedSolutionIds(solutionIds, me.getId())
+		);
+
+		List<SolutionVersionResponse> content = result.getContent().stream()
+			.map(solution -> SolutionVersionResponse.from(
+				solution,
+				likeCountsBySolution.getOrDefault(solution.getId(), 0L),
+				myLikedSolutionIds.contains(solution.getId()),
+				commentCountsBySolution.getOrDefault(solution.getId(), 0L)
+			))
+			.toList();
+
+		return PageResponse.of(content, result);
+	}
+
 	private WorkspaceProblem findWorkspaceProblemForIngest(Long workspaceProblemId) {
 		return workspaceProblemRepository.findByIdWithProblemBoxAndWorkspace(workspaceProblemId)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_PROBLEM_NOT_FOUND));
@@ -107,5 +209,13 @@ public class SolutionService {
 			workspaceId
 		)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_PROBLEM_NOT_FOUND));
+	}
+
+	private LinkedHashMap<Long, Long> toCountMap(List<Object[]> rows) {
+		LinkedHashMap<Long, Long> counts = new LinkedHashMap<>();
+		for (Object[] row : rows) {
+			counts.put((Long)row[0], (Long)row[1]);
+		}
+		return counts;
 	}
 }

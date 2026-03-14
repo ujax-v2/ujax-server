@@ -1,5 +1,6 @@
 package com.ujax.domain.solution;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.jspecify.annotations.NonNull;
@@ -22,4 +23,37 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
 	@Query(value = "SELECT s FROM Solution s WHERE s.workspaceProblem.id = :wpId",
 		countQuery = "SELECT count(s) FROM Solution s WHERE s.workspaceProblem.id = :wpId")
 	Page<Solution> findByWorkspaceProblemId(@Param("wpId") Long workspaceProblemId, Pageable pageable);
+
+	@Query(value = """
+		SELECT s
+		FROM Solution s
+		WHERE s.workspaceProblem.id = :workspaceProblemId
+		AND s.workspaceMember.id = :workspaceMemberId
+		""",
+		countQuery = """
+			SELECT count(s)
+			FROM Solution s
+			WHERE s.workspaceProblem.id = :workspaceProblemId
+			AND s.workspaceMember.id = :workspaceMemberId
+			""")
+	Page<Solution> findByWorkspaceProblemIdAndWorkspaceMemberId(
+		@Param("workspaceProblemId") Long workspaceProblemId,
+		@Param("workspaceMemberId") Long workspaceMemberId,
+		Pageable pageable
+	);
+
+	@Query("""
+		SELECT s
+		FROM Solution s
+		JOIN FETCH s.workspaceMember wm
+		WHERE s.workspaceProblem.id = :wpId
+		ORDER BY s.createdAt DESC, s.id DESC
+		""")
+	List<Solution> findAllByWorkspaceProblemIdOrderByCreatedAtDescIdDesc(@Param("wpId") Long workspaceProblemId);
+
+	Optional<Solution> findBySubmissionIdAndWorkspaceProblem_IdAndWorkspaceMember_Id(
+		Long submissionId,
+		Long workspaceProblemId,
+		Long workspaceMemberId
+	);
 }

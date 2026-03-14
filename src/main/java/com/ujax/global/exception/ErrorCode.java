@@ -44,6 +44,7 @@ public enum ErrorCode {
 	PROBLEM_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "R009", "문제집을 찾을 수 없습니다."),
 	WORKSPACE_PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "R010", "문제집에 등록된 문제를 찾을 수 없습니다."),
 	SOLUTION_NOT_FOUND(HttpStatus.NOT_FOUND, "R011", "풀이를 찾을 수 없습니다."),
+	SOLUTION_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "R012", "풀이 댓글을 찾을 수 없습니다."),
 
 	// ==================== 409 Conflict ====================
 	DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "D001", "이미 존재하는 리소스입니다."),
