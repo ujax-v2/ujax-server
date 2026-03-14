@@ -47,7 +47,7 @@ class WorkspaceTest {
 			workspace.update("새 이름", "새 소개", "https://hook.example.com", "https://new-image.com/workspace.png");
 
 			// then
-			assertThat(workspace).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(workspace).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("새 이름", "새 소개", "https://hook.example.com", "https://new-image.com/workspace.png");
 		}
 
@@ -61,7 +61,7 @@ class WorkspaceTest {
 			workspace.update(null, null, null, "https://new-image.com/workspace.png");
 
 			// then
-			assertThat(workspace).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(workspace).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("워크스페이스", "소개", null, "https://new-image.com/workspace.png");
 		}
 
@@ -75,7 +75,7 @@ class WorkspaceTest {
 			workspace.update(null, "바뀐 소개", null, null);
 
 			// then
-			assertThat(workspace).extracting("name", "description", "mmWebhookUrl", "imageUrl")
+			assertThat(workspace).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("워크스페이스", "바뀐 소개", null, Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 	}

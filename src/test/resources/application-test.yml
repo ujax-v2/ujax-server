@@ -43,3 +43,12 @@ app:
     secret: testSecretKeyThatIsAtLeast256BitsLongForHmacSha256AlgorithmInTestProfile
     access-expiration: 1800000
     refresh-expiration: 2592000000
+  webhook-alert:
+    scheduler:
+      enabled: ${WEBHOOK_ALERT_SCHEDULER_ENABLED:false}
+      fixed-delay-millis: ${WEBHOOK_ALERT_SCHEDULER_FIXED_DELAY_MILLIS:60000}
+      batch-size: ${WEBHOOK_ALERT_SCHEDULER_BATCH_SIZE:100}
+    delivery:
+      retry-delay-minutes: ${WEBHOOK_ALERT_RETRY_DELAY_MINUTES:1}
+      stuck-processing-minutes: ${WEBHOOK_ALERT_STUCK_PROCESSING_MINUTES:10}
+      max-attempts: ${WEBHOOK_ALERT_MAX_ATTEMPTS:5}
