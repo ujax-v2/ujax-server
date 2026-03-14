@@ -188,7 +188,7 @@ public class WorkspaceController {
 				principal.getUserId(),
 				request.name(),
 				request.description(),
-				request.mmWebhookUrl(),
+				request.hookUrl(),
 				request.imageUrl()
 			)
 		);

@@ -248,7 +248,7 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(3))
 				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/3.png"))
-				.andExpect(jsonPath("$.data.mmWebhookUrl").value("https://hook.example.com"));
+				.andExpect(jsonPath("$.data.hookUrl").value("https://hook.example.com"));
 
 			then(workspaceService).should().getWorkspaceSettings(3L, 1L);
 		}
@@ -555,7 +555,7 @@ class WorkspaceControllerTest {
 			// when & then
 			mockMvc.perform(patch("/api/v1/workspaces/{workspaceId}", 3L)
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"name\":\"수정된 워크스페이스\",\"description\":\"수정된 소개\",\"mmWebhookUrl\":\"https://hook.example.com\",\"imageUrl\":\"https://new-image.com/workspace.png\"}"))
+					.content("{\"name\":\"수정된 워크스페이스\",\"description\":\"수정된 소개\",\"hookUrl\":\"https://hook.example.com\",\"imageUrl\":\"https://new-image.com/workspace.png\"}"))
 				.andDo(print())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
