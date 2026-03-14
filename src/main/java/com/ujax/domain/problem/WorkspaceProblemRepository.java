@@ -19,9 +19,22 @@ public interface WorkspaceProblemRepository extends JpaRepository<WorkspaceProbl
 
 	Optional<WorkspaceProblem> findByIdAndProblemBox_Id(Long id, Long problemBoxId);
 
+	Optional<WorkspaceProblem> findByIdAndProblemBox_IdAndProblemBox_Workspace_Id(
+		Long id,
+		Long problemBoxId,
+		Long workspaceId
+	);
+
 	boolean existsByProblemBox_IdAndProblem_Id(Long problemBoxId, Long problemId);
 
 	@Query(value = "SELECT wp FROM WorkspaceProblem wp JOIN FETCH wp.problem WHERE wp.problemBox.id = :problemBoxId",
 		countQuery = "SELECT count(wp) FROM WorkspaceProblem wp WHERE wp.problemBox.id = :problemBoxId")
 	Page<WorkspaceProblem> findByProblemBoxIdWithProblem(@Param("problemBoxId") Long problemBoxId, Pageable pageable);
+
+	@Query("SELECT wp FROM WorkspaceProblem wp "
+		+ "JOIN FETCH wp.problemBox pb "
+		+ "JOIN FETCH pb.workspace "
+		+ "JOIN FETCH wp.problem "
+		+ "WHERE wp.id = :id")
+	Optional<WorkspaceProblem> findByIdWithProblemBoxAndWorkspace(@Param("id") Long id);
 }

@@ -1,16 +1,17 @@
 package com.ujax.infrastructure.web.submission.dto;
 
-import com.ujax.global.exception.ErrorCode;
-import com.ujax.global.exception.common.InvalidSubmissionException;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.ujax.domain.solution.ProgrammingLanguage;
+import com.ujax.global.exception.ErrorCode;
+import com.ujax.global.exception.common.InvalidSubmissionException;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 
 public record SubmissionRequest(
         @NotBlank(message = "언어는 필수입니다.")
@@ -47,12 +48,15 @@ public record SubmissionRequest(
     }
 
     private int getLanguageId(String lang) {
-        return switch (lang.toUpperCase()) {
-            case "JAVA" -> 62;
-            case "PYTHON" -> 71;
-            case "CPP" -> 54;
-            default -> throw new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "지원하지 않는 언어: " + lang);
-        };
+        ProgrammingLanguage programmingLanguage = ProgrammingLanguage.fromSubmissionLanguage(lang);
+        if (!programmingLanguage.supportsJudge0()) {
+            throw unsupportedLanguage(lang);
+        }
+        return programmingLanguage.getJudge0Id();
+    }
+
+    private InvalidSubmissionException unsupportedLanguage(String lang) {
+        return new InvalidSubmissionException(ErrorCode.INVALID_SUBMISSION, "지원하지 않는 언어: " + lang);
     }
 
     private String encodeToBase64(String raw) {

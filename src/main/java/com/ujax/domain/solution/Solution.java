@@ -1,9 +1,10 @@
-package com.ujax.domain.problem;
+package com.ujax.domain.solution;
 
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
 import com.ujax.domain.common.BaseEntity;
+import com.ujax.domain.problem.WorkspaceProblem;
 import com.ujax.domain.workspace.WorkspaceMember;
 
 import jakarta.persistence.Column;
@@ -44,34 +45,44 @@ public class Solution extends BaseEntity {
 	@JoinColumn(name = "workspace_member_id", nullable = false)
 	private WorkspaceMember workspaceMember;
 
+	@Column(nullable = false, unique = true)
+	private Long submissionId;
+
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 10)
+	@Column(nullable = false, length = 30)
 	private SolutionStatus status;
 
-	private Integer timeMs;
+	private String time;
 
-	private Integer memoryMb;
-
-	@Column(nullable = false, columnDefinition = "TEXT")
-	private String code;
+	private String memory;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
-	private ProgrammingLanguage language;
+	@Column(length = 20)
+	private ProgrammingLanguage programmingLanguage;
 
-	private Solution(WorkspaceProblem workspaceProblem, WorkspaceMember workspaceMember, SolutionStatus status,
-		Integer timeMs, Integer memoryMb, String code, ProgrammingLanguage language) {
+	private String codeLength;
+
+	@Column(columnDefinition = "MEDIUMTEXT")
+	private String code;
+
+	private Solution(WorkspaceProblem workspaceProblem, WorkspaceMember workspaceMember,
+		Long submissionId, String verdict, String time,
+		String memory, String language, String codeLength, String code) {
 		this.workspaceProblem = workspaceProblem;
 		this.workspaceMember = workspaceMember;
-		this.status = status;
-		this.timeMs = timeMs;
-		this.memoryMb = memoryMb;
+		this.submissionId = submissionId;
+		this.status = SolutionStatus.fromVerdict(verdict);
+		this.time = time;
+		this.memory = memory;
+		this.programmingLanguage = ProgrammingLanguage.fromLanguage(language);
+		this.codeLength = codeLength;
 		this.code = code;
-		this.language = language;
 	}
 
 	public static Solution create(WorkspaceProblem workspaceProblem, WorkspaceMember workspaceMember,
-		SolutionStatus status, Integer timeMs, Integer memoryMb, String code, ProgrammingLanguage language) {
-		return new Solution(workspaceProblem, workspaceMember, status, timeMs, memoryMb, code, language);
+		Long submissionId, String verdict, String time,
+		String memory, String language, String codeLength, String code) {
+		return new Solution(workspaceProblem, workspaceMember, submissionId,
+			verdict, time, memory, language, codeLength, code);
 	}
 }

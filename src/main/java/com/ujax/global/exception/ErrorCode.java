@@ -43,6 +43,7 @@ public enum ErrorCode {
 	PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "R005", "문제를 찾을 수 없습니다."),
 	PROBLEM_BOX_NOT_FOUND(HttpStatus.NOT_FOUND, "R009", "문제집을 찾을 수 없습니다."),
 	WORKSPACE_PROBLEM_NOT_FOUND(HttpStatus.NOT_FOUND, "R010", "문제집에 등록된 문제를 찾을 수 없습니다."),
+	SOLUTION_NOT_FOUND(HttpStatus.NOT_FOUND, "R011", "풀이를 찾을 수 없습니다."),
 
 	// ==================== 409 Conflict ====================
 	DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "D001", "이미 존재하는 리소스입니다."),
@@ -52,8 +53,9 @@ public enum ErrorCode {
 	DUPLICATE_PROBLEM(HttpStatus.CONFLICT, "D005", "이미 등록된 문제 번호입니다."),
 	WORKSPACE_NAME_DUPLICATE(HttpStatus.CONFLICT, "D006", "이미 존재하는 워크스페이스 이름입니다."),
 	WORKSPACE_JOIN_REQUEST_ALREADY_PENDING(HttpStatus.CONFLICT, "D007", "이미 처리 대기중인 가입 신청이 있습니다."),
-	DUPLICATE_WORKSPACE_PROBLEM(HttpStatus.CONFLICT, "D009", "이미 문제집에 등록된 문제입니다."),
 	OAUTH_ACCOUNT_EXISTS(HttpStatus.CONFLICT, "D008", "이미 다른 소셜 계정으로 가입된 이메일입니다."),
+	DUPLICATE_WORKSPACE_PROBLEM(HttpStatus.CONFLICT, "D009", "이미 문제집에 등록된 문제입니다."),
+	DUPLICATE_SOLUTION(HttpStatus.CONFLICT, "D010", "이미 등록된 풀이입니다."),
 
 	// ==================== 422 Unprocessable Entity ====================
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
