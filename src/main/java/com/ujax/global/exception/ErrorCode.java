@@ -62,7 +62,6 @@ public enum ErrorCode {
 	UNPROCESSABLE_ENTITY(HttpStatus.UNPROCESSABLE_ENTITY, "U001", "요청을 처리할 수 없습니다."),
 	BUSINESS_RULE_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY, "U002", "비즈니스 규칙 위반입니다."),
 	WORKSPACE_OWNER_CANNOT_WITHDRAW(HttpStatus.UNPROCESSABLE_ENTITY, "U003", "워크스페이스 소유자는 탈퇴할 수 없습니다. 소유권을 양도하거나 워크스페이스를 삭제해 주세요."),
-	WORKSPACE_JOIN_REQUEST_ALREADY_PROCESSED(HttpStatus.UNPROCESSABLE_ENTITY, "U004", "이미 처리된 가입 신청입니다."),
 
 	// ==================== 429 Too Many Requests ====================
 	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "T001", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
