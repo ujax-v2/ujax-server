@@ -37,7 +37,6 @@ import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemR
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
-import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.GlobalExceptionHandler;
@@ -82,7 +81,6 @@ class WorkspaceJoinRequestControllerDocsTest {
 		WorkspaceJoinRequestResponse response = new WorkspaceJoinRequestResponse(
 			10L,
 			1L,
-			WorkspaceJoinRequestStatus.PENDING,
 			LocalDateTime.of(2026, 2, 24, 10, 0)
 		);
 		given(workspaceJoinRequestService.createJoinRequest(anyLong(), anyLong())).willReturn(response);
@@ -108,7 +106,6 @@ class WorkspaceJoinRequestControllerDocsTest {
 						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
 						fieldWithPath("data.requestId").type(JsonFieldType.NUMBER).description("가입 신청 ID"),
 						fieldWithPath("data.workspaceId").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
-						fieldWithPath("data.status").type(JsonFieldType.STRING).description("가입 신청 상태"),
 						fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("신청 생성 시각"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
@@ -158,6 +155,38 @@ class WorkspaceJoinRequestControllerDocsTest {
 	}
 
 	@Test
+	@DisplayName("내 워크스페이스 가입 신청 취소 API")
+	void cancelJoinRequest() throws Exception {
+		// given
+		willDoNothing().given(workspaceJoinRequestService).cancelJoinRequest(anyLong(), anyLong());
+
+		// when & then
+		mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/join-requests/me", 1L)
+				.contentType(MediaType.APPLICATION_JSON))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("workspace-join-request-cancel",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("내 워크스페이스 가입 신청 취소")
+					.description("사용자가 자신의 워크스페이스 가입 신청을 취소합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.responseSchema(Schema.schema("ApiResponse-Void"))
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.NULL).description("응답 데이터").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
 	@DisplayName("워크스페이스 가입 신청 목록 조회 API")
 	void listJoinRequests() throws Exception {
 		// given
@@ -166,7 +195,6 @@ class WorkspaceJoinRequestControllerDocsTest {
 			1L,
 			21L,
 			"홍길동",
-			WorkspaceJoinRequestStatus.PENDING,
 			LocalDateTime.of(2026, 2, 24, 10, 0)
 		);
 		PageResponse<WorkspaceJoinRequestListItemResponse> response = PageResponse.of(List.of(item), 0, 20, 1L, 1);
@@ -202,7 +230,6 @@ class WorkspaceJoinRequestControllerDocsTest {
 						fieldWithPath("data.content[].workspaceId").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
 						fieldWithPath("data.content[].applicantUserId").type(JsonFieldType.NUMBER).description("신청 사용자 ID"),
 						fieldWithPath("data.content[].applicantName").type(JsonFieldType.STRING).description("신청 사용자 이름"),
-						fieldWithPath("data.content[].status").type(JsonFieldType.STRING).description("가입 신청 상태"),
 						fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("신청 생성 시각"),
 						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
 						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),

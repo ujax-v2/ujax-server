@@ -29,8 +29,8 @@ class WorkspaceJoinRequestRepositoryTest {
 	private UserRepository userRepository;
 
 	@Test
-	@DisplayName("워크스페이스와 유저, 상태로 가입 신청 존재 여부를 확인할 수 있다")
-	void existsByWorkspaceIdAndUserIdAndStatus() {
+	@DisplayName("워크스페이스와 유저로 가입 신청 존재 여부를 확인할 수 있다")
+	void existsByWorkspaceIdAndUserId() {
 		// given
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 		User user = userRepository.save(
@@ -39,19 +39,15 @@ class WorkspaceJoinRequestRepositoryTest {
 		workspaceJoinRequestRepository.save(WorkspaceJoinRequest.create(workspace, user));
 
 		// when
-		boolean exists = workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
-			workspace.getId(),
-			user.getId(),
-			WorkspaceJoinRequestStatus.PENDING
-		);
+		boolean exists = workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_Id(workspace.getId(), user.getId());
 
 		// then
 		assertThat(exists).isTrue();
 	}
 
 	@Test
-	@DisplayName("워크스페이스별 가입 신청을 상태 기준으로 페이지 조회할 수 있다")
-	void findByWorkspaceIdAndStatusOrderByCreatedAtDesc() {
+	@DisplayName("워크스페이스별 가입 신청을 페이지 조회할 수 있다")
+	void findByWorkspaceIdOrderByCreatedAtDesc() {
 		// given
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 		User user = userRepository.save(
@@ -60,9 +56,8 @@ class WorkspaceJoinRequestRepositoryTest {
 		WorkspaceJoinRequest saved = workspaceJoinRequestRepository.save(WorkspaceJoinRequest.create(workspace, user));
 
 		// when
-		var page = workspaceJoinRequestRepository.findByWorkspace_IdAndStatusOrderByCreatedAtDesc(
+		var page = workspaceJoinRequestRepository.findByWorkspace_IdOrderByCreatedAtDesc(
 			workspace.getId(),
-			WorkspaceJoinRequestStatus.PENDING,
 			org.springframework.data.domain.PageRequest.of(0, 20)
 		);
 
