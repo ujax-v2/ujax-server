@@ -1,0 +1,128 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew clean bootJar
+
+      - name: Patch Grafana Dashboard
+        run: python3 patch_dashboard.py
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Create .env on Runner
+        run: |
+          cat > .env << 'ENVEOF'
+          MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE=ujax
+          MYSQL_USER=${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          JUDGE0_HOST=${{ secrets.JUDGE0_HOST }}
+          UJAX_BASE_URL=${{ secrets.UJAX_BASE_URL }}
+          UJAX_FRONTEND_CALLBACK=${{ secrets.UJAX_FRONTEND_CALLBACK }}
+          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+          KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          UJAX_MAIL_FROM=${{ secrets.UJAX_MAIL_FROM }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          S3_BUCKET=${{ secrets.S3_BUCKET }}
+          S3_REGION=${{ secrets.S3_REGION }}
+          S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
+          ENVEOF
+
+      - name: Deploy to App EC2
+        env:
+          APP_HOST: ${{ secrets.APP_EC2_HOST }}
+        run: |
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          DEPLOY_DIR="~/ujax-deploy"
+
+          # 디렉토리 생성
+          ssh $SSH_OPTS $APP_HOST "mkdir -p $DEPLOY_DIR"
+
+          # 파일 전송
+          scp $SSH_OPTS docker-compose.prod.yml $APP_HOST:$DEPLOY_DIR/
+          scp $SSH_OPTS Dockerfile.prod $APP_HOST:$DEPLOY_DIR/
+          scp $SSH_OPTS prometheus.yml $APP_HOST:$DEPLOY_DIR/
+          scp $SSH_OPTS -r grafana $APP_HOST:$DEPLOY_DIR/
+          scp $SSH_OPTS build/libs/*-SNAPSHOT.jar $APP_HOST:$DEPLOY_DIR/app.jar
+          scp $SSH_OPTS .env $APP_HOST:$DEPLOY_DIR/.env
+
+          # 컨테이너 재시작
+          ssh $SSH_OPTS $APP_HOST << 'EOF'
+            cd ~/ujax-deploy
+            docker compose -f docker-compose.prod.yml down 2>/dev/null || true
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f
+          EOF
+
+      - name: Check Judge0 Changes
+        id: check_judge
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'judge0\.conf|docker-compose\.judge0\.yml'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Judge EC2
+        if: steps.check_judge.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          JUDGE_HOST: ${{ secrets.JUDGE_EC2_HOST }}
+        run: |
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          DEPLOY_DIR="~/judge0-deploy"
+
+          ssh $SSH_OPTS $JUDGE_HOST "mkdir -p $DEPLOY_DIR"
+          scp $SSH_OPTS docker-compose.judge0.yml $JUDGE_HOST:$DEPLOY_DIR/docker-compose.yml
+          scp $SSH_OPTS judge0.conf $JUDGE_HOST:$DEPLOY_DIR/
+
+          ssh $SSH_OPTS $JUDGE_HOST << 'EOF'
+            cd ~/judge0-deploy
+            docker compose down 2>/dev/null || true
+            docker compose up -d
+            docker image prune -f
+          EOF
+
+      - name: Verify Deployment
+        env:
+          APP_HOST: ${{ secrets.APP_EC2_HOST }}
+          JUDGE_HOST: ${{ secrets.JUDGE_EC2_HOST }}
+        run: |
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          echo "=== App Server ===" 
+          ssh $SSH_OPTS $APP_HOST "docker ps --format 'table {{.Names}}\t{{.Status}}'"
+          
+          if [[ "${{ steps.check_judge.outputs.changed }}" == 'true' || "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+            echo "=== Judge Server ==="
+            ssh $SSH_OPTS $JUDGE_HOST "docker ps --format 'table {{.Names}}\t{{.Status}}'"
+          fi
