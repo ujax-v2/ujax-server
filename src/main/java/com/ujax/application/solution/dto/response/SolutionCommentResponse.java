@@ -8,15 +8,17 @@ public record SolutionCommentResponse(
 	Long id,
 	String authorName,
 	String content,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	boolean isMyComment
 ) {
 
-	public static SolutionCommentResponse from(SolutionComment comment) {
+	public static SolutionCommentResponse from(SolutionComment comment, Long actorWorkspaceMemberId) {
 		return new SolutionCommentResponse(
 			comment.getId(),
 			comment.getAuthor().getNickname(),
 			comment.getContent(),
-			comment.getCreatedAt()
+			comment.getCreatedAt(),
+			comment.getAuthor().getId().equals(actorWorkspaceMemberId)
 		);
 	}
 }

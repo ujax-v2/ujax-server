@@ -218,7 +218,7 @@ class SolutionControllerTest {
 	@DisplayName("댓글 목록을 조회한다")
 	void getSolutionComments() throws Exception {
 		var response = List.of(
-			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.of(2026, 3, 10, 10, 20))
+			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.of(2026, 3, 10, 10, 20), true)
 		);
 
 		org.mockito.BDDMockito.given(solutionCommentService.getComments(
@@ -237,7 +237,8 @@ class SolutionControllerTest {
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data[0].authorName").value("pythonista"))
-			.andExpect(jsonPath("$.data[0].content").value("좋은 풀이네요"));
+			.andExpect(jsonPath("$.data[0].content").value("좋은 풀이네요"))
+			.andExpect(jsonPath("$.data[0].isMyComment").value(true));
 	}
 
 	@Test
@@ -251,7 +252,7 @@ class SolutionControllerTest {
 			org.mockito.ArgumentMatchers.anyLong(),
 			org.mockito.ArgumentMatchers.anyLong(),
 			org.mockito.ArgumentMatchers.anyString()
-		)).willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.of(2026, 3, 10, 10, 20)));
+		)).willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.of(2026, 3, 10, 10, 20), true));
 
 		mockMvc.perform(post(
 				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments",
@@ -261,7 +262,8 @@ class SolutionControllerTest {
 				"""))
 			.andDo(print())
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.data.content").value("댓글"));
+			.andExpect(jsonPath("$.data.content").value("댓글"))
+			.andExpect(jsonPath("$.data.isMyComment").value(true));
 	}
 
 	@Test

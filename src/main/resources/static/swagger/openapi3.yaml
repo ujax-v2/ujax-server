@@ -3461,7 +3461,8 @@ paths:
                         "id" : 1,
                         "authorName" : "pythonista",
                         "content" : "좋은 풀이네요",
-                        "createdAt" : "2026-03-10T16:41:32.036197"
+                        "createdAt" : "2026-03-10T16:41:32.036197",
+                        "isMyComment" : true
                       } ],
                       "message" : null
                     }
@@ -3529,7 +3530,8 @@ paths:
                         "id" : 1,
                         "authorName" : "pythonista",
                         "content" : "댓글",
-                        "createdAt" : "2026-03-10T16:41:31.674182"
+                        "createdAt" : "2026-03-10T16:41:31.674182",
+                        "isMyComment" : true
                       },
                       "message" : null
                     }
@@ -3757,6 +3759,7 @@ components:
           - content
           - createdAt
           - id
+          - isMyComment
           type: object
           properties:
             createdAt:
@@ -3768,6 +3771,9 @@ components:
             id:
               type: number
               description: 댓글 ID
+            isMyComment:
+              type: boolean
+              description: 내 댓글 여부
             content:
               type: string
               description: 댓글 내용
@@ -5782,6 +5788,7 @@ components:
             - content
             - createdAt
             - id
+            - isMyComment
             type: object
             properties:
               createdAt:
@@ -5793,6 +5800,9 @@ components:
               id:
                 type: number
                 description: 댓글 ID
+              isMyComment:
+                type: boolean
+                description: 내 댓글 여부
               content:
                 type: string
                 description: 댓글 내용

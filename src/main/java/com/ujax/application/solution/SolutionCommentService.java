@@ -41,12 +41,12 @@ public class SolutionCommentService {
 		Long submissionId,
 		Long userId
 	) {
-		findWorkspaceMember(workspaceId, userId);
+		WorkspaceMember actor = findWorkspaceMember(workspaceId, userId);
 		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, problemBoxId, workspaceProblemId);
 		Solution solution = findSubmission(workspaceProblem.getId(), workspaceMemberId, submissionId);
 
 		return solutionCommentRepository.findBySolutionId(solution.getId()).stream()
-			.map(SolutionCommentResponse::from)
+			.map(comment -> SolutionCommentResponse.from(comment, actor.getId()))
 			.toList();
 	}
 
@@ -66,7 +66,7 @@ public class SolutionCommentService {
 
 		validateContent(content);
 		SolutionComment saved = solutionCommentRepository.save(SolutionComment.create(solution, author, content));
-		return SolutionCommentResponse.from(saved);
+		return SolutionCommentResponse.from(saved, author.getId());
 	}
 
 	@Transactional

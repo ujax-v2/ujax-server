@@ -104,8 +104,9 @@ class SolutionCommentServiceTest {
 				"좋은 풀이네요"
 			);
 
-			assertThat(result).extracting("authorName", "content")
-				.containsExactly(fixture.viewer().getNickname(), "좋은 풀이네요");
+			assertThat(result.authorName()).isEqualTo(fixture.viewer().getNickname());
+			assertThat(result.content()).isEqualTo("좋은 풀이네요");
+			assertThat(result.isMyComment()).isTrue();
 		}
 
 		@Test
@@ -150,6 +151,8 @@ class SolutionCommentServiceTest {
 			assertThat(result).hasSize(2);
 			assertThat(result).extracting(SolutionCommentResponse::content)
 				.containsExactly("첫 댓글", "둘째 댓글");
+			assertThat(result).extracting(SolutionCommentResponse::isMyComment)
+				.containsExactly(true, false);
 		}
 	}
 
