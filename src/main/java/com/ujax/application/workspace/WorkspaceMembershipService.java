@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -35,7 +36,7 @@ public class WorkspaceMembershipService {
 	private final WorkspaceMemberActivationService workspaceMemberActivationService;
 	private final WorkspaceInviteMailer workspaceInviteMailer;
 
-	public PageResponse<WorkspaceMemberResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
+	public PageResponse<WorkspaceMemberListResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
 		validatePageable(page, size);
 		validateMember(workspaceId, userId);
 		Page<WorkspaceMember> members = workspaceMemberRepository.findByWorkspace_Id(
@@ -44,7 +45,7 @@ public class WorkspaceMembershipService {
 		);
 
 		return PageResponse.of(
-			members.getContent().stream().map(WorkspaceMemberResponse::from).toList(),
+			members.getContent().stream().map(WorkspaceMemberListResponse::from).toList(),
 			members.getNumber(),
 			members.getSize(),
 			members.getTotalElements(),

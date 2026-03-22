@@ -22,6 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.ujax.application.workspace.WorkspaceMembershipService;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
@@ -63,8 +64,13 @@ class WorkspaceMembershipControllerTest {
 		@Test
 		@DisplayName("page/size를 반영해 멤버 목록을 조회한다")
 		void listWorkspaceMembers() throws Exception {
-			WorkspaceMemberResponse member = new WorkspaceMemberResponse(1L, "닉네임", WorkspaceMemberRole.MEMBER);
-			PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
+			WorkspaceMemberListResponse member = new WorkspaceMemberListResponse(
+				1L,
+				"닉네임",
+				"member@example.com",
+				WorkspaceMemberRole.MEMBER
+			);
+			PageResponse<WorkspaceMemberListResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
 			given(workspaceMembershipService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
 
 			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 3L)
@@ -74,6 +80,7 @@ class WorkspaceMembershipControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content[0].workspaceMemberId").value(1))
+				.andExpect(jsonPath("$.data.content[0].email").value("member@example.com"))
 				.andExpect(jsonPath("$.data.page.page").value(0))
 				.andExpect(jsonPath("$.data.page.size").value(20));
 
@@ -83,7 +90,7 @@ class WorkspaceMembershipControllerTest {
 		@Test
 		@DisplayName("page/size가 없으면 기본값(0,20)으로 조회한다")
 		void listWorkspaceMembersDefaultPageable() throws Exception {
-			PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(), 0, 20, 0L, 0);
+			PageResponse<WorkspaceMemberListResponse> response = PageResponse.of(List.of(), 0, 20, 0L, 0);
 			given(workspaceMembershipService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
 
 			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 3L))

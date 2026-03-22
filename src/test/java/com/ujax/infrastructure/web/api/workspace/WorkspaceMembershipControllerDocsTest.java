@@ -34,6 +34,7 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.workspace.WorkspaceMembershipService;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.PageResponse;
@@ -82,8 +83,13 @@ class WorkspaceMembershipControllerDocsTest {
 	@Test
 	@DisplayName("워크스페이스 멤버 목록 조회 API")
 	void listWorkspaceMembers() throws Exception {
-		WorkspaceMemberResponse member = new WorkspaceMemberResponse(1L, "닉네임", WorkspaceMemberRole.MEMBER);
-		PageResponse<WorkspaceMemberResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
+		WorkspaceMemberListResponse member = new WorkspaceMemberListResponse(
+			1L,
+			"닉네임",
+			"member@example.com",
+			WorkspaceMemberRole.MEMBER
+		);
+		PageResponse<WorkspaceMemberListResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
 		given(workspaceMembershipService.listWorkspaceMembers(anyLong(), anyLong(), anyInt(), anyInt())).willReturn(response);
 
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/members", 1)
@@ -113,6 +119,7 @@ class WorkspaceMembershipControllerDocsTest {
 						fieldWithPath("data.content").type(JsonFieldType.ARRAY).description("멤버 목록"),
 						fieldWithPath("data.content[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
 						fieldWithPath("data.content[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.content[].email").type(JsonFieldType.STRING).description("이메일"),
 						fieldWithPath("data.content[].role").type(JsonFieldType.STRING).description("권한"),
 						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
 						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
