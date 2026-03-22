@@ -183,6 +183,7 @@ class SolutionControllerTest {
 			SolutionStatus.ACCEPTED,
 			"28 ms",
 			"31120 KB",
+			ProgrammingLanguage.PYTHON,
 			"34 B",
 			LocalDateTime.of(2026, 3, 10, 10, 15),
 			1L,
@@ -208,6 +209,7 @@ class SolutionControllerTest {
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.content[0].submissionId").value(item.submissionId()))
+			.andExpect(jsonPath("$.data.content[0].programmingLanguage").value("PYTHON"))
 			.andExpect(jsonPath("$.data.content[0].likes").value(1))
 			.andExpect(jsonPath("$.data.content[0].isLiked").value(true))
 			.andExpect(jsonPath("$.data.page.page").value(0))
@@ -218,7 +220,7 @@ class SolutionControllerTest {
 	@DisplayName("댓글 목록을 조회한다")
 	void getSolutionComments() throws Exception {
 		var response = List.of(
-			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.of(2026, 3, 10, 10, 20))
+			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.of(2026, 3, 10, 10, 20), true)
 		);
 
 		org.mockito.BDDMockito.given(solutionCommentService.getComments(
@@ -237,7 +239,8 @@ class SolutionControllerTest {
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data[0].authorName").value("pythonista"))
-			.andExpect(jsonPath("$.data[0].content").value("좋은 풀이네요"));
+			.andExpect(jsonPath("$.data[0].content").value("좋은 풀이네요"))
+			.andExpect(jsonPath("$.data[0].isMyComment").value(true));
 	}
 
 	@Test
@@ -251,7 +254,7 @@ class SolutionControllerTest {
 			org.mockito.ArgumentMatchers.anyLong(),
 			org.mockito.ArgumentMatchers.anyLong(),
 			org.mockito.ArgumentMatchers.anyString()
-		)).willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.of(2026, 3, 10, 10, 20)));
+		)).willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.of(2026, 3, 10, 10, 20), true));
 
 		mockMvc.perform(post(
 				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments",
@@ -261,7 +264,8 @@ class SolutionControllerTest {
 				"""))
 			.andDo(print())
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.data.content").value("댓글"));
+			.andExpect(jsonPath("$.data.content").value("댓글"))
+			.andExpect(jsonPath("$.data.isMyComment").value(true));
 	}
 
 	@Test

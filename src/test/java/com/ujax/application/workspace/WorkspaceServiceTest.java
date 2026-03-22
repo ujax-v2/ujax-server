@@ -532,11 +532,11 @@ class WorkspaceServiceTest {
 
 			// then
 			assertThat(response.getContent())
-				.extracting("workspaceMemberId", "role")
+				.extracting("workspaceMemberId", "email", "role")
 				.containsExactly(
-					tuple(ownerMember.getId(), WorkspaceMemberRole.OWNER),
-					tuple(manager.getId(), WorkspaceMemberRole.MANAGER),
-					tuple(member.getId(), WorkspaceMemberRole.MEMBER)
+					tuple(ownerMember.getId(), owner.getEmail(), WorkspaceMemberRole.OWNER),
+					tuple(manager.getId(), managerUser.getEmail(), WorkspaceMemberRole.MANAGER),
+					tuple(member.getId(), memberUser.getEmail(), WorkspaceMemberRole.MEMBER)
 				);
 		}
 

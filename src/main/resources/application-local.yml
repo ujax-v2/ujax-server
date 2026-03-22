@@ -34,7 +34,7 @@ judge0:
 app:
   ujax:
     base-url: http://localhost:5173
-    frontend-callback-url: http://localhost:5173/auth/callback
+    frontend-callback-url: http://localhost:5173/oauth/callback
 
 
 spring.security.oauth2.client:

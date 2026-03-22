@@ -370,6 +370,7 @@ class SolutionControllerDocsTest {
 			SolutionStatus.ACCEPTED,
 			"28 ms",
 			"31120 KB",
+			ProgrammingLanguage.PYTHON,
 			"34 B",
 			LocalDateTime.now(),
 			1L,
@@ -481,7 +482,7 @@ class SolutionControllerDocsTest {
 	@DisplayName("풀이 댓글 목록 조회 API")
 	void getSolutionComments() throws Exception {
 		List<SolutionCommentResponse> response = List.of(
-			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.now())
+			new SolutionCommentResponse(1L, "pythonista", "좋은 풀이네요", LocalDateTime.now(), true)
 		);
 
 		given(solutionCommentService.getComments(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong()))
@@ -518,7 +519,7 @@ class SolutionControllerDocsTest {
 	@DisplayName("풀이 댓글 생성 API")
 	void createSolutionComment() throws Exception {
 		given(solutionCommentService.createComment(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyLong(), anyString()))
-			.willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.now()));
+			.willReturn(new SolutionCommentResponse(1L, "pythonista", "댓글", LocalDateTime.now(), true));
 
 		mockMvc.perform(post(
 				"/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems/{workspaceProblemId}/solution-members/{workspaceMemberId}/submissions/{submissionId}/comments",
@@ -630,6 +631,7 @@ class SolutionControllerDocsTest {
 			fieldWithPath("data.content[].status").type(JsonFieldType.STRING).description("채점 상태"),
 			fieldWithPath("data.content[].time").type(JsonFieldType.STRING).description("실행 시간").optional(),
 			fieldWithPath("data.content[].memory").type(JsonFieldType.STRING).description("메모리").optional(),
+			fieldWithPath("data.content[].programmingLanguage").type(JsonFieldType.STRING).description("프로그래밍 언어").optional(),
 			fieldWithPath("data.content[].codeLength").type(JsonFieldType.STRING).description("코드 길이").optional(),
 			fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
 			fieldWithPath("data.content[].likes").type(JsonFieldType.NUMBER).description("좋아요 수"),
@@ -664,6 +666,7 @@ class SolutionControllerDocsTest {
 			fieldWithPath("data.authorName").type(JsonFieldType.STRING).description("작성자 이름"),
 			fieldWithPath("data.content").type(JsonFieldType.STRING).description("댓글 내용"),
 			fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+			fieldWithPath("data.isMyComment").type(JsonFieldType.BOOLEAN).description("내 댓글 여부"),
 			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 		};
 	}
@@ -676,6 +679,7 @@ class SolutionControllerDocsTest {
 			fieldWithPath("data[].authorName").type(JsonFieldType.STRING).description("작성자 이름"),
 			fieldWithPath("data[].content").type(JsonFieldType.STRING).description("댓글 내용"),
 			fieldWithPath("data[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+			fieldWithPath("data[].isMyComment").type(JsonFieldType.BOOLEAN).description("내 댓글 여부"),
 			fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 		};
 	}

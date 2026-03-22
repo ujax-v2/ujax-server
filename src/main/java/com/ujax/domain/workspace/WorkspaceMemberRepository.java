@@ -36,6 +36,7 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 	@Query(
 		value = """
 			SELECT wm FROM WorkspaceMember wm
+			JOIN FETCH wm.user u
 			WHERE wm.workspace.id = :workspaceId
 			ORDER BY
 				CASE
@@ -45,7 +46,7 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 				END,
 				wm.createdAt ASC,
 				wm.id ASC
-			""",
+		""",
 		countQuery = "SELECT COUNT(wm) FROM WorkspaceMember wm WHERE wm.workspace.id = :workspaceId"
 	)
 	Page<WorkspaceMember> findByWorkspace_Id(@Param("workspaceId") Long workspaceId, Pageable pageable);

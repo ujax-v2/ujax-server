@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.workspace.WorkspaceMembershipService;
+import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.global.dto.ApiResponse;
@@ -32,7 +33,7 @@ public class WorkspaceMembershipController {
 	private final WorkspaceMembershipService workspaceMembershipService;
 
 	@GetMapping
-	public ApiResponse<PageResponse<WorkspaceMemberResponse>> listWorkspaceMembers(
+	public ApiResponse<PageResponse<WorkspaceMemberListResponse>> listWorkspaceMembers(
 		@PathVariable Long workspaceId,
 		@AuthenticationPrincipal UserPrincipal principal,
 		@RequestParam(defaultValue = "0") int page,

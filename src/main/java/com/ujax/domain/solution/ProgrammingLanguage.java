@@ -46,7 +46,7 @@ public enum ProgrammingLanguage {
 			case "Python", "PyPy" -> PYTHON;
 			case "Kotlin" -> KOTLIN;
 			case "Swift" -> SWIFT;
-			case "JavaScript", "Node.js" -> JAVASCRIPT;
+			case "JavaScript", "Node.js", "node.js" -> JAVASCRIPT;
 			case "Go" -> GO;
 			case "Rust" -> RUST;
 			case "Ruby" -> RUBY;
