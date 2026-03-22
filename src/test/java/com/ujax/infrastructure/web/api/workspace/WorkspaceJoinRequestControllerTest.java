@@ -26,7 +26,6 @@ import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestListItemR
 import com.ujax.application.workspace.dto.response.WorkspaceJoinRequestResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatusResponse;
-import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.global.dto.PageResponse;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.workspace.WorkspaceJoinRequestController;
@@ -70,7 +69,6 @@ class WorkspaceJoinRequestControllerTest {
 			WorkspaceJoinRequestResponse response = new WorkspaceJoinRequestResponse(
 				10L,
 				3L,
-				WorkspaceJoinRequestStatus.PENDING,
 				LocalDateTime.of(2026, 2, 24, 10, 0)
 			);
 			given(workspaceJoinRequestService.createJoinRequest(anyLong(), anyLong())).willReturn(response);
@@ -81,8 +79,7 @@ class WorkspaceJoinRequestControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.requestId").value(10))
-				.andExpect(jsonPath("$.data.workspaceId").value(3))
-				.andExpect(jsonPath("$.data.status").value("PENDING"));
+				.andExpect(jsonPath("$.data.workspaceId").value(3));
 		}
 	}
 
@@ -133,6 +130,26 @@ class WorkspaceJoinRequestControllerTest {
 	}
 
 	@Nested
+	@DisplayName("가입 신청 취소")
+	class CancelJoinRequest {
+
+		@Test
+		@DisplayName("가입 신청을 취소한다")
+		void cancelJoinRequest() throws Exception {
+			// given
+			willDoNothing().given(workspaceJoinRequestService).cancelJoinRequest(anyLong(), anyLong());
+
+			// when & then
+			mockMvc.perform(delete("/api/v1/workspaces/{workspaceId}/join-requests/me", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+			then(workspaceJoinRequestService).should().cancelJoinRequest(3L, 1L);
+		}
+	}
+
+	@Nested
 	@DisplayName("가입 신청 목록 조회")
 	class ListJoinRequests {
 
@@ -145,7 +162,6 @@ class WorkspaceJoinRequestControllerTest {
 				3L,
 				21L,
 				"홍길동",
-				WorkspaceJoinRequestStatus.PENDING,
 				LocalDateTime.of(2026, 2, 24, 10, 0)
 			);
 			PageResponse<WorkspaceJoinRequestListItemResponse> response = PageResponse.of(
@@ -165,7 +181,7 @@ class WorkspaceJoinRequestControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content[0].requestId").value(10))
-				.andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+				.andExpect(jsonPath("$.data.content[0].applicantUserId").value(21));
 
 			then(workspaceJoinRequestService).should().listJoinRequests(3L, 1L, 0, 20);
 		}

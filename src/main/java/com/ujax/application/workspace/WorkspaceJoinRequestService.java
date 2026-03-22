@@ -14,7 +14,6 @@ import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceJoinRequest;
 import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
-import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -47,11 +46,7 @@ public class WorkspaceJoinRequestService {
 		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
 			throw new ConflictException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
 		}
-		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
-			workspaceId,
-			userId,
-			WorkspaceJoinRequestStatus.PENDING
-		)) {
+		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_Id(workspaceId, userId)) {
 			throw new ConflictException(ErrorCode.WORKSPACE_JOIN_REQUEST_ALREADY_PENDING);
 		}
 
@@ -65,18 +60,10 @@ public class WorkspaceJoinRequestService {
 		if (workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId).isPresent()) {
 			return WorkspaceMyJoinRequestStatusResponse.of(true, WorkspaceMyJoinRequestStatus.MEMBER, false);
 		}
-		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_IdAndStatus(
-			workspaceId,
-			userId,
-			WorkspaceJoinRequestStatus.PENDING
-		)) {
+		if (workspaceJoinRequestRepository.existsByWorkspace_IdAndUser_Id(workspaceId, userId)) {
 			return WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.PENDING, false);
 		}
-
-		return workspaceJoinRequestRepository.findTopByWorkspace_IdAndUser_IdOrderByCreatedAtDesc(workspaceId, userId)
-			.filter(request -> request.getStatus() == WorkspaceJoinRequestStatus.REJECTED)
-			.map(request -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.REJECTED, true))
-			.orElseGet(() -> WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.NONE, true));
+		return WorkspaceMyJoinRequestStatusResponse.of(false, WorkspaceMyJoinRequestStatus.NONE, true);
 	}
 
 	public PageResponse<WorkspaceJoinRequestListItemResponse> listJoinRequests(
@@ -89,9 +76,8 @@ public class WorkspaceJoinRequestService {
 		validatePageable(page, size);
 		validateOwner(workspaceId, userId);
 
-		Page<WorkspaceJoinRequest> joinRequests = workspaceJoinRequestRepository.findByWorkspace_IdAndStatusOrderByCreatedAtDesc(
+		Page<WorkspaceJoinRequest> joinRequests = workspaceJoinRequestRepository.findByWorkspace_IdOrderByCreatedAtDesc(
 			workspaceId,
-			WorkspaceJoinRequestStatus.PENDING,
 			PageRequest.of(page, size)
 		);
 
@@ -110,8 +96,8 @@ public class WorkspaceJoinRequestService {
 		validateOwner(workspaceId, userId);
 
 		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
-		joinRequest.approve();
 		workspaceMemberActivationService.activateMember(workspace, joinRequest.getUser());
+		workspaceJoinRequestRepository.delete(joinRequest);
 	}
 
 	@Transactional
@@ -120,7 +106,16 @@ public class WorkspaceJoinRequestService {
 		validateOwner(workspaceId, userId);
 
 		WorkspaceJoinRequest joinRequest = findWorkspaceJoinRequestById(workspaceId, requestId);
-		joinRequest.reject();
+		workspaceJoinRequestRepository.delete(joinRequest);
+	}
+
+	@Transactional
+	public void cancelJoinRequest(Long workspaceId, Long userId) {
+		findWorkspaceById(workspaceId);
+
+		WorkspaceJoinRequest joinRequest = workspaceJoinRequestRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.WORKSPACE_JOIN_REQUEST_NOT_FOUND));
+		workspaceJoinRequestRepository.delete(joinRequest);
 	}
 
 	private Workspace findWorkspaceById(Long workspaceId) {

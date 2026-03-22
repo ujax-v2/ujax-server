@@ -4,6 +4,5 @@ public enum WorkspaceMyJoinRequestStatus {
 
 	MEMBER,
 	PENDING,
-	REJECTED,
 	NONE
 }

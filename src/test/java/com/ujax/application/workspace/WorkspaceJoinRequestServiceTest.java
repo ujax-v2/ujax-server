@@ -18,7 +18,6 @@ import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.domain.workspace.Workspace;
 import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
-import com.ujax.domain.workspace.WorkspaceJoinRequestStatus;
 import com.ujax.domain.workspace.WorkspaceMember;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRole;
@@ -84,9 +83,9 @@ class WorkspaceJoinRequestServiceTest {
 			var response = workspaceJoinRequestService.createJoinRequest(workspace.getId(), applicant.getId());
 
 			// then
-			assertThat(response).extracting("workspaceId", "status")
-				.containsExactly(workspace.getId(), WorkspaceJoinRequestStatus.PENDING);
+			assertThat(response.workspaceId()).isEqualTo(workspace.getId());
 			assertThat(response.requestId()).isNotNull();
+			assertThat(response.createdAt()).isNotNull();
 		}
 
 		@Test
@@ -157,6 +156,7 @@ class WorkspaceJoinRequestServiceTest {
 				.findByWorkspace_IdAndUser_Id(workspace.getId(), applicant.getId())
 				.orElseThrow();
 			assertThat(member.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
+			assertThat(workspaceJoinRequestRepository.findById(created.requestId())).isEmpty();
 		}
 
 		@Test
@@ -212,6 +212,7 @@ class WorkspaceJoinRequestServiceTest {
 			assertThat(restored.isDeleted()).isFalse();
 			assertThat(restored.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
 			assertThat(restored.getNickname()).isEqualTo(applicant.getName());
+			assertThat(workspaceJoinRequestRepository.findById(created.requestId())).isEmpty();
 		}
 	}
 
@@ -285,8 +286,8 @@ class WorkspaceJoinRequestServiceTest {
 		}
 
 		@Test
-		@DisplayName("거부 이력이 있으면 REJECTED로 조회된다")
-		void getMyJoinRequestStatusRejectedHistoryReturnsRejected() {
+		@DisplayName("거부된 신청은 NONE으로 조회된다")
+		void getMyJoinRequestStatusRejectedReturnsNone() {
 			// given
 			User owner = userRepository.save(
 				User.createLocalUser("owner-my-join-status-rejected@example.com", Password.ofEncoded("password"), "오너")
@@ -304,7 +305,7 @@ class WorkspaceJoinRequestServiceTest {
 
 			// then
 			assertThat(response).extracting("isMember", "joinRequestStatus", "canApply")
-				.containsExactly(false, WorkspaceMyJoinRequestStatus.REJECTED, true);
+				.containsExactly(false, WorkspaceMyJoinRequestStatus.NONE, true);
 		}
 	}
 
@@ -331,8 +332,8 @@ class WorkspaceJoinRequestServiceTest {
 
 			// then
 			assertThat(response.getContent()).hasSize(1);
-			assertThat(response.getContent().getFirst()).extracting("workspaceId", "status")
-				.containsExactly(workspace.getId(), WorkspaceJoinRequestStatus.PENDING);
+			assertThat(response.getContent().getFirst()).extracting("workspaceId", "applicantUserId")
+				.containsExactly(workspace.getId(), applicant.getId());
 		}
 	}
 
@@ -358,8 +359,36 @@ class WorkspaceJoinRequestServiceTest {
 			workspaceJoinRequestService.rejectJoinRequest(workspace.getId(), owner.getId(), created.requestId());
 
 			// then
-			var rejected = workspaceJoinRequestRepository.findById(created.requestId()).orElseThrow();
-			assertThat(rejected.getStatus()).isEqualTo(WorkspaceJoinRequestStatus.REJECTED);
+			assertThat(workspaceJoinRequestRepository.findById(created.requestId())).isEmpty();
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 가입 신청 취소")
+	class CancelJoinRequest {
+
+		@Test
+		@DisplayName("사용자는 자신의 가입 신청을 취소할 수 있다")
+		void cancelJoinRequest() {
+			// given
+			User owner = userRepository.save(
+				User.createLocalUser("owner-cancel-join-request@example.com", Password.ofEncoded("password"), "오너")
+			);
+			User applicant = userRepository.save(
+				User.createLocalUser("applicant-cancel-join-request@example.com", Password.ofEncoded("password"), "신청자")
+			);
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+			var created = workspaceJoinRequestService.createJoinRequest(workspace.getId(), applicant.getId());
+
+			// when
+			workspaceJoinRequestService.cancelJoinRequest(workspace.getId(), applicant.getId());
+
+			// then
+			assertThat(workspaceJoinRequestRepository.findById(created.requestId())).isEmpty();
+			assertThat(workspaceJoinRequestService.getMyJoinRequestStatus(workspace.getId(), applicant.getId()))
+				.extracting("isMember", "joinRequestStatus", "canApply")
+				.containsExactly(false, WorkspaceMyJoinRequestStatus.NONE, true);
 		}
 	}
 }
