@@ -183,6 +183,7 @@ class SolutionControllerTest {
 			SolutionStatus.ACCEPTED,
 			"28 ms",
 			"31120 KB",
+			ProgrammingLanguage.PYTHON,
 			"34 B",
 			LocalDateTime.of(2026, 3, 10, 10, 15),
 			1L,
@@ -208,6 +209,7 @@ class SolutionControllerTest {
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.content[0].submissionId").value(item.submissionId()))
+			.andExpect(jsonPath("$.data.content[0].programmingLanguage").value("PYTHON"))
 			.andExpect(jsonPath("$.data.content[0].likes").value(1))
 			.andExpect(jsonPath("$.data.content[0].isLiked").value(true))
 			.andExpect(jsonPath("$.data.page.page").value(0))

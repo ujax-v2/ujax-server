@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import com.ujax.application.solution.dto.response.SolutionMemberSummaryResponse;
 import com.ujax.application.solution.dto.response.SolutionResponse;
 import com.ujax.application.solution.dto.response.SolutionVersionResponse;
+import com.ujax.domain.solution.ProgrammingLanguage;
 import com.ujax.domain.solution.SolutionStatus;
 import com.ujax.domain.problem.Problem;
 import com.ujax.domain.problem.ProblemBox;
@@ -426,12 +427,14 @@ class SolutionServiceTest {
 			assertThat(response.getContent().get(0)).extracting(
 				SolutionVersionResponse::submissionId,
 				SolutionVersionResponse::status,
+				SolutionVersionResponse::programmingLanguage,
 				SolutionVersionResponse::likes,
 				SolutionVersionResponse::isLiked,
 				SolutionVersionResponse::commentCount
 			).containsExactly(
 				101L,
 				SolutionStatus.ACCEPTED,
+				ProgrammingLanguage.PYTHON,
 				1L,
 				true,
 				1L

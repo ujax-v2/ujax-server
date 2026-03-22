@@ -2,6 +2,7 @@ package com.ujax.application.solution.dto.response;
 
 import java.time.LocalDateTime;
 
+import com.ujax.domain.solution.ProgrammingLanguage;
 import com.ujax.domain.solution.Solution;
 import com.ujax.domain.solution.SolutionStatus;
 
@@ -11,6 +12,7 @@ public record SolutionVersionResponse(
 	SolutionStatus status,
 	String time,
 	String memory,
+	ProgrammingLanguage programmingLanguage,
 	String codeLength,
 	LocalDateTime createdAt,
 	long likes,
@@ -25,6 +27,7 @@ public record SolutionVersionResponse(
 			solution.getStatus(),
 			solution.getTime(),
 			solution.getMemory(),
+			solution.getProgrammingLanguage(),
 			solution.getCodeLength(),
 			solution.getCreatedAt(),
 			likes,
