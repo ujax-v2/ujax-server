@@ -1,0 +1,107 @@
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100M
+
+services:
+  # === Spring Boot App ===
+  app:
+    image: ujax-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: ujax-app
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://app-mysql:3306/ujax?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-ujax}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-ujax_password_secure}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_DATA_REDIS_HOST: app-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JUDGE0_API_URL: http://${JUDGE0_HOST}:2358
+    depends_on:
+      app-mysql:
+        condition: service_healthy
+      app-redis:
+        condition: service_started
+    restart: always
+    <<: *default-logging
+
+  # === MySQL (Self-Hosted) ===
+  app-mysql:
+    image: mysql:8.0
+    container_name: ujax-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ujax_root_secure}
+      MYSQL_DATABASE: ujax
+      MYSQL_USER: ${MYSQL_USER:-ujax}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ujax_password_secure}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    <<: *default-logging
+
+  # === Redis (Self-Hosted, for App) ===
+  app-redis:
+    image: redis:7.2.4
+    container_name: ujax-redis
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - redis-data:/data
+    restart: always
+    <<: *default-logging
+
+  # === Monitoring ===
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ujax-node-exporter
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /:/host:ro,rslave
+    restart: always
+    <<: *default-logging
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ujax-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: always
+    <<: *default-logging
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ujax-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ujax1234
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: always
+    <<: *default-logging
+
+volumes:
+  mysql-data:
+  redis-data:
+  grafana-data:

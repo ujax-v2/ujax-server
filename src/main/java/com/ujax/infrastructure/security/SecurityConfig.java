@@ -57,6 +57,7 @@ public class SecurityConfig {
 					"/oauth2/**",
 					"/login/oauth2/**",
 					"/api/v1/problems/**",
+					"/actuator/**",
 					"/error"
 				).permitAll()
 				.requestMatchers("GET", "/api/v1/workspaces/explore").permitAll()
