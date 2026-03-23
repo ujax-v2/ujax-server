@@ -42,6 +42,11 @@ public class S3StorageService {
 		return generatePresignedUrlByKey(key, contentType, fileSize);
 	}
 
+	public PresignedUrlResult generateBoardImagePresignedUrl(Long workspaceId, String contentType, long fileSize) {
+		String key = getBoardImageKey(workspaceId, contentType);
+		return generatePresignedUrlByKey(key, contentType, fileSize);
+	}
+
 	private PresignedUrlResult generatePresignedUrlByKey(String key, String contentType, long fileSize) {
 		validateContentType(contentType);
 		validateFileSize(fileSize);
@@ -76,6 +81,11 @@ public class S3StorageService {
 	private String getWorkspaceImageKey(Long workspaceId, String contentType) {
 		String extension = contentType.substring(contentType.indexOf('/') + 1);
 		return "workspaces/" + workspaceId + "/image/" + UUID.randomUUID() + "." + extension;
+	}
+
+	private String getBoardImageKey(Long workspaceId, String contentType) {
+		String extension = contentType.substring(contentType.indexOf('/') + 1);
+		return "workspaces/" + workspaceId + "/boards/image/" + UUID.randomUUID() + "." + extension;
 	}
 
 	private PresignedPutObjectRequest getPresigned(String contentType, long fileSize, String key) {

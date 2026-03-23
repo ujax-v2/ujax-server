@@ -17,6 +17,7 @@ import com.ujax.application.board.dto.request.BoardUpdateRequest;
 import com.ujax.application.board.dto.response.BoardDetailResponse;
 import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.board.Board;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
@@ -32,6 +33,9 @@ import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.BadRequestException;
 import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
+import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
+import com.ujax.infrastructure.web.board.dto.request.BoardImageUploadRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,6 +55,23 @@ public class BoardService {
 	private final BoardLikeRepository boardLikeRepository;
 	private final WorkspaceRepository workspaceRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
+	private final S3StorageService s3StorageService;
+
+	public PresignedUrlResponse createBoardImagePresignedUrl(
+		Long workspaceId,
+		Long userId,
+		BoardImageUploadRequest request
+	) {
+		findWorkspaceById(workspaceId);
+		validateMember(workspaceId, userId);
+
+		PresignedUrlResult result = s3StorageService.generateBoardImagePresignedUrl(
+			workspaceId,
+			request.contentType(),
+			request.fileSize()
+		);
+		return new PresignedUrlResponse(result.presignedUrl(), result.imageUrl());
+	}
 
 	public BoardListResponse listBoards(
 		Long workspaceId,

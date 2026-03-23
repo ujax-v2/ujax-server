@@ -33,6 +33,7 @@ import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
 import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.PageResponse.PageInfo;
 import com.ujax.global.exception.ErrorCode;
@@ -40,6 +41,7 @@ import com.ujax.global.exception.common.ForbiddenException;
 import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.board.BoardController;
+import com.ujax.infrastructure.web.board.dto.request.BoardImageUploadRequest;
 import com.ujax.support.TestSecurityConfig;
 
 import io.jsonwebtoken.Claims;
@@ -187,6 +189,44 @@ class BoardControllerTest {
 			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards", 1L)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(new CreateBoardBody("FREE", "", "내용", true))))
+				.andDo(print())
+				.andExpect(status().isBadRequest());
+		}
+	}
+
+	@Nested
+	@DisplayName("POST /boards/image/presigned-url: 게시글 이미지 Presigned URL 생성")
+	class CreateBoardImagePresignedUrl {
+
+		@Test
+		@DisplayName("정상 요청이면 이미지 업로드용 URL을 반환한다")
+		void createBoardImagePresignedUrlSuccess() throws Exception {
+			// given
+			PresignedUrlResponse response = new PresignedUrlResponse("https://presigned-url", "https://image-url");
+			given(boardService.createBoardImagePresignedUrl(eq(1L), eq(3L), any(BoardImageUploadRequest.class)))
+				.willReturn(response);
+
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/image/presigned-url", 1L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(new BoardImageUploadRequest("image/png", 1024L))))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.presignedUrl").value("https://presigned-url"))
+				.andExpect(jsonPath("$.data.imageUrl").value("https://image-url"));
+
+			then(boardService).should()
+				.createBoardImagePresignedUrl(eq(1L), eq(3L), any(BoardImageUploadRequest.class));
+		}
+
+		@Test
+		@DisplayName("요청 값이 비어 있으면 400 Bad Request를 반환한다")
+		void createBoardImagePresignedUrlBadRequest() throws Exception {
+			// when & then
+			mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/image/presigned-url", 1L)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"contentType\":\"\",\"fileSize\":null}"))
 				.andDo(print())
 				.andExpect(status().isBadRequest());
 		}
