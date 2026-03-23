@@ -19,9 +19,15 @@ import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
+import com.ujax.domain.problem.ProblemBoxRepository;
+import com.ujax.domain.problem.WorkspaceProblemRepository;
+import com.ujax.domain.solution.SolutionCommentRepository;
+import com.ujax.domain.solution.SolutionLikeRepository;
+import com.ujax.domain.solution.SolutionRepository;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
+import com.ujax.domain.workspace.WorkspaceJoinRequestRepository;
 import com.ujax.domain.workspace.WorkspaceMemberRepository;
 import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.domain.workspace.Workspace;
@@ -60,24 +66,43 @@ class UserServiceTest {
 	private BoardRepository boardRepository;
 
 	@Autowired
+	private SolutionLikeRepository solutionLikeRepository;
+
+	@Autowired
+	private SolutionCommentRepository solutionCommentRepository;
+
+	@Autowired
+	private SolutionRepository solutionRepository;
+
+	@Autowired
+	private WorkspaceProblemRepository workspaceProblemRepository;
+
+	@Autowired
+	private ProblemBoxRepository problemBoxRepository;
+
+	@Autowired
 	private WorkspaceMemberRepository workspaceMemberRepository;
+
+	@Autowired
+	private WorkspaceJoinRequestRepository workspaceJoinRequestRepository;
 
 	@Autowired
 	private WorkspaceRepository workspaceRepository;
 
 	@BeforeEach
 	void tearDown() {
+		solutionLikeRepository.deleteAllInBatch();
+		solutionCommentRepository.deleteAllInBatch();
 		boardLikeRepository.deleteAllInBatch();
 		boardCommentRepository.deleteAllInBatch();
+		solutionRepository.deleteAllInBatch();
 		boardRepository.deleteAllInBatch();
+		workspaceJoinRequestRepository.deleteAllInBatch();
+		workspaceProblemRepository.deleteAllInBatch();
+		problemBoxRepository.deleteAllInBatch();
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
-		boardLikeRepository.deleteAllInBatch();
-		boardCommentRepository.deleteAllInBatch();
-		boardRepository.deleteAllInBatch();
-		workspaceMemberRepository.deleteAllInBatch();
-		workspaceRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
