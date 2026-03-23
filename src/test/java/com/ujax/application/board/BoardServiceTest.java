@@ -1,6 +1,7 @@
 package com.ujax.application.board;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.*;
 
 import java.util.UUID;
 
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.board.dto.request.BoardCreateRequest;
 import com.ujax.application.board.dto.request.BoardListRequest;
@@ -19,6 +21,7 @@ import com.ujax.application.board.dto.request.BoardUpdateRequest;
 import com.ujax.application.board.dto.response.BoardDetailResponse;
 import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.Board;
 import com.ujax.domain.board.BoardComment;
@@ -38,6 +41,9 @@ import com.ujax.domain.workspace.WorkspaceMemberRole;
 import com.ujax.domain.workspace.WorkspaceRepository;
 import com.ujax.global.exception.ErrorCode;
 import com.ujax.global.exception.common.ForbiddenException;
+import com.ujax.infrastructure.external.s3.S3StorageService;
+import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
+import com.ujax.infrastructure.web.board.dto.request.BoardImageUploadRequest;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -69,6 +75,9 @@ class BoardServiceTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@MockitoBean
+	private S3StorageService s3StorageService;
 
 	@BeforeEach
 	void setUp() {
@@ -121,6 +130,54 @@ class BoardServiceTest {
 				assertThatThrownBy(() -> boardService.createBoard(workspace.getId(), member.getUser().getId(), request))
 					.isInstanceOf(ForbiddenException.class)
 					.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
+		}
+	}
+
+	@Nested
+	@DisplayName("게시글 이미지 Presigned URL 생성")
+	class CreateBoardImagePresignedUrl {
+
+		@Test
+		@DisplayName("워크스페이스 멤버는 게시글 이미지 Presigned URL을 생성할 수 있다")
+		void createBoardImagePresignedUrl() {
+			// given
+			Workspace workspace = createWorkspace();
+			WorkspaceMember member = createMember(workspace, WorkspaceMemberRole.MEMBER);
+			BoardImageUploadRequest request = new BoardImageUploadRequest("image/png", 1024L);
+
+			given(s3StorageService.generateBoardImagePresignedUrl(workspace.getId(), "image/png", 1024L))
+				.willReturn(new PresignedUrlResult("https://presigned-url", "https://image-url"));
+
+			// when
+			PresignedUrlResponse response = boardService.createBoardImagePresignedUrl(
+				workspace.getId(),
+				member.getUser().getId(),
+				request
+			);
+
+			// then
+			assertThat(response).extracting("presignedUrl", "imageUrl")
+				.containsExactly("https://presigned-url", "https://image-url");
+		}
+
+		@Test
+		@DisplayName("워크스페이스 멤버가 아니면 오류가 발생한다")
+		void createBoardImagePresignedUrlForbidden() {
+			// given
+			Workspace workspace = createWorkspace();
+			User outsider = userRepository.save(
+				User.createLocalUser(uniqueEmail(), Password.ofEncoded("password"), "외부 사용자")
+			);
+			BoardImageUploadRequest request = new BoardImageUploadRequest("image/png", 1024L);
+
+			// when & then
+			assertThatThrownBy(() -> boardService.createBoardImagePresignedUrl(
+				workspace.getId(),
+				outsider.getId(),
+				request
+			))
+				.isInstanceOf(ForbiddenException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN_RESOURCE);
 		}
 	}
 

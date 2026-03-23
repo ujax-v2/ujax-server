@@ -41,11 +41,13 @@ import com.ujax.application.board.dto.response.BoardListItemResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
 import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.PageResponse.PageInfo;
 import com.ujax.global.exception.GlobalExceptionHandler;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.board.BoardController;
+import com.ujax.infrastructure.web.board.dto.request.BoardImageUploadRequest;
 import com.ujax.support.TestSecurityConfig;
 
 import io.jsonwebtoken.Claims;
@@ -204,6 +206,50 @@ class BoardControllerDocsTest {
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
 						subsectionWithPath("data").description("응답 데이터"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("게시글 이미지 Presigned URL 생성 API")
+	void createBoardImagePresignedUrl() throws Exception {
+		BoardImageUploadRequest request = new BoardImageUploadRequest("image/png", 1048576L);
+		PresignedUrlResponse response = new PresignedUrlResponse(
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/presigned?X-Amz-Algorithm=...",
+			"https://ujax-profile-images.s3.ap-northeast-2.amazonaws.com/workspaces/1/boards/image/uuid.png"
+		);
+		given(boardService.createBoardImagePresignedUrl(anyLong(), anyLong(), any(BoardImageUploadRequest.class)))
+			.willReturn(response);
+
+		mockMvc.perform(post("/api/v1/workspaces/{workspaceId}/boards/image/presigned-url", 1L)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("board-create-image-presigned-url",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Board")
+					.summary("게시글 이미지 업로드 Presigned URL 생성")
+					.description("S3에 게시글 이미지를 업로드하기 위한 Presigned URL을 생성합니다. 게시글 작성/수정 에디터에서 붙여넣은 이미지 업로드에 사용합니다. JPEG, PNG, WEBP만 허용되며 최대 5MB입니다.")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.requestSchema(Schema.schema("BoardImageUploadRequest"))
+					.responseSchema(Schema.schema("ApiResponse-PresignedUrlResponse"))
+					.requestFields(
+						fieldWithPath("contentType").type(JsonFieldType.STRING).description("이미지 Content-Type (image/jpeg, image/png, image/webp)"),
+						fieldWithPath("fileSize").type(JsonFieldType.NUMBER).description("파일 크기 (바이트, 최대 5MB)")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.presignedUrl").type(JsonFieldType.STRING).description("S3 업로드용 Presigned URL"),
+						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("업로드 완료 후 게시글에 삽입할 이미지 URL"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()

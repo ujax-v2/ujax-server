@@ -23,9 +23,11 @@ import com.ujax.application.board.dto.response.BoardLikeStatusResponse;
 import com.ujax.application.board.dto.response.BoardListResponse;
 import com.ujax.application.board.dto.response.CommentListResponse;
 import com.ujax.application.board.dto.response.CommentResponse;
+import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.board.BoardType;
 import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.security.UserPrincipal;
+import com.ujax.infrastructure.web.board.dto.request.BoardImageUploadRequest;
 import com.ujax.infrastructure.web.board.dto.request.CreateBoardRequest;
 import com.ujax.infrastructure.web.board.dto.request.CreateCommentRequest;
 import com.ujax.infrastructure.web.board.dto.request.PinBoardRequest;
@@ -90,6 +92,17 @@ public class BoardController {
 			.build();
 		return ApiResponse.success(
 			boardService.createBoard(workspaceId, principal.getUserId(), payload)
+		);
+	}
+
+	@PostMapping("/image/presigned-url")
+	public ApiResponse<PresignedUrlResponse> createBoardImagePresignedUrl(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal,
+		@Valid @RequestBody BoardImageUploadRequest request
+	) {
+		return ApiResponse.success(
+			boardService.createBoardImagePresignedUrl(workspaceId, principal.getUserId(), request)
 		);
 	}
 
