@@ -1,5 +1,6 @@
 package com.ujax.domain.solution;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,5 +56,65 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
 		Long submissionId,
 		Long workspaceProblemId,
 		Long workspaceMemberId
+	);
+
+	@Query("""
+		SELECT count(s)
+		FROM Solution s
+		WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
+		AND s.createdAt >= :start
+		AND s.createdAt <= :end
+		""")
+	long countByWorkspaceIdAndCreatedAtBetween(
+		@Param("workspaceId") Long workspaceId,
+		@Param("start") LocalDateTime start,
+		@Param("end") LocalDateTime end
+	);
+
+	@Query("""
+		SELECT s.workspaceProblem.id, count(s)
+		FROM Solution s
+		WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
+		AND s.createdAt >= :start
+		AND s.createdAt <= :end
+		GROUP BY s.workspaceProblem.id
+		ORDER BY count(s) DESC, max(s.createdAt) DESC, s.workspaceProblem.id ASC
+		""")
+	List<Object[]> countByWorkspaceProblemBetween(
+		@Param("workspaceId") Long workspaceId,
+		@Param("start") LocalDateTime start,
+		@Param("end") LocalDateTime end
+	);
+
+	@Query("""
+		SELECT s.workspaceMember.id, count(distinct s.workspaceProblem.id)
+		FROM Solution s
+		WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
+		AND s.status = :status
+		AND s.createdAt >= :start
+		AND s.createdAt <= :end
+		GROUP BY s.workspaceMember.id
+		""")
+	List<Object[]> countSolvedProblemsByMemberBetween(
+		@Param("workspaceId") Long workspaceId,
+		@Param("status") SolutionStatus status,
+		@Param("start") LocalDateTime start,
+		@Param("end") LocalDateTime end
+	);
+
+	@Query("""
+		SELECT s.workspaceMember.id, count(distinct s.workspaceProblem.id)
+		FROM Solution s
+		WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
+		AND s.status = :status
+		AND s.workspaceProblem.deadline IS NOT NULL
+		AND s.workspaceProblem.deadline < :now
+		AND s.createdAt <= s.workspaceProblem.deadline
+		GROUP BY s.workspaceMember.id
+		""")
+	List<Object[]> countOnTimeSolvedProblemsByMember(
+		@Param("workspaceId") Long workspaceId,
+		@Param("status") SolutionStatus status,
+		@Param("now") LocalDateTime now
 	);
 }

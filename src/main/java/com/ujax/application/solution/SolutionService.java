@@ -1,5 +1,7 @@
 package com.ujax.application.solution;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +37,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class SolutionService {
 
+	private static final ZoneId ACTIVITY_ZONE = ZoneId.of("Asia/Seoul");
+
 	private final SolutionRepository solutionRepository;
 	private final SolutionLikeRepository solutionLikeRepository;
 	private final SolutionCommentRepository solutionCommentRepository;
@@ -62,6 +66,7 @@ public class SolutionService {
 			request.codeLength(),
 			request.code()
 		);
+		workspaceMember.recordActivity(LocalDate.now(ACTIVITY_ZONE));
 		solutionRepository.save(solution);
 
 		return SolutionResponse.from(solution);

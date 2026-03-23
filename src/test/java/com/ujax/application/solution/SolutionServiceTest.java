@@ -2,6 +2,9 @@ package com.ujax.application.solution;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -138,6 +141,9 @@ class SolutionServiceTest {
 			assertThat(response).extracting(
 				"submissionId", "problemNumber", "memberName", "status"
 			).containsExactly(12345L, 1000, member.getNickname(), SolutionStatus.ACCEPTED);
+			WorkspaceMember updatedMember = workspaceMemberRepository.findById(member.getId()).orElseThrow();
+			assertThat(updatedMember.getLastActivityDate()).isEqualTo(LocalDate.now(ZoneId.of("Asia/Seoul")));
+			assertThat(updatedMember.getCurrentStreakDays()).isEqualTo(1);
 		}
 
 		@Test

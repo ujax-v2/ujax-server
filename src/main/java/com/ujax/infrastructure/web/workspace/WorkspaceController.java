@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.workspace.WorkspaceService;
+import com.ujax.application.workspace.WorkspaceDashboardService;
+import com.ujax.application.workspace.dto.response.dashboard.WorkspaceDashboardResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
@@ -33,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 public class WorkspaceController {
 
 	private final WorkspaceService workspaceService;
+	private final WorkspaceDashboardService workspaceDashboardService;
 
 	@GetMapping("/explore")
 	public ApiResponse<PageResponse<WorkspaceResponse>> listWorkspaces(
@@ -53,6 +56,14 @@ public class WorkspaceController {
 	@GetMapping("/{workspaceId}")
 	public ApiResponse<WorkspaceResponse> getWorkspace(@PathVariable Long workspaceId) {
 		return ApiResponse.success(workspaceService.getWorkspace(workspaceId));
+	}
+
+	@GetMapping("/{workspaceId}/dashboard")
+	public ApiResponse<WorkspaceDashboardResponse> getWorkspaceDashboard(
+		@PathVariable Long workspaceId,
+		@AuthenticationPrincipal UserPrincipal principal
+	) {
+		return ApiResponse.success(workspaceDashboardService.getDashboard(workspaceId, principal.getUserId()));
 	}
 
 	@GetMapping("/{workspaceId}/settings")

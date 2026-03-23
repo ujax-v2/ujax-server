@@ -1,5 +1,8 @@
 package com.ujax.domain.workspace;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
@@ -57,15 +60,29 @@ public class WorkspaceMember extends BaseEntity {
 	@Column(nullable = false, length = 30)
 	private String nickname;
 
-	private WorkspaceMember(Workspace workspace, User user, WorkspaceMemberRole role, String nickname) {
+	private LocalDate lastActivityDate;
+
+	@Column(nullable = false)
+	private int currentStreakDays;
+
+	private WorkspaceMember(
+		Workspace workspace,
+		User user,
+		WorkspaceMemberRole role,
+		String nickname,
+		LocalDate lastActivityDate,
+		int currentStreakDays
+	) {
 		this.workspace = workspace;
 		this.user = user;
 		this.role = role;
 		this.nickname = nickname;
+		this.lastActivityDate = lastActivityDate;
+		this.currentStreakDays = currentStreakDays;
 	}
 
 	public static WorkspaceMember create(Workspace workspace, User user, WorkspaceMemberRole role) {
-		return new WorkspaceMember(workspace, user, role, user.getName());
+		return new WorkspaceMember(workspace, user, role, user.getName(), null, 0);
 	}
 
 	public void updateRole(WorkspaceMemberRole role) {
@@ -74,6 +91,38 @@ public class WorkspaceMember extends BaseEntity {
 
 	public void updateNickname(String nickname) {
 		this.nickname = nickname;
+	}
+
+	public void recordActivity(LocalDate activityDate) {
+		if (lastActivityDate == null) {
+			lastActivityDate = activityDate;
+			currentStreakDays = 1;
+			return;
+		}
+
+		long daysBetween = ChronoUnit.DAYS.between(lastActivityDate, activityDate);
+		if (daysBetween <= 0) {
+			return;
+		}
+
+		if (daysBetween == 1) {
+			currentStreakDays++;
+		} else {
+			currentStreakDays = 1;
+		}
+		lastActivityDate = activityDate;
+	}
+
+	public int getCurrentStreakDays(LocalDate today) {
+		if (lastActivityDate == null) {
+			return 0;
+		}
+
+		long daysBetween = ChronoUnit.DAYS.between(lastActivityDate, today);
+		if (daysBetween == 0 || daysBetween == 1) {
+			return currentStreakDays;
+		}
+		return 0;
 	}
 
 	public void validateManagerOrOwner() {

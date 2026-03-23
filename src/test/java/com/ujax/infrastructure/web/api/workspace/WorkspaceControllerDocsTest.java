@@ -33,7 +33,17 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.workspace.WorkspaceDashboardService;
 import com.ujax.application.workspace.WorkspaceService;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardDeadlineProblemResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardDeadlineRateRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardHotProblemResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardNoticeResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardRankingsResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardSolvedRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardStreakRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardSummaryResponse;
+import com.ujax.application.workspace.dto.response.dashboard.WorkspaceDashboardResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
@@ -66,6 +76,9 @@ class WorkspaceControllerDocsTest {
 
 	@MockitoBean
 	private WorkspaceService workspaceService;
+
+	@MockitoBean
+	private WorkspaceDashboardService workspaceDashboardService;
 
 	@BeforeEach
 	void setUpSecurityContext() {
@@ -271,6 +284,114 @@ class WorkspaceControllerDocsTest {
 					)
 					.responseSchema(Schema.schema("ProblemDetail-NotFound"))
 					.responseFields(problemDetailFields())
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("워크스페이스 대시보드 조회 API")
+	void getWorkspaceDashboard() throws Exception {
+		WorkspaceDashboardResponse response = new WorkspaceDashboardResponse(
+			List.of(new DashboardNoticeResponse(
+				10L,
+				"운영 공지",
+				"Alice",
+				LocalDateTime.parse("2026-03-23T10:00:00"),
+				true
+			)),
+			List.of(new DashboardDeadlineProblemResponse(
+				20L,
+				30L,
+				"메인 문제집",
+				1697,
+				"숨바꼭질",
+				"Silver 1",
+				List.of("BFS", "Graph"),
+				LocalDateTime.parse("2026-03-24T23:59:00")
+			)),
+			new DashboardSummaryResponse(
+				5L,
+				new DashboardHotProblemResponse(
+					20L,
+					30L,
+					"메인 문제집",
+					1697,
+					"숨바꼭질",
+					"Silver 1",
+					List.of("BFS", "Graph"),
+					4L
+				)
+			),
+			new DashboardRankingsResponse(
+				List.of(new DashboardSolvedRankingResponse(100L, "Alice", 2L)),
+				List.of(new DashboardStreakRankingResponse(100L, "Alice", 3)),
+				List.of(new DashboardDeadlineRateRankingResponse(100L, "Alice", 2L, 2L, 100))
+			)
+		);
+		given(workspaceDashboardService.getDashboard(anyLong(), anyLong())).willReturn(response);
+
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/dashboard", 1L)
+				.contentType(MediaType.APPLICATION_JSON))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("workspace-dashboard",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Workspace")
+					.summary("워크스페이스 대시보드 조회")
+					.description("최근 공지, 임박 문제, 요약 통계, 랭킹 정보를 한 번에 조회합니다")
+					.pathParameters(
+						parameterWithName("workspaceId").description("워크스페이스 ID")
+					)
+					.responseSchema(Schema.schema("ApiResponse-WorkspaceDashboardResponse"))
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.recentNotices").type(JsonFieldType.ARRAY).description("최근 공지사항 목록"),
+						fieldWithPath("data.recentNotices[].boardId").type(JsonFieldType.NUMBER).description("게시글 ID"),
+						fieldWithPath("data.recentNotices[].title").type(JsonFieldType.STRING).description("공지 제목"),
+						fieldWithPath("data.recentNotices[].authorNickname").type(JsonFieldType.STRING).description("작성자 닉네임"),
+						fieldWithPath("data.recentNotices[].createdAt").type(JsonFieldType.STRING).description("작성 시각"),
+						fieldWithPath("data.recentNotices[].pinned").type(JsonFieldType.BOOLEAN).description("상단 고정 여부"),
+						fieldWithPath("data.upcomingDeadlines").type(JsonFieldType.ARRAY).description("기한 임박 문제 목록"),
+						fieldWithPath("data.upcomingDeadlines[].workspaceProblemId").type(JsonFieldType.NUMBER).description("워크스페이스 문제 ID"),
+						fieldWithPath("data.upcomingDeadlines[].problemBoxId").type(JsonFieldType.NUMBER).description("문제집 ID"),
+						fieldWithPath("data.upcomingDeadlines[].problemBoxTitle").type(JsonFieldType.STRING).description("문제집 제목"),
+						fieldWithPath("data.upcomingDeadlines[].problemNumber").type(JsonFieldType.NUMBER).description("백준 문제 번호"),
+						fieldWithPath("data.upcomingDeadlines[].title").type(JsonFieldType.STRING).description("문제 제목"),
+						fieldWithPath("data.upcomingDeadlines[].tier").type(JsonFieldType.STRING).description("문제 티어").optional(),
+						fieldWithPath("data.upcomingDeadlines[].algorithmTags").type(JsonFieldType.ARRAY).description("알고리즘 태그 목록"),
+						fieldWithPath("data.upcomingDeadlines[].deadline").type(JsonFieldType.STRING).description("문제 마감 시각"),
+						fieldWithPath("data.summary").type(JsonFieldType.OBJECT).description("요약 통계"),
+						fieldWithPath("data.summary.weeklySubmissionCount").type(JsonFieldType.NUMBER).description("이번 주 제출 수"),
+						fieldWithPath("data.summary.hotProblem").type(JsonFieldType.OBJECT).description("이번 주 가장 많이 제출된 문제").optional(),
+						fieldWithPath("data.summary.hotProblem.workspaceProblemId").type(JsonFieldType.NUMBER).description("워크스페이스 문제 ID").optional(),
+						fieldWithPath("data.summary.hotProblem.problemBoxId").type(JsonFieldType.NUMBER).description("문제집 ID").optional(),
+						fieldWithPath("data.summary.hotProblem.problemBoxTitle").type(JsonFieldType.STRING).description("문제집 제목").optional(),
+						fieldWithPath("data.summary.hotProblem.problemNumber").type(JsonFieldType.NUMBER).description("백준 문제 번호").optional(),
+						fieldWithPath("data.summary.hotProblem.title").type(JsonFieldType.STRING).description("문제 제목").optional(),
+						fieldWithPath("data.summary.hotProblem.tier").type(JsonFieldType.STRING).description("문제 티어").optional(),
+						fieldWithPath("data.summary.hotProblem.algorithmTags").type(JsonFieldType.ARRAY).description("알고리즘 태그 목록").optional(),
+						fieldWithPath("data.summary.hotProblem.weeklySubmissionCount").type(JsonFieldType.NUMBER).description("해당 문제의 이번 주 제출 수").optional(),
+						fieldWithPath("data.rankings").type(JsonFieldType.OBJECT).description("랭킹 정보"),
+						fieldWithPath("data.rankings.monthlySolved").type(JsonFieldType.ARRAY).description("이번 달 해결 수 랭킹"),
+						fieldWithPath("data.rankings.monthlySolved[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+						fieldWithPath("data.rankings.monthlySolved[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.monthlySolved[].solvedCount").type(JsonFieldType.NUMBER).description("이번 달 해결한 문제 수"),
+						fieldWithPath("data.rankings.streak").type(JsonFieldType.ARRAY).description("연속 출석 랭킹"),
+						fieldWithPath("data.rankings.streak[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+						fieldWithPath("data.rankings.streak[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.streak[].streakDays").type(JsonFieldType.NUMBER).description("연속 활동 일수"),
+						fieldWithPath("data.rankings.deadlineRate").type(JsonFieldType.ARRAY).description("기한 준수율 랭킹"),
+						fieldWithPath("data.rankings.deadlineRate[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+						fieldWithPath("data.rankings.deadlineRate[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.deadlineRate[].solvedBeforeDeadlineCount").type(JsonFieldType.NUMBER).description("기한 내 해결한 문제 수"),
+						fieldWithPath("data.rankings.deadlineRate[].totalDeadlineProblems").type(JsonFieldType.NUMBER).description("집계 대상 마감 문제 수"),
+						fieldWithPath("data.rankings.deadlineRate[].ratePercent").type(JsonFieldType.NUMBER).description("기한 준수율(%)"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
 					.build()
 				)
 			));

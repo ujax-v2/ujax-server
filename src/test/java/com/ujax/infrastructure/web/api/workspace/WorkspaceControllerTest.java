@@ -21,7 +21,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.ujax.application.workspace.WorkspaceDashboardService;
 import com.ujax.application.workspace.WorkspaceService;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardDeadlineProblemResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardDeadlineRateRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardHotProblemResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardNoticeResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardRankingsResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardSolvedRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardStreakRankingResponse;
+import com.ujax.application.workspace.dto.response.dashboard.DashboardSummaryResponse;
+import com.ujax.application.workspace.dto.response.dashboard.WorkspaceDashboardResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
@@ -43,6 +53,9 @@ class WorkspaceControllerTest {
 
 	@MockitoBean
 	private WorkspaceService workspaceService;
+
+	@MockitoBean
+	private WorkspaceDashboardService workspaceDashboardService;
 
 	@BeforeEach
 	void setUpSecurityContext() {
@@ -159,6 +172,62 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/3.png"));
 
 			then(workspaceService).should().getWorkspace(3L);
+		}
+	}
+
+	@Nested
+	@DisplayName("워크스페이스 대시보드 조회")
+	class GetWorkspaceDashboard {
+
+		@Test
+		@DisplayName("워크스페이스 대시보드를 조회한다")
+		void getWorkspaceDashboard() throws Exception {
+			WorkspaceDashboardResponse response = new WorkspaceDashboardResponse(
+				List.of(new DashboardNoticeResponse(10L, "공지 제목", "Alice", java.time.LocalDateTime.parse("2026-03-23T10:00:00"), true)),
+				List.of(new DashboardDeadlineProblemResponse(
+					20L,
+					30L,
+					"메인 문제집",
+					1697,
+					"숨바꼭질",
+					"Silver 1",
+					List.of("BFS", "Graph"),
+					java.time.LocalDateTime.parse("2026-03-24T23:59:00")
+				)),
+				new DashboardSummaryResponse(
+					5L,
+					new DashboardHotProblemResponse(
+						20L,
+						30L,
+						"메인 문제집",
+						1697,
+						"숨바꼭질",
+						"Silver 1",
+						List.of("BFS", "Graph"),
+						4L
+					)
+				),
+				new DashboardRankingsResponse(
+					List.of(new DashboardSolvedRankingResponse(100L, "Alice", 2L)),
+					List.of(new DashboardStreakRankingResponse(100L, "Alice", 3)),
+					List.of(new DashboardDeadlineRateRankingResponse(100L, "Alice", 2L, 2L, 100))
+				)
+			);
+			given(workspaceDashboardService.getDashboard(anyLong(), anyLong())).willReturn(response);
+
+			mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/dashboard", 3L))
+				.andDo(print())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true))
+				.andExpect(jsonPath("$.data.recentNotices[0].title").value("공지 제목"))
+				.andExpect(jsonPath("$.data.upcomingDeadlines[0].problemNumber").value(1697))
+				.andExpect(jsonPath("$.data.summary.weeklySubmissionCount").value(5))
+				.andExpect(jsonPath("$.data.summary.hotProblem.weeklySubmissionCount").value(4))
+				.andExpect(jsonPath("$.data.rankings.monthlySolved[0].solvedCount").value(2))
+				.andExpect(jsonPath("$.data.rankings.streak[0].streakDays").value(3))
+				.andExpect(jsonPath("$.data.rankings.deadlineRate[0].ratePercent").value(100));
+
+			then(workspaceDashboardService).should().getDashboard(3L, 1L);
 		}
 	}
 
