@@ -1,5 +1,6 @@
 package com.ujax.domain.board;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.jspecify.annotations.NonNull;
@@ -57,4 +58,14 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 	@Modifying
 	@Query("UPDATE Board b SET b.viewCount = b.viewCount + 1 WHERE b.workspace.id = :workspaceId AND b.id = :boardId")
 	int incrementViewCount(@Param("workspaceId") Long workspaceId, @Param("boardId") Long boardId);
+
+	@EntityGraph(attributePaths = {"workspace", "author"})
+	@Query("""
+		SELECT b
+		FROM Board b
+		WHERE b.workspace.id = :workspaceId
+		AND b.type = com.ujax.domain.board.BoardType.NOTICE
+		ORDER BY b.pinned DESC, b.createdAt DESC, b.id DESC
+		""")
+	List<Board> findDashboardNotices(@Param("workspaceId") Long workspaceId, Pageable pageable);
 }
