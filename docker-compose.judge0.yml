@@ -5,47 +5,64 @@ x-logging: &default-logging
       max-size: 100M
 
 services:
-  server:
+  # === Judge0 Server ===
+  judge0-server:
     image: judge0/judge0:latest
-    platform: linux/amd64
+    container_name: judge0-server
     volumes:
       - ./judge0.conf:/judge0.conf:ro
     ports:
       - "2358:2358"
     privileged: true
-    <<: *default-logging
     restart: always
+    depends_on:
+      - judge0-redis
+      - judge0-db
+    <<: *default-logging
 
-  worker:
+  # === Judge0 Worker ===
+  judge0-worker:
     image: judge0/judge0:latest
-    platform: linux/amd64
     command: ["./scripts/workers"]
     volumes:
       - ./judge0.conf:/judge0.conf:ro
     privileged: true
-    <<: *default-logging
     restart: always
+    depends_on:
+      - judge0-redis
+      - judge0-db
+    <<: *default-logging
 
-  db:
+  # === Judge0 Internal DB (Postgres) ===
+  judge0-db:
     image: postgres:16.2
     env_file: judge0.conf
     volumes:
-      - data:/var/lib/postgresql/data/
-    <<: *default-logging
+      - judge0-postgres-data:/var/lib/postgresql/data/
     restart: always
+    <<: *default-logging
 
-  redis:
+  # === Judge0 Internal Redis ===
+  judge0-redis:
     image: redis:7.2.4
-    container_name: judge0-redis
-    command:
-      [
-        "bash",
-        "-c",
-        'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"',
-      ]
+    command: [ "bash", "-c", 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"' ]
     env_file: judge0.conf
-    <<: *default-logging
     restart: always
+    <<: *default-logging
+
+  # === Node Exporter (Judge Server Monitoring) ===
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: judge-node-exporter
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    restart: always
+    <<: *default-logging
 
 volumes:
-  data:
+  judge0-postgres-data:
