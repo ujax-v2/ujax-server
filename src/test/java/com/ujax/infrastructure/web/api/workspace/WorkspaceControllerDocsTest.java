@@ -406,7 +406,7 @@ class WorkspaceControllerDocsTest {
 			"워크스페이스",
 			"소개",
 			"https://image.example.com/workspaces/1.png",
-			"https://meeting.ssafy.com/hooks/**************************"
+			"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"
 		);
 		given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
 

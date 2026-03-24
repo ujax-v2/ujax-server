@@ -243,7 +243,7 @@ class WorkspaceControllerTest {
 				"알고리즘 스터디",
 				"소개",
 				"https://image.example.com/workspaces/3.png",
-				"https://meeting.ssafy.com/hooks/**************************"
+				"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"
 			);
 			given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
 
@@ -253,7 +253,7 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.id").value(3))
 				.andExpect(jsonPath("$.data.imageUrl").value("https://image.example.com/workspaces/3.png"))
-				.andExpect(jsonPath("$.data.hookUrl").value("https://meeting.ssafy.com/hooks/**************************"));
+				.andExpect(jsonPath("$.data.hookUrl").value("https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"));
 
 			then(workspaceService).should().getWorkspaceSettings(3L, 1L);
 		}

@@ -1061,7 +1061,7 @@ class WorkspaceServiceTest {
 				.containsExactly(
 					workspace.getId(),
 					Workspace.DEFAULT_WORKSPACE_IMAGE_URL,
-					"https://meeting.ssafy.com/hooks/**************************"
+					"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"
 				);
 		}
 
