@@ -1044,14 +1044,25 @@ class WorkspaceServiceTest {
 			User owner = userRepository.save(User.createLocalUser("owner3@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
-			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com", null);
+			workspaceService.updateWorkspace(
+				workspace.getId(),
+				owner.getId(),
+				null,
+				null,
+				"https://meeting.ssafy.com/hooks/j8ki3jbhg38t7dbgpwse9ak9jh",
+				null
+			);
 
 			// when
 			WorkspaceSettingsResponse response = workspaceService.getWorkspaceSettings(workspace.getId(), owner.getId());
 
 			// then
 			assertThat(response).extracting("id", "imageUrl", "hookUrl")
-				.containsExactly(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL, "https://hook.example.com");
+				.containsExactly(
+					workspace.getId(),
+					Workspace.DEFAULT_WORKSPACE_IMAGE_URL,
+					"https://meeting.ssafy.com/hooks/**************************"
+				);
 		}
 
 		@Test
