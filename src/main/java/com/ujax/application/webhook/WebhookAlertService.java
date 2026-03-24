@@ -370,19 +370,17 @@ public class WebhookAlertService {
 			alert.getScheduledAt(),
 			buildWorkspaceProblemLink(
 				alert.getWorkspaceId(),
-				workspaceProblem.getProblemBox().getId(),
-				workspaceProblem.getId()
+				workspaceProblem.getProblem().getProblemNumber()
 			)
 		);
 	}
 
 	private String buildWorkspaceLink(Long workspaceId) {
-		return "%s/workspaces/%d".formatted(baseUrl, workspaceId);
+		return "%s/ws/%d/dashboard".formatted(baseUrl, workspaceId);
 	}
 
-	private String buildWorkspaceProblemLink(Long workspaceId, Long problemBoxId, Long workspaceProblemId) {
-		return "%s/workspaces/%d/problem-boxes/%d/problems/%d"
-			.formatted(baseUrl, workspaceId, problemBoxId, workspaceProblemId);
+	private String buildWorkspaceProblemLink(Long workspaceId, int problemNumber) {
+		return "%s/ws/%d/ide/%d".formatted(baseUrl, workspaceId, problemNumber);
 	}
 
 }
