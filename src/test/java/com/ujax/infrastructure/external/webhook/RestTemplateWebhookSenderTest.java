@@ -40,7 +40,7 @@ class RestTemplateWebhookSenderTest {
 				    {
 				      "color": "#2563EB",
 				      "title": "[알고리즘 스터디] 1000. 백준 1000 A+B",
-				      "title_link": "https://ujax.site/workspaces/11/problem-boxes/7/problems/101",
+				      "title_link": "https://ujax.site/ws/11/ide/1000",
 				      "text": "### 문제 풀이 마감까지 얼마 남지 않았습니다.\\n\\n**마감일**\\n\\n**03월 08일 11:00**",
 				      "footer": "프로젝트명"
 				    }
@@ -51,7 +51,7 @@ class RestTemplateWebhookSenderTest {
 				  "problemTitle": "1000. 백준 1000 A+B",
 				  "deadline": "2026-03-08T11:00:00",
 				  "scheduledAt": "2026-03-08T10:00:00",
-				  "problemLink": "https://ujax.site/workspaces/11/problem-boxes/7/problems/101"
+				  "problemLink": "https://ujax.site/ws/11/ide/1000"
 				}
 				"""))
 			.andRespond(withSuccess());
@@ -65,7 +65,7 @@ class RestTemplateWebhookSenderTest {
 				"1000. 백준 1000 A+B",
 				LocalDateTime.of(2026, 3, 8, 11, 0),
 				LocalDateTime.of(2026, 3, 8, 10, 0),
-				"https://ujax.site/workspaces/11/problem-boxes/7/problems/101"
+				"https://ujax.site/ws/11/ide/1000"
 			)
 		);
 
@@ -88,7 +88,7 @@ class RestTemplateWebhookSenderTest {
 				"1000. 백준 1000 A+B",
 				LocalDateTime.of(2026, 3, 8, 11, 0),
 				LocalDateTime.of(2026, 3, 8, 10, 0),
-				"https://ujax.site/workspaces/11/problem-boxes/7/problems/101"
+				"https://ujax.site/ws/11/ide/1000"
 			)
 		)).isInstanceOf(HttpServerErrorException.class);
 

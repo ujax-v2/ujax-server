@@ -410,7 +410,7 @@ class WebhookAlertServiceTest {
 						&& message.deadline().equals(LocalDateTime.of(2026, 3, 8, 12, 0))
 						&& message.scheduledAt().equals(LocalDateTime.of(2026, 3, 8, 9, 0))
 						&& message.problemLink().equals(
-							"https://ujax.site/workspaces/11/problem-boxes/7/problems/101"
+							"https://ujax.site/ws/11/ide/1000"
 						)
 				)
 			);
