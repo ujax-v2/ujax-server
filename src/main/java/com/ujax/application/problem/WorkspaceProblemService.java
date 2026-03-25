@@ -62,6 +62,7 @@ public class WorkspaceProblemService {
 	public WorkspaceProblemResponse createWorkspaceProblem(Long workspaceId, Long problemBoxId, Long userId,
 		CreateWorkspaceProblemRequest request) {
 		WorkspaceMember member = findManagerOrOwner(workspaceId, userId);
+		LocalDateTime now = LocalDateTime.now();
 
 		ProblemBox problemBox = findProblemBox(problemBoxId, workspaceId);
 		Problem problem = problemRepository.findById(request.problemId())
@@ -70,8 +71,11 @@ public class WorkspaceProblemService {
 		if (workspaceProblemRepository.existsByProblemBox_IdAndProblem_Id(problemBoxId, problem.getId())) {
 			throw new ConflictException(ErrorCode.DUPLICATE_WORKSPACE_PROBLEM);
 		}
+		if (request.deadline() != null) {
+			validateDeadline(request.deadline(), now);
+		}
 		if (request.scheduledAt() != null) {
-			validateScheduledAt(request.scheduledAt());
+			validateScheduledAt(request.scheduledAt(), now);
 			validateWorkspaceHookUrl(member.getWorkspace());
 		}
 
@@ -95,11 +99,15 @@ public class WorkspaceProblemService {
 	public WorkspaceProblemResponse updateWorkspaceProblem(Long workspaceId, Long problemBoxId,
 		Long workspaceProblemId, Long userId, UpdateWorkspaceProblemRequest request) {
 		WorkspaceMember member = findManagerOrOwner(workspaceId, userId);
+		LocalDateTime now = LocalDateTime.now();
 
 		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
 
+		if (request.deadline() != null) {
+			validateDeadline(request.deadline(), now);
+		}
 		if (request.scheduledAt() != null) {
-			validateScheduledAt(request.scheduledAt());
+			validateScheduledAt(request.scheduledAt(), now);
 			validateWorkspaceHookUrl(member.getWorkspace());
 		}
 
@@ -156,8 +164,14 @@ public class WorkspaceProblemService {
 		}
 	}
 
-	private void validateScheduledAt(LocalDateTime scheduledAt) {
-		if (scheduledAt.isBefore(LocalDateTime.now().plusMinutes(MIN_SCHEDULE_LEAD_MINUTES))) {
+	private void validateDeadline(LocalDateTime deadline, LocalDateTime now) {
+		if (deadline.isBefore(now)) {
+			throw new BusinessRuleViolationException("deadline은 현재 시각보다 이전일 수 없습니다.");
+		}
+	}
+
+	private void validateScheduledAt(LocalDateTime scheduledAt, LocalDateTime now) {
+		if (scheduledAt.isBefore(now.plusMinutes(MIN_SCHEDULE_LEAD_MINUTES))) {
 			throw new BusinessRuleViolationException(
 				"scheduledAt은 현재 시각 기준 %d분 이후여야 합니다.".formatted(MIN_SCHEDULE_LEAD_MINUTES)
 			);
