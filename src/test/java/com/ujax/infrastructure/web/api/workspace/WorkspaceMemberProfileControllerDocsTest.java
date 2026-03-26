@@ -134,7 +134,7 @@ class WorkspaceMemberProfileControllerDocsTest {
 						fieldWithPath("data.accuracy.rate").type(JsonFieldType.NUMBER).description("정답률(%)"),
 						fieldWithPath("data.accuracy.acceptedCount").type(JsonFieldType.NUMBER).description("정답 제출 수"),
 						fieldWithPath("data.accuracy.totalCount").type(JsonFieldType.NUMBER).description("전체 제출 수"),
-						fieldWithPath("data.algorithmStats").type(JsonFieldType.ARRAY).description("알고리즘 통계"),
+						fieldWithPath("data.algorithmStats").type(JsonFieldType.ARRAY).description("알고리즘 통계 (상위 5개)"),
 						fieldWithPath("data.algorithmStats[].name").type(JsonFieldType.STRING).description("알고리즘 이름"),
 						fieldWithPath("data.algorithmStats[].count").type(JsonFieldType.NUMBER).description("알고리즘별 해결 수"),
 						fieldWithPath("data.algorithmStats[].ratio").type(JsonFieldType.NUMBER).description("알고리즘 비율"),

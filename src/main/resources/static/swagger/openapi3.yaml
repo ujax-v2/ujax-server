@@ -5455,7 +5455,7 @@ components:
               description: 요약 정보
             algorithmStats:
               type: array
-              description: 알고리즘 통계
+              description: 알고리즘 통계 (상위 5개)
               items:
                 required:
                 - count

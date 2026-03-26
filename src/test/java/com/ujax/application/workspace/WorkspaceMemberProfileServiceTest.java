@@ -239,6 +239,62 @@ class WorkspaceMemberProfileServiceTest {
 				.isInstanceOf(ForbiddenException.class);
 		}
 
+		@Test
+		@DisplayName("주력 알고리즘 통계는 상위 5개만 반환한다")
+		void getMyProfile_AlgorithmStatsTop5() {
+			User user = userRepository.save(User.createOAuthUser(
+				"top5@example.com",
+				"상위오",
+				null,
+				AuthProvider.GOOGLE,
+				"google-top5"
+			));
+
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "설명"));
+			WorkspaceMember member = workspaceMemberRepository.save(
+				WorkspaceMember.create(workspace, user, WorkspaceMemberRole.MEMBER)
+			);
+			ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, "기본 문제집", "설명"));
+
+			for (String algorithmName : List.of("A", "B", "C", "D", "E", "F")) {
+				AlgorithmTag algorithmTag = algorithmTagRepository.save(AlgorithmTag.create(algorithmName));
+				Problem problem = Problem.create(
+					1000 + algorithmName.charAt(0),
+					"문제-" + algorithmName,
+					"Bronze",
+					"1초",
+					"256MB",
+					null,
+					null,
+					null,
+					null
+				);
+				problem.addAlgorithmTag(algorithmTag);
+				Problem savedProblem = problemRepository.save(problem);
+				WorkspaceProblem workspaceProblem = workspaceProblemRepository.save(
+					WorkspaceProblem.create(problemBox, savedProblem, null, null)
+				);
+				solutionRepository.save(Solution.create(
+					workspaceProblem,
+					member,
+					10000L + algorithmName.charAt(0),
+					"맞았습니다!!",
+					"100",
+					"256",
+					"Java",
+					"1200",
+					"code"
+				));
+			}
+
+			WorkspaceMemberProfileResponse response = workspaceMemberProfileService.getMyProfile(workspace.getId(), user.getId());
+
+			assertThat(response.algorithmStats()).hasSize(5);
+			assertThat(response.algorithmStats()).extracting("name")
+				.containsExactly("A", "B", "C", "D", "E");
+			assertThat(response.summary().mainAlgorithm()).isEqualTo("A");
+		}
+
 	}
 
 	@Nested

@@ -35,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class WorkspaceMemberProfileService {
 
+	private static final int TOP_ALGORITHM_LIMIT = 5;
 	private static final ZoneId PROFILE_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -160,6 +161,7 @@ public class WorkspaceMemberProfileService {
 
 	private List<WorkspaceMemberProfileAlgorithmStatResponse> toAlgorithmStats(List<Object[]> rows, long totalSolvedCount) {
 		return rows.stream()
+			.limit(TOP_ALGORITHM_LIMIT)
 			.map(row -> WorkspaceMemberProfileAlgorithmStatResponse.of(
 				(String)row[0],
 				(Long)row[1],
