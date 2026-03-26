@@ -289,6 +289,31 @@ class WorkspaceServiceTest {
 		}
 
 		@Test
+		@DisplayName("마스킹된 웹훅은 수정할 수 없다")
+		void updateWorkspaceMaskedWebhook() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-masked-webhook@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.updateWorkspace(
+				workspace.getId(),
+				owner.getId(),
+				null,
+				null,
+				"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh",
+				null
+			))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+
+			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
+			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
+				.containsExactly("워크스페이스", "소개", null, Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
+		}
+
+		@Test
 		@DisplayName("이미지를 수정할 수 있다")
 		void updateWorkspaceOnlyImage() {
 			// given
