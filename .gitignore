@@ -47,5 +47,3 @@ src/main/resources/static/swagger/openapi3.yaml
 *.pem
 .env
 .profileconfig.json
-.agent/
-src/main/resources/static/swagger/openapi3.yaml
