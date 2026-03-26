@@ -143,7 +143,7 @@ class WorkspaceProblemServiceTest {
 			createMember(workspace, user, WorkspaceMemberRole.OWNER);
 			ProblemBox problemBox = createProblemBox(workspace);
 			Problem problem = createProblem(1000, "A+B");
-			LocalDateTime deadline = LocalDateTime.of(2026, 3, 1, 0, 0);
+			LocalDateTime deadline = LocalDateTime.now().plusDays(1);
 
 			WorkspaceProblemResponse response = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
@@ -151,6 +151,24 @@ class WorkspaceProblemServiceTest {
 
 			assertThat(response).extracting("problemNumber", "title", "deadline")
 				.containsExactly(1000, "A+B", deadline);
+			then(webhookAlertService).shouldHaveNoInteractions();
+		}
+
+		@Test
+		@DisplayName("deadline이 현재 시각보다 이전이면 오류가 발생한다")
+		void createWithPastDeadline() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000, "A+B");
+			LocalDateTime deadline = LocalDateTime.now().minusMinutes(1);
+
+			assertThatThrownBy(() -> workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem.getId(), deadline, null)))
+				.isInstanceOf(BusinessRuleViolationException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
 			then(webhookAlertService).shouldHaveNoInteractions();
 		}
 
@@ -297,7 +315,7 @@ class WorkspaceProblemServiceTest {
 				workspace.getId(), problemBox.getId(), user.getId(),
 				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
 
-			LocalDateTime newDeadline = LocalDateTime.of(2026, 4, 1, 0, 0);
+			LocalDateTime newDeadline = LocalDateTime.now().plusDays(7);
 			LocalDateTime newScheduledAt = LocalDateTime.now().plusDays(1);
 
 			WorkspaceProblemResponse response = workspaceProblemService.updateWorkspaceProblem(
@@ -308,6 +326,28 @@ class WorkspaceProblemServiceTest {
 				.containsExactly(newDeadline, newScheduledAt);
 			then(webhookAlertService).should()
 				.reserveOrUpdate(created.id(), workspace.getId(), newScheduledAt, user.getId());
+		}
+
+		@Test
+		@DisplayName("deadline을 현재 시각보다 이전으로 수정하면 오류가 발생한다")
+		void updateWithPastDeadline() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem = createProblem(1000, "A+B");
+
+			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem.getId(), null, null));
+			LocalDateTime deadline = LocalDateTime.now().minusMinutes(1);
+
+			assertThatThrownBy(() -> workspaceProblemService.updateWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), created.id(), user.getId(),
+				new UpdateWorkspaceProblemRequest(deadline, null)))
+				.isInstanceOf(BusinessRuleViolationException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
+			then(webhookAlertService).shouldHaveNoInteractions();
 		}
 
 		@Test

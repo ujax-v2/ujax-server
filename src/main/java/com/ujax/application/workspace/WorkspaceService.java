@@ -38,6 +38,7 @@ public class WorkspaceService {
 	private static final int NAME_MIN = 1;
 	private static final int NAME_MAX = 50;
 	private static final int DESCRIPTION_MAX = 200;
+	private static final char MASK_CHAR = '*';
 	private static final Sort WORKSPACE_DEFAULT_SORT = Sort.by(
 		Sort.Order.desc("createdAt"),
 		Sort.Order.desc("id")
@@ -124,6 +125,9 @@ public class WorkspaceService {
 		if (description != null) {
 			validateDescription(description);
 		}
+		if (hookUrl != null) {
+			validateHookUrl(hookUrl);
+		}
 
 		workspace.update(name, description, hookUrl, imageUrl);
 		return WorkspaceResponse.from(workspace);
@@ -175,6 +179,12 @@ public class WorkspaceService {
 			return;
 		}
 		if (description.length() > DESCRIPTION_MAX) {
+			throw new BadRequestException(ErrorCode.INVALID_INPUT);
+		}
+	}
+
+	private void validateHookUrl(String hookUrl) {
+		if (hookUrl.indexOf(MASK_CHAR) >= 0) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT);
 		}
 	}

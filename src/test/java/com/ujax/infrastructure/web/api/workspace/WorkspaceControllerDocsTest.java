@@ -406,7 +406,7 @@ class WorkspaceControllerDocsTest {
 			"워크스페이스",
 			"소개",
 			"https://image.example.com/workspaces/1.png",
-			"https://hook.example.com"
+			"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"
 		);
 		given(workspaceService.getWorkspaceSettings(anyLong(), anyLong())).willReturn(response);
 
@@ -433,7 +433,7 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.name").type(JsonFieldType.STRING).description("워크스페이스 이름"),
 						fieldWithPath("data.description").type(JsonFieldType.STRING).description("워크스페이스 설명").optional(),
 						fieldWithPath("data.imageUrl").type(JsonFieldType.STRING).description("워크스페이스 이미지 URL"),
-						fieldWithPath("data.hookUrl").type(JsonFieldType.STRING).description("Hook URL").optional(),
+						fieldWithPath("data.hookUrl").type(JsonFieldType.STRING).description("마스킹된 Hook URL").optional(),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()

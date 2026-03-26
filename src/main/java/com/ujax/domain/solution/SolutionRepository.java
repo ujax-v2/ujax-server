@@ -87,9 +87,9 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
 	);
 
 	@Query("""
-		SELECT s.workspaceMember.id, count(distinct s.workspaceProblem.id)
-		FROM Solution s
-		WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
+			SELECT s.workspaceMember.id, count(distinct s.workspaceProblem.id)
+			FROM Solution s
+			WHERE s.workspaceProblem.problemBox.workspace.id = :workspaceId
 		AND s.status = :status
 		AND s.createdAt >= :start
 		AND s.createdAt <= :end
@@ -116,5 +116,75 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
 		@Param("workspaceId") Long workspaceId,
 		@Param("status") SolutionStatus status,
 		@Param("now") LocalDateTime now
+	);
+
+	@Query("""
+		SELECT count(s)
+		FROM Solution s
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		""")
+	long countByWorkspaceMemberId(@Param("workspaceMemberId") Long workspaceMemberId);
+
+	@Query("""
+		SELECT count(s)
+		FROM Solution s
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		AND s.status = :status
+		""")
+	long countByWorkspaceMemberIdAndStatus(
+		@Param("workspaceMemberId") Long workspaceMemberId,
+		@Param("status") SolutionStatus status
+	);
+
+	@Query("""
+		SELECT count(distinct s.workspaceProblem.problem.id)
+		FROM Solution s
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		AND s.status = :status
+		""")
+	long countSolvedProblemsByWorkspaceMemberId(
+		@Param("workspaceMemberId") Long workspaceMemberId,
+		@Param("status") SolutionStatus status
+	);
+
+	@Query("""
+		SELECT s.programmingLanguage, count(s)
+		FROM Solution s
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		GROUP BY s.programmingLanguage
+		ORDER BY count(s) DESC, s.programmingLanguage ASC
+		""")
+	List<Object[]> countLanguageStatsByWorkspaceMemberId(@Param("workspaceMemberId") Long workspaceMemberId);
+
+	@Query("""
+		SELECT at.name, count(distinct s.workspaceProblem.problem.id)
+		FROM Solution s
+		JOIN s.workspaceProblem.problem p
+		JOIN p.algorithmTags at
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		AND s.status = :status
+		GROUP BY at.name
+		ORDER BY count(distinct s.workspaceProblem.problem.id) DESC, at.name ASC
+		""")
+	List<Object[]> countAlgorithmStatsByWorkspaceMemberId(
+		@Param("workspaceMemberId") Long workspaceMemberId,
+		@Param("status") SolutionStatus status
+	);
+
+	@Query("""
+		SELECT FUNCTION('DATE', s.createdAt), count(distinct s.workspaceProblem.problem.id)
+		FROM Solution s
+		WHERE s.workspaceMember.id = :workspaceMemberId
+		AND s.status = :status
+		AND s.createdAt >= :start
+		AND s.createdAt <= :end
+		GROUP BY FUNCTION('DATE', s.createdAt)
+		ORDER BY FUNCTION('DATE', s.createdAt) ASC
+		""")
+	List<Object[]> countSolvedActivityByWorkspaceMemberIdBetween(
+		@Param("workspaceMemberId") Long workspaceMemberId,
+		@Param("status") SolutionStatus status,
+		@Param("start") LocalDateTime start,
+		@Param("end") LocalDateTime end
 	);
 }

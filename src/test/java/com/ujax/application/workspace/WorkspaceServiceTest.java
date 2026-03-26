@@ -9,12 +9,23 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.ujax.domain.board.BoardCommentRepository;
+import com.ujax.domain.board.BoardLikeRepository;
+import com.ujax.domain.board.BoardRepository;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.problem.AlgorithmTagRepository;
+import com.ujax.domain.problem.ProblemBoxRepository;
+import com.ujax.domain.problem.ProblemRepository;
+import com.ujax.domain.problem.WorkspaceProblemRepository;
+import com.ujax.domain.solution.SolutionCommentRepository;
+import com.ujax.domain.solution.SolutionLikeRepository;
+import com.ujax.domain.solution.SolutionRepository;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -59,6 +70,39 @@ class WorkspaceServiceTest {
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
+	@Autowired
+	private BoardLikeRepository boardLikeRepository;
+
+	@Autowired
+	private BoardCommentRepository boardCommentRepository;
+
+	@Autowired
+	private BoardRepository boardRepository;
+
+	@Autowired
+	private SolutionLikeRepository solutionLikeRepository;
+
+	@Autowired
+	private SolutionCommentRepository solutionCommentRepository;
+
+	@Autowired
+	private SolutionRepository solutionRepository;
+
+	@Autowired
+	private WorkspaceProblemRepository workspaceProblemRepository;
+
+	@Autowired
+	private ProblemBoxRepository problemBoxRepository;
+
+	@Autowired
+	private ProblemRepository problemRepository;
+
+	@Autowired
+	private AlgorithmTagRepository algorithmTagRepository;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
 	@MockitoBean
 	private WorkspaceInviteMailer workspaceInviteMailer;
 
@@ -67,7 +111,18 @@ class WorkspaceServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		solutionLikeRepository.deleteAllInBatch();
+		solutionCommentRepository.deleteAllInBatch();
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		solutionRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
 		workspaceJoinRequestRepository.deleteAllInBatch();
+		workspaceProblemRepository.deleteAllInBatch();
+		problemBoxRepository.deleteAllInBatch();
+		jdbcTemplate.update("DELETE FROM problem_algorithm");
+		problemRepository.deleteAllInBatch();
+		algorithmTagRepository.deleteAllInBatch();
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
@@ -286,6 +341,31 @@ class WorkspaceServiceTest {
 			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
 			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
 				.containsExactly("워크스페이스", "소개", "https://hook.example.com", Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
+		}
+
+		@Test
+		@DisplayName("마스킹된 웹훅은 수정할 수 없다")
+		void updateWorkspaceMaskedWebhook() {
+			// given
+			User owner = userRepository.save(User.createLocalUser("owner-masked-webhook@example.com", Password.ofEncoded("password"), "유저"));
+			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
+
+			// when & then
+			assertThatThrownBy(() -> workspaceService.updateWorkspace(
+				workspace.getId(),
+				owner.getId(),
+				null,
+				null,
+				"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh",
+				null
+			))
+				.isInstanceOf(BadRequestException.class)
+				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+
+			Workspace updated = workspaceRepository.findById(workspace.getId()).orElseThrow();
+			assertThat(updated).extracting("name", "description", "hookUrl", "imageUrl")
+				.containsExactly("워크스페이스", "소개", null, Workspace.DEFAULT_WORKSPACE_IMAGE_URL);
 		}
 
 		@Test
@@ -1044,14 +1124,25 @@ class WorkspaceServiceTest {
 			User owner = userRepository.save(User.createLocalUser("owner3@example.com", Password.ofEncoded("password"), "유저"));
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER));
-			workspaceService.updateWorkspace(workspace.getId(), owner.getId(), null, null, "https://hook.example.com", null);
+			workspaceService.updateWorkspace(
+				workspace.getId(),
+				owner.getId(),
+				null,
+				null,
+				"https://meeting.ssafy.com/hooks/j8ki3jbhg38t7dbgpwse9ak9jh",
+				null
+			);
 
 			// when
 			WorkspaceSettingsResponse response = workspaceService.getWorkspaceSettings(workspace.getId(), owner.getId());
 
 			// then
 			assertThat(response).extracting("id", "imageUrl", "hookUrl")
-				.containsExactly(workspace.getId(), Workspace.DEFAULT_WORKSPACE_IMAGE_URL, "https://hook.example.com");
+				.containsExactly(
+					workspace.getId(),
+					Workspace.DEFAULT_WORKSPACE_IMAGE_URL,
+					"https://meeting.ssafy.com/hooks/j8ki3j*************e9ak9jh"
+				);
 		}
 
 		@Test
