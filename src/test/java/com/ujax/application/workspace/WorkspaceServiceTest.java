@@ -9,12 +9,23 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.ujax.domain.board.BoardCommentRepository;
+import com.ujax.domain.board.BoardLikeRepository;
+import com.ujax.domain.board.BoardRepository;
 import com.ujax.application.workspace.dto.response.WorkspaceSettingsResponse;
 import com.ujax.application.user.dto.response.PresignedUrlResponse;
 import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.problem.AlgorithmTagRepository;
+import com.ujax.domain.problem.ProblemBoxRepository;
+import com.ujax.domain.problem.ProblemRepository;
+import com.ujax.domain.problem.WorkspaceProblemRepository;
+import com.ujax.domain.solution.SolutionCommentRepository;
+import com.ujax.domain.solution.SolutionLikeRepository;
+import com.ujax.domain.solution.SolutionRepository;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -59,6 +70,39 @@ class WorkspaceServiceTest {
 	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
+	@Autowired
+	private BoardLikeRepository boardLikeRepository;
+
+	@Autowired
+	private BoardCommentRepository boardCommentRepository;
+
+	@Autowired
+	private BoardRepository boardRepository;
+
+	@Autowired
+	private SolutionLikeRepository solutionLikeRepository;
+
+	@Autowired
+	private SolutionCommentRepository solutionCommentRepository;
+
+	@Autowired
+	private SolutionRepository solutionRepository;
+
+	@Autowired
+	private WorkspaceProblemRepository workspaceProblemRepository;
+
+	@Autowired
+	private ProblemBoxRepository problemBoxRepository;
+
+	@Autowired
+	private ProblemRepository problemRepository;
+
+	@Autowired
+	private AlgorithmTagRepository algorithmTagRepository;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
 	@MockitoBean
 	private WorkspaceInviteMailer workspaceInviteMailer;
 
@@ -67,7 +111,18 @@ class WorkspaceServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		solutionLikeRepository.deleteAllInBatch();
+		solutionCommentRepository.deleteAllInBatch();
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		solutionRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
 		workspaceJoinRequestRepository.deleteAllInBatch();
+		workspaceProblemRepository.deleteAllInBatch();
+		problemBoxRepository.deleteAllInBatch();
+		jdbcTemplate.update("DELETE FROM problem_algorithm");
+		problemRepository.deleteAllInBatch();
+		algorithmTagRepository.deleteAllInBatch();
 		workspaceMemberRepository.deleteAllInBatch();
 		workspaceRepository.deleteAllInBatch();
 		refreshTokenRepository.deleteAllInBatch();
