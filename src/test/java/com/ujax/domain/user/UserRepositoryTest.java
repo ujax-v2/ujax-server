@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.infrastructure.persistence.jpa.JpaAuditingConfig;
@@ -107,5 +108,39 @@ class UserRepositoryTest {
 		assertThat(savedUser.getId()).isNotNull();
 		assertThat(savedUser.getProvider()).isEqualTo(AuthProvider.LOCAL);
 		assertThat(savedUser.getPassword().getEncodedValue()).isEqualTo("password123!");
+	}
+
+	@Test
+	@DisplayName("여러 로컬 유저는 providerId가 null이어도 함께 저장할 수 있다")
+	void save_multipleLocalUsers() {
+		// given
+		User first = User.createLocalUser("local1@example.com", Password.ofEncoded("password123!"), "로컬유저1");
+		User second = User.createLocalUser("local2@example.com", Password.ofEncoded("password123!"), "로컬유저2");
+
+		// when
+		userRepository.saveAndFlush(first);
+		userRepository.saveAndFlush(second);
+
+		// then
+		assertThat(userRepository.count()).isEqualTo(2);
+	}
+
+	@Test
+	@DisplayName("같은 provider와 providerId 조합의 OAuth 유저는 중복 저장할 수 없다")
+	void save_duplicateOAuthIdentity() {
+		// given
+		userRepository.saveAndFlush(User.createOAuthUser(
+			"google1@example.com", "구글유저1", null,
+			AuthProvider.GOOGLE, "google-identity-123"
+		));
+
+		User duplicate = User.createOAuthUser(
+			"google2@example.com", "구글유저2", null,
+			AuthProvider.GOOGLE, "google-identity-123"
+		);
+
+		// when & then
+		assertThatThrownBy(() -> userRepository.saveAndFlush(duplicate))
+			.isInstanceOf(DataIntegrityViolationException.class);
 	}
 }
