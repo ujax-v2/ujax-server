@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.ujax.domain.user.Password;
@@ -66,4 +67,20 @@ class WorkspaceJoinRequestRepositoryTest {
 			.extracting("id")
 			.containsExactly(saved.getId());
 	}
+
+	@Test
+	@DisplayName("같은 워크스페이스와 유저의 가입 신청은 하나만 생성된다")
+	void uniqueWorkspaceAndUser() {
+		// given
+		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+		User user = userRepository.save(
+			User.createLocalUser("join-request-unique@example.com", Password.ofEncoded("password"), "신청자")
+		);
+		workspaceJoinRequestRepository.saveAndFlush(WorkspaceJoinRequest.create(workspace, user));
+
+		// when & then
+		assertThatThrownBy(() -> workspaceJoinRequestRepository.saveAndFlush(WorkspaceJoinRequest.create(workspace, user)))
+			.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
 }
