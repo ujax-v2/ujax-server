@@ -27,6 +27,12 @@ public class AuthService {
 	private final JwtTokenProvider jwtTokenProvider;
 	private final RefreshTokenService refreshTokenService;
 
+	public void checkEmailAvailability(String email) {
+		if (userRepository.existsByEmail(email)) {
+			throw new ConflictException(ErrorCode.DUPLICATE_EMAIL);
+		}
+	}
+
 	@Transactional
 	public AuthTokenResponse signup(String email, String password, String name) {
 		if (userRepository.existsByEmail(email)) {
