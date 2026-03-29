@@ -39,6 +39,29 @@ class AuthServiceTest {
 	}
 
 	@Nested
+	@DisplayName("이메일 중복 확인")
+	class EmailAvailability {
+
+		@Test
+		@DisplayName("가입되지 않은 이메일은 사용 가능하다")
+		void checkEmailAvailability_Available() {
+			assertThatCode(() -> authService.checkEmailAvailability("new@example.com"))
+				.doesNotThrowAnyException();
+		}
+
+		@Test
+		@DisplayName("이미 가입된 이메일은 중복 오류가 발생한다")
+		void checkEmailAvailability_Unavailable() {
+			authService.signup("existing@example.com", "password123", "기존유저");
+
+			assertThatThrownBy(() -> authService.checkEmailAvailability("existing@example.com"))
+				.isInstanceOf(ConflictException.class)
+				.extracting("errorCode")
+				.isEqualTo(com.ujax.global.exception.ErrorCode.DUPLICATE_EMAIL);
+		}
+	}
+
+	@Nested
 	@DisplayName("회원가입")
 	class Signup {
 

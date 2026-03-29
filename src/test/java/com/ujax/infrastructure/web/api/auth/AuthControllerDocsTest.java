@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.auth.AuthService;
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
 import com.ujax.infrastructure.web.auth.AuthController;
+import com.ujax.infrastructure.web.auth.dto.request.EmailAvailabilityRequest;
 import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
 import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
 import com.ujax.infrastructure.web.auth.dto.request.SignupRequest;
@@ -48,6 +49,40 @@ class AuthControllerDocsTest {
 
 	@MockitoBean
 	private AuthService authService;
+
+	@Test
+	@DisplayName("이메일 중복 확인 API")
+	void emailAvailability() throws Exception {
+		EmailAvailabilityRequest request = new EmailAvailabilityRequest("test@example.com");
+
+		mockMvc.perform(post("/api/v1/auth/email-availability")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data").doesNotExist())
+			.andDo(document("auth-email-availability",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("이메일 중복 확인")
+					.description("회원가입 전에 이메일 형식과 중복 여부를 확인합니다")
+					.requestSchema(Schema.schema("EmailAvailabilityRequest"))
+					.responseSchema(Schema.schema("ApiResponse-Void"))
+					.requestFields(
+						fieldWithPath("email").type(JsonFieldType.STRING).description("확인할 이메일")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.NULL).description("응답 데이터").optional(),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
 
 	@Test
 	@DisplayName("회원가입 API")
