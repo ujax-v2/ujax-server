@@ -1296,7 +1296,7 @@ paths:
       tags:
       - Workspace
       summary: 워크스페이스 멤버 목록 조회
-      description: 워크스페이스 멤버 목록 조회
+      description: 워크스페이스 멤버 목록을 조회하며 image는 사용자 프로필 이미지 URL입니다
       operationId: workspace-members
       parameters:
       - name: workspaceId
@@ -1352,6 +1352,7 @@ paths:
                           "workspaceMemberId" : 1,
                           "nickname" : "닉네임",
                           "email" : "member@example.com",
+                          "image" : "https://image.example.com/users/1.png",
                           "role" : "MEMBER"
                         } ],
                         "page" : {
@@ -4061,6 +4062,7 @@ components:
               items:
                 required:
                 - email
+                - image
                 - nickname
                 - role
                 - workspaceMemberId
@@ -4075,6 +4077,9 @@ components:
                   email:
                     type: string
                     description: 이메일
+                  image:
+                    type: string
+                    description: 사용자 프로필 이미지 URL
                   workspaceMemberId:
                     type: number
                     description: 워크스페이스 멤버 ID

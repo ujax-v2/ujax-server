@@ -68,6 +68,7 @@ class WorkspaceMembershipControllerTest {
 				1L,
 				"닉네임",
 				"member@example.com",
+				"https://image.example.com/users/1.png",
 				WorkspaceMemberRole.MEMBER
 			);
 			PageResponse<WorkspaceMemberListResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
@@ -81,6 +82,7 @@ class WorkspaceMembershipControllerTest {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content[0].workspaceMemberId").value(1))
 				.andExpect(jsonPath("$.data.content[0].email").value("member@example.com"))
+				.andExpect(jsonPath("$.data.content[0].image").value("https://image.example.com/users/1.png"))
 				.andExpect(jsonPath("$.data.page.page").value(0))
 				.andExpect(jsonPath("$.data.page.size").value(20));
 
