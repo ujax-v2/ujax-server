@@ -44,3 +44,13 @@ spring.security.oauth2.client:
     kakao:
       redirect-uri: http://localhost:8080/login/oauth2/code/kakao
 
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+
+logging:
+  level:
+    root: INFO
+    com.ujax: DEBUG

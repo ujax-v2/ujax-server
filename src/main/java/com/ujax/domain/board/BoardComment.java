@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -22,7 +23,12 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "board_comments")
+@Table(
+	name = "board_comments",
+	indexes = {
+		@Index(name = "idx_board_comments_board_id", columnList = "board_id")
+	}
+)
 @Filter(
 	name = "softDeleteFilter",
 	condition = "deleted_at IS NULL"

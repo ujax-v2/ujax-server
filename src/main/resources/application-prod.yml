@@ -1,0 +1,48 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://app-mysql:3306/ujax?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${SPRING_DATASOURCE_USERNAME:ujax}
+    password: ${SPRING_DATASOURCE_PASSWORD:ujax_password_secure}
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:32}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:app-redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+judge0:
+  api:
+    url: ${JUDGE0_API_URL:http://judge0-server:2358}
+
+spring.security.oauth2.client:
+  registration:
+    google:
+      redirect-uri: ${GOOGLE_REDIRECT_URI}
+    kakao:
+      redirect-uri: ${KAKAO_REDIRECT_URI}
+
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+logging:
+  level:
+    root: INFO
+    com.ujax: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

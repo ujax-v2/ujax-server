@@ -14,6 +14,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -22,7 +23,15 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "users")
+@Table(
+	name = "users",
+	uniqueConstraints = {
+		@UniqueConstraint(
+			name = "uk_users_provider_provider_id",
+			columnNames = {"provider", "provider_id"}
+		)
+	}
+)
 @Filter(
 	name = "softDeleteFilter",
 	condition = "deleted_at IS NULL"
@@ -55,6 +64,7 @@ public class User extends BaseEntity {
 	private AuthProvider provider;
 
 	/** OAuth 식별자 (자체 회원가입시 null) */
+	@Column(name = "provider_id")
 	private String providerId;
 
 	@Enumerated(EnumType.STRING)
