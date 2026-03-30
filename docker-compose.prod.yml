@@ -21,7 +21,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://app-mysql:3306/ujax?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-ujax}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-ujax_password_secure}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: true
       SPRING_DATA_REDIS_HOST: app-redis
       SPRING_DATA_REDIS_PORT: 6379
       JUDGE0_API_URL: http://${JUDGE0_HOST}:2358
