@@ -28,7 +28,7 @@ public class RestTemplateWebhookSender implements WebhookSender {
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MM월 dd일 HH:mm");
 	private static final DateTimeFormatter PAYLOAD_DATE_TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 	private static final MediaType JSON_UTF8 = new MediaType("application", "json", StandardCharsets.UTF_8);
-	private static final String FOOTER = "프로젝트명";
+	private static final String FOOTER = "우작스(UJAX)";
 
 	private final RestTemplate restTemplate;
 	private final ObjectMapper objectMapper;

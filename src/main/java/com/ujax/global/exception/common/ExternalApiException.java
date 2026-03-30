@@ -25,6 +25,12 @@ public class ExternalApiException extends BusinessException {
 		this.serviceName = serviceName;
 	}
 
+	public ExternalApiException(String serviceName, String message, Throwable cause) {
+		super(ErrorCode.EXTERNAL_API_ERROR, message);
+		this.serviceName = serviceName;
+		initCause(cause);
+	}
+
 	public ExternalApiException(ErrorCode errorCode, String serviceName, String message) {
 		super(errorCode, message);
 		this.serviceName = serviceName;

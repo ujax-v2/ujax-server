@@ -1,9 +1,10 @@
-package com.ujax.application.workspace;
+package com.ujax.application.auth;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
@@ -26,39 +27,35 @@ import com.ujax.application.mail.MailDeliveryRetryExecutor;
 import com.ujax.application.mail.MailDeliveryRetryProperties;
 
 @ExtendWith(MockitoExtension.class)
-class  WorkspaceInviteMailerTest {
+class SignupVerificationMailerTest {
 
 	@Mock
 	private JavaMailSender mailSender;
 
-	private WorkspaceInviteMailer workspaceInviteMailer;
+	private SignupVerificationMailer signupVerificationMailer;
 
 	@BeforeEach
 	void setUp() {
-		workspaceInviteMailer = new WorkspaceInviteMailer(
+		signupVerificationMailer = new SignupVerificationMailer(
 			mailSender,
 			new MailDeliveryRetryExecutor(new MailDeliveryRetryProperties(3, 0)),
-			"https://ujax.site",
 			"no-reply@ujax.kro.kr",
 			"UJAX"
 		);
 	}
 
 	@Test
-	@DisplayName("워크스페이스 초대 메일을 발송한다")
-	void sendInvitation() throws Exception {
+	@DisplayName("회원가입 인증 메일을 발송한다")
+	void sendVerificationCode() throws Exception {
 		MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
 		when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
-		// given
-		String email = "invite@example.com";
-		String workspaceName = "워크스페이스";
-		Long workspaceId = 10L;
+		signupVerificationMailer.sendVerificationCode(
+			"user@example.com",
+			"123456",
+			LocalDateTime.parse("2026-03-30T10:30:00")
+		);
 
-		// when
-		workspaceInviteMailer.sendInvitation(email, workspaceName, workspaceId);
-
-		// then
 		ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
 		verify(mailSender).send(captor.capture());
 		MimeMessage message = captor.getValue();
@@ -69,26 +66,30 @@ class  WorkspaceInviteMailerTest {
 
 		assertThat(from.getAddress()).isEqualTo("no-reply@ujax.kro.kr");
 		assertThat(from.getPersonal()).isEqualTo("UJAX");
-		assertThat(message.getSubject()).isEqualTo("[UJAX] 워크스페이스 초대");
-		assertThat(to.getAddress()).isEqualTo(email);
+		assertThat(message.getSubject()).isEqualTo("[UJAX] 회원가입 이메일 인증 코드");
+		assertThat(to.getAddress()).isEqualTo("user@example.com");
 		String rawMessage = rawMessage(message);
 		assertThat(rawMessage)
 			.contains("text/plain")
 			.contains("text/html")
-			.contains("Workspace")
-			.contains("https://ujax.site/workspaces/10");
+			.contains("123456")
+			.contains("Verification Code");
 	}
 
 	@Test
-	@DisplayName("워크스페이스 초대 메일은 SMTP 실패 시 재시도한다")
-	void sendInvitationRetriesOnTemporaryFailure() {
+	@DisplayName("회원가입 인증 메일은 SMTP 실패 시 재시도한다")
+	void sendVerificationCodeRetriesOnTemporaryFailure() {
 		when(mailSender.createMimeMessage()).thenAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
 		doThrow(new MailSendException("temporary failure"))
 			.doNothing()
 			.when(mailSender)
 			.send(any(MimeMessage.class));
 
-		workspaceInviteMailer.sendInvitation("invite@example.com", "워크스페이스", 10L);
+		signupVerificationMailer.sendVerificationCode(
+			"user@example.com",
+			"123456",
+			LocalDateTime.parse("2026-03-30T10:30:00")
+		);
 
 		verify(mailSender, times(2)).send(any(MimeMessage.class));
 	}
