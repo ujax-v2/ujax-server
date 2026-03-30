@@ -8,22 +8,28 @@ spring:
       ddl-auto: none
 
   mail:
-    host: ${SMTP_HOST:smtp.example.com}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:username}
-    password: ${SMTP_PASSWORD:password}
+    host: ${SMTP_HOST:smtp.daum.net}
+    port: ${SMTP_PORT:465}
+    username: ${SMTP_USERNAME:${SMTP_USER:username}}
+    password: ${SMTP_PASSWORD:${SMTP_PASS:password}}
     properties:
       mail:
         smtp:
           auth: true
+          ssl:
+            enable: ${SMTP_SECURE:true}
           starttls:
-            enable: true
-            required: true
+            enable: ${SMTP_STARTTLS_ENABLE:false}
+            required: ${SMTP_STARTTLS_REQUIRED:false}
         "[mail.smtp.connectiontimeout]": 5000
         "[mail.smtp.timeout]": 3000
         "[mail.smtp.writetimeout]": 5000
 
 app:
+  auth:
+    signup-verification:
+      ttl-minutes: ${SIGNUP_VERIFICATION_TTL_MINUTES:5}
+      code-length: ${SIGNUP_VERIFICATION_CODE_LENGTH:6}
   jwt:
     secret: ${JWT_SECRET:defaultDevSecretKeyThatIsAtLeast256BitsLongForHmacSha256Algorithm}
     access-expiration: 1800000
