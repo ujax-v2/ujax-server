@@ -82,8 +82,8 @@ public final class UjaxMailTemplateRenderer {
 			<p style="margin:0 0 18px;color:#475569;font-size:15px;line-height:1.8;">
 			  UJAX에서 새로운 협업 초대가 도착했습니다. 아래 워크스페이스에서 함께 문제를 풀고 진행 상황을 공유할 수 있습니다.
 			</p>
-			<div style="margin:0 0 22px;padding:22px 24px;border-radius:20px;background:#eff6ff;border:1px solid #bfdbfe;">
-			  <div style="margin:0 0 8px;color:#1d4ed8;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Workspace</div>
+			<div style="margin:0 0 22px;padding:22px 24px;border-radius:20px;background:#f8fafc;border:1px solid #dbe4ee;text-align:center;">
+			  <div style="margin:0 0 8px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">Workspace</div>
 			  <div style="color:#0f172a;font-size:28px;font-weight:800;line-height:1.3;">"""
 			+ escapedWorkspaceName +
 			"""
@@ -139,26 +139,52 @@ public final class UjaxMailTemplateRenderer {
 			<head>
 			  <meta charset="UTF-8">
 			  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+			  <meta name="color-scheme" content="light">
+			  <meta name="supported-color-schemes" content="light">
 			  <title>UJAX Mail</title>
+			  <style>
+			    :root {
+			      color-scheme: light;
+			      supported-color-schemes: light;
+			    }
+
+			    .mail-brand,
+			    [data-ogsc] .mail-brand {
+			      color: #99f6e4 !important;
+			      -webkit-text-fill-color: #99f6e4 !important;
+			    }
+
+			    .mail-title,
+			    [data-ogsc] .mail-title {
+			      color: #ffffff !important;
+			      -webkit-text-fill-color: #ffffff !important;
+			    }
+
+			    .mail-lead,
+			    [data-ogsc] .mail-lead {
+			      color: #dbeafe !important;
+			      -webkit-text-fill-color: #dbeafe !important;
+			    }
+			  </style>
 			</head>
-			<body style="margin:0;padding:0;background-color:#f3f4f6;">
+			<body style="margin:0;padding:0;background-color:#f3f4f6;" bgcolor="#f3f4f6">
 			  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
 			    """
 			+ previewText +
 			"""
 			  </div>
-			  <table role="presentation" width="100%" style="width:100%;border-collapse:collapse;background:#f3f4f6;">
+			  <table role="presentation" width="100%" style="width:100%;border-collapse:collapse;background:#f3f4f6;" bgcolor="#f3f4f6">
 			    <tr>
 			      <td align="center" style="padding:32px 16px;">
-			        <table role="presentation" width="100%" style="max-width:640px;width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border:1px solid #dbe4ee;border-radius:28px;overflow:hidden;">
+			        <table role="presentation" width="100%" style="max-width:640px;width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border:1px solid #dbe4ee;border-radius:28px;overflow:hidden;" bgcolor="#ffffff">
 			          <tr>
-			            <td style="padding:28px 32px;background:linear-gradient(135deg,#0f172a,#155e75);">
-			              <div style="margin:0 0 12px;color:#99f6e4;font-size:12px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">UJAX</div>
-			              <h1 style="margin:0;color:#ffffff;font-size:30px;line-height:1.3;font-weight:800;">"""
+			            <td style="padding:28px 32px;background:linear-gradient(135deg,#0f172a,#155e75);" bgcolor="#0f172a">
+			              <div class="mail-brand" style="margin:0 0 12px;color:#99f6e4;font-size:12px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;">UJAX</div>
+			              <h1 class="mail-title" style="margin:0;color:#ffffff;font-size:30px;line-height:1.3;font-weight:800;">"""
 			+ escape(title) +
 			"""
 			              </h1>
-			              <p style="margin:14px 0 0;color:#dbeafe;font-size:15px;line-height:1.8;">"""
+			              <p class="mail-lead" style="margin:14px 0 0;color:#dbeafe;font-size:15px;line-height:1.8;">"""
 			+ escape(lead) +
 			"""
 			              </p>
