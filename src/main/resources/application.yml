@@ -45,6 +45,7 @@ app:
     frontend-callback-url: ${UJAX_FRONTEND_CALLBACK:https://ujax.site/auth/callback}
     mail:
       from: ${UJAX_MAIL_FROM:noreply@ujax.site}
+      name: ${UJAX_MAIL_NAME:UJAX}
   webhook-alert:
     scheduler:
       enabled: ${WEBHOOK_ALERT_SCHEDULER_ENABLED:true}
