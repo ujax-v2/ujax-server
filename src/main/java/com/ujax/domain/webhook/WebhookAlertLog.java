@@ -26,9 +26,7 @@ import lombok.NoArgsConstructor;
 @Table(
 	name = "webhook_alert_log",
 	indexes = {
-		@Index(name = "idx_webhook_alert_log_alert_created", columnList = "webhook_alert_id,created_at"),
-		@Index(name = "idx_webhook_alert_log_workspace_problem_created", columnList = "workspace_problem_id,created_at"),
-		@Index(name = "idx_webhook_alert_log_event_created", columnList = "event_type,created_at")
+		@Index(name = "idx_webhook_alert_log_workspace_problem_created", columnList = "workspace_problem_id,created_at")
 	}
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
