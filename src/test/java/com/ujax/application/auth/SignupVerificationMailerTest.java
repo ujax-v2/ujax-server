@@ -20,7 +20,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
+
+import com.ujax.application.mail.MailDeliveryRetryExecutor;
+import com.ujax.application.mail.MailDeliveryRetryProperties;
 
 @ExtendWith(MockitoExtension.class)
 class SignupVerificationMailerTest {
@@ -32,7 +36,12 @@ class SignupVerificationMailerTest {
 
 	@BeforeEach
 	void setUp() {
-		signupVerificationMailer = new SignupVerificationMailer(mailSender, "no-reply@ujax.kro.kr", "UJAX");
+		signupVerificationMailer = new SignupVerificationMailer(
+			mailSender,
+			new MailDeliveryRetryExecutor(new MailDeliveryRetryProperties(3, 0)),
+			"no-reply@ujax.kro.kr",
+			"UJAX"
+		);
 	}
 
 	@Test
@@ -65,6 +74,24 @@ class SignupVerificationMailerTest {
 			.contains("text/html")
 			.contains("123456")
 			.contains("Verification Code");
+	}
+
+	@Test
+	@DisplayName("회원가입 인증 메일은 SMTP 실패 시 재시도한다")
+	void sendVerificationCodeRetriesOnTemporaryFailure() {
+		when(mailSender.createMimeMessage()).thenAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
+		doThrow(new MailSendException("temporary failure"))
+			.doNothing()
+			.when(mailSender)
+			.send(any(MimeMessage.class));
+
+		signupVerificationMailer.sendVerificationCode(
+			"user@example.com",
+			"123456",
+			LocalDateTime.parse("2026-03-30T10:30:00")
+		);
+
+		verify(mailSender, times(2)).send(any(MimeMessage.class));
 	}
 
 	private String rawMessage(MimeMessage message) throws Exception {

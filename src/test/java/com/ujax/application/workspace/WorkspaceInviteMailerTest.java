@@ -19,7 +19,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
+
+import com.ujax.application.mail.MailDeliveryRetryExecutor;
+import com.ujax.application.mail.MailDeliveryRetryProperties;
 
 @ExtendWith(MockitoExtension.class)
 class  WorkspaceInviteMailerTest {
@@ -33,6 +37,7 @@ class  WorkspaceInviteMailerTest {
 	void setUp() {
 		workspaceInviteMailer = new WorkspaceInviteMailer(
 			mailSender,
+			new MailDeliveryRetryExecutor(new MailDeliveryRetryProperties(3, 0)),
 			"https://ujax.site",
 			"no-reply@ujax.kro.kr",
 			"UJAX"
@@ -72,6 +77,20 @@ class  WorkspaceInviteMailerTest {
 			.contains("text/html")
 			.contains("Workspace")
 			.contains("https://ujax.site/workspaces/10");
+	}
+
+	@Test
+	@DisplayName("워크스페이스 초대 메일은 SMTP 실패 시 재시도한다")
+	void sendInvitationRetriesOnTemporaryFailure() {
+		when(mailSender.createMimeMessage()).thenAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
+		doThrow(new MailSendException("temporary failure"))
+			.doNothing()
+			.when(mailSender)
+			.send(any(MimeMessage.class));
+
+		workspaceInviteMailer.sendInvitation("invite@example.com", "워크스페이스", 10L);
+
+		verify(mailSender, times(2)).send(any(MimeMessage.class));
 	}
 
 	private String rawMessage(MimeMessage message) throws Exception {
