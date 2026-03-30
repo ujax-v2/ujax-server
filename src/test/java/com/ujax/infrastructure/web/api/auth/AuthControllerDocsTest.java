@@ -28,11 +28,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.auth.AuthService;
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
+import com.ujax.application.auth.dto.response.SignupStartResponse;
 import com.ujax.infrastructure.web.auth.AuthController;
 import com.ujax.infrastructure.web.auth.dto.request.EmailAvailabilityRequest;
 import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
 import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupConfirmRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupResendRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupStartRequest;
 import com.ujax.support.TestSecurityConfig;
 
 @Tag("restDocs")
@@ -85,31 +88,28 @@ class AuthControllerDocsTest {
 	}
 
 	@Test
-	@DisplayName("회원가입 API")
-	void signup() throws Exception {
-		// given
-		SignupRequest request = new SignupRequest("test@example.com", "password123", "테스트유저");
-		AuthTokenResponse response = new AuthTokenResponse("access.token.here", "refresh.token.here");
-		given(authService.signup(anyString(), anyString(), anyString())).willReturn(response);
+	@DisplayName("회원가입 인증 요청 API")
+	void signupRequest() throws Exception {
+		SignupStartRequest request = new SignupStartRequest("test@example.com", "password123", "테스트유저");
+		SignupStartResponse response = new SignupStartResponse("request-token", "test@example.com",
+			java.time.LocalDateTime.parse("2026-03-30T10:30:00"));
+		given(authService.requestSignup(anyString(), anyString(), anyString())).willReturn(response);
 
-		// when & then
-		mockMvc.perform(post("/api/v1/auth/signup")
+		mockMvc.perform(post("/api/v1/auth/signup/request")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request)))
 			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.data.accessToken").exists())
-			.andExpect(jsonPath("$.data.refreshToken").exists())
-			.andDo(document("auth-signup",
+			.andDo(document("auth-signup-request",
 				preprocessRequest(prettyPrint()),
 				preprocessResponse(prettyPrint()),
 				resource(ResourceSnippetParameters.builder()
 					.tag("Auth")
-					.summary("회원가입")
-					.description("이메일/비밀번호로 회원가입합니다")
-					.requestSchema(Schema.schema("SignupRequest"))
-					.responseSchema(Schema.schema("ApiResponse-AuthTokenResponse"))
+					.summary("회원가입 인증 요청")
+					.description("회원 정보를 임시 저장하고 이메일 인증 코드를 발송합니다")
+					.requestSchema(Schema.schema("SignupStartRequest"))
+					.responseSchema(Schema.schema("ApiResponse-SignupStartResponse"))
 					.requestFields(
 						fieldWithPath("email").type(JsonFieldType.STRING).description("이메일"),
 						fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호"),
@@ -118,8 +118,85 @@ class AuthControllerDocsTest {
 					.responseFields(
 						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
 						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.requestToken").type(JsonFieldType.STRING).description("회원가입 요청 토큰"),
+						fieldWithPath("data.email").type(JsonFieldType.STRING).description("이메일"),
+						fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).description("인증 코드 만료 시각"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("회원가입 인증 확인 API")
+	void signupConfirm() throws Exception {
+		SignupConfirmRequest request = new SignupConfirmRequest("request-token", "123456");
+		AuthTokenResponse response = new AuthTokenResponse("access.token.here", "refresh.token.here");
+		given(authService.confirmSignup(anyString(), anyString())).willReturn(response);
+
+		mockMvc.perform(post("/api/v1/auth/signup/confirm")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andDo(document("auth-signup-confirm",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("회원가입 인증 확인")
+					.description("이메일 인증 코드가 일치하면 실제 회원가입을 완료합니다")
+					.requestSchema(Schema.schema("SignupConfirmRequest"))
+					.responseSchema(Schema.schema("ApiResponse-AuthTokenResponse"))
+					.requestFields(
+						fieldWithPath("requestToken").type(JsonFieldType.STRING).description("회원가입 요청 토큰"),
+						fieldWithPath("code").type(JsonFieldType.STRING).description("인증 코드")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
 						fieldWithPath("data.accessToken").type(JsonFieldType.STRING).description("액세스 토큰"),
 						fieldWithPath("data.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰"),
+						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
+					)
+					.build()
+				)
+			));
+	}
+
+	@Test
+	@DisplayName("회원가입 인증 재발송 API")
+	void signupResend() throws Exception {
+		SignupResendRequest request = new SignupResendRequest("request-token");
+		SignupStartResponse response = new SignupStartResponse("new-request-token", "test@example.com",
+			java.time.LocalDateTime.parse("2026-03-30T10:35:00"));
+		given(authService.resendSignupCode(anyString())).willReturn(response);
+
+		mockMvc.perform(post("/api/v1/auth/signup/resend")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andDo(document("auth-signup-resend",
+				preprocessRequest(prettyPrint()),
+				preprocessResponse(prettyPrint()),
+				resource(ResourceSnippetParameters.builder()
+					.tag("Auth")
+					.summary("회원가입 인증 재발송")
+					.description("이메일 인증 코드를 다시 발송합니다")
+					.requestSchema(Schema.schema("SignupResendRequest"))
+					.responseSchema(Schema.schema("ApiResponse-SignupStartResponse"))
+					.requestFields(
+						fieldWithPath("requestToken").type(JsonFieldType.STRING).description("회원가입 요청 토큰")
+					)
+					.responseFields(
+						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+						fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+						fieldWithPath("data.requestToken").type(JsonFieldType.STRING).description("새 회원가입 요청 토큰"),
+						fieldWithPath("data.email").type(JsonFieldType.STRING).description("이메일"),
+						fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).description("인증 코드 만료 시각"),
 						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
 					)
 					.build()

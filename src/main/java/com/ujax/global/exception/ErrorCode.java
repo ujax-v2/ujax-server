@@ -19,6 +19,8 @@ public enum ErrorCode {
 	UNSUPPORTED_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "C007", "지원하지 않는 이미지 형식입니다. JPEG, PNG, WEBP만 허용됩니다."),
 	IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "C008", "이미지 크기는 5MB를 초과할 수 없습니다."),
 	INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "C009", "이메일 형식이 올바르지 않습니다."),
+	INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "C010", "인증 코드가 올바르지 않습니다."),
+	EXPIRED_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "C011", "인증 코드가 만료되었습니다."),
 
 	// ==================== 401 Unauthorized ====================
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A001", "인증이 필요합니다."),

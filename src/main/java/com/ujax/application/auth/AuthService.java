@@ -1,10 +1,16 @@
 package com.ujax.application.auth;
 
+import java.time.LocalDateTime;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
+import com.ujax.application.auth.dto.response.SignupStartResponse;
+import com.ujax.domain.auth.PendingSignup;
+import com.ujax.domain.auth.PendingSignupRepository;
+import com.ujax.domain.auth.VerificationCodeHasher;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
@@ -26,18 +32,78 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final RefreshTokenService refreshTokenService;
+	private final PendingSignupRepository pendingSignupRepository;
+	private final SignupVerificationCodeGenerator signupVerificationCodeGenerator;
+	private final VerificationCodeHasher verificationCodeHasher;
+	private final SignupVerificationMailer signupVerificationMailer;
+	private final SignupVerificationProperties signupVerificationProperties;
 
 	public void checkEmailAvailability(String email) {
-		if (userRepository.existsByEmail(email)) {
-			throw new ConflictException(ErrorCode.DUPLICATE_EMAIL);
-		}
+		ensureEmailAvailable(email);
+	}
+
+	@Transactional
+	public SignupStartResponse requestSignup(String email, String password, String name) {
+		ensureEmailAvailable(email);
+
+		Password encodedPassword = Password.encode(password, passwordEncoder);
+		String verificationCode = signupVerificationCodeGenerator.generate();
+		String codeHash = verificationCodeHasher.hash(verificationCode);
+		LocalDateTime expiresAt = calculateExpiresAt();
+
+		PendingSignup pendingSignup = pendingSignupRepository.findByEmail(email)
+			.map(existing -> {
+				existing.refresh(encodedPassword.getEncodedValue(), name, codeHash, expiresAt);
+				return existing;
+			})
+			.orElseGet(() -> PendingSignup.create(email, encodedPassword.getEncodedValue(), name, codeHash, expiresAt));
+
+		pendingSignupRepository.save(pendingSignup);
+		signupVerificationMailer.sendVerificationCode(email, verificationCode, expiresAt);
+
+		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getEmail(), pendingSignup.getExpiresAt());
+	}
+
+	@Transactional
+	public AuthTokenResponse confirmSignup(String requestToken, String code) {
+		PendingSignup pendingSignup = pendingSignupRepository.findByRequestToken(requestToken)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
+
+		pendingSignup.verifyCode(code, verificationCodeHasher);
+		ensureEmailAvailable(pendingSignup.getEmail());
+
+		User user = User.createLocalUser(
+			pendingSignup.getEmail(),
+			Password.ofEncoded(pendingSignup.getPasswordHash()),
+			pendingSignup.getName()
+		);
+		userRepository.save(user);
+		pendingSignupRepository.deleteByRequestToken(requestToken);
+
+		return issueTokens(user);
+	}
+
+	@Transactional
+	public SignupStartResponse resendSignupCode(String requestToken) {
+		PendingSignup pendingSignup = pendingSignupRepository.findByRequestToken(requestToken)
+			.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
+
+		ensureEmailAvailable(pendingSignup.getEmail());
+
+		String verificationCode = signupVerificationCodeGenerator.generate();
+		String codeHash = verificationCodeHasher.hash(verificationCode);
+		LocalDateTime expiresAt = calculateExpiresAt();
+
+		pendingSignup.refresh(pendingSignup.getPasswordHash(), pendingSignup.getName(), codeHash, expiresAt);
+		pendingSignupRepository.save(pendingSignup);
+		signupVerificationMailer.sendVerificationCode(pendingSignup.getEmail(), verificationCode, expiresAt);
+
+		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getEmail(), pendingSignup.getExpiresAt());
 	}
 
 	@Transactional
 	public AuthTokenResponse signup(String email, String password, String name) {
-		if (userRepository.existsByEmail(email)) {
-			throw new ConflictException(ErrorCode.DUPLICATE_EMAIL);
-		}
+		ensureEmailAvailable(email);
 
 		User user = User.createLocalUser(email, Password.encode(password, passwordEncoder), name);
 		userRepository.save(user);
@@ -94,6 +160,16 @@ public class AuthService {
 		}
 		User user = User.createOAuthUser(email, name, profileImageUrl, provider, providerId);
 		return userRepository.save(user);
+	}
+
+	private void ensureEmailAvailable(String email) {
+		if (userRepository.existsByEmail(email)) {
+			throw new ConflictException(ErrorCode.DUPLICATE_EMAIL);
+		}
+	}
+
+	private LocalDateTime calculateExpiresAt() {
+		return LocalDateTime.now().plusMinutes(signupVerificationProperties.ttlMinutes());
 	}
 
 	private AuthTokenResponse issueTokens(User user) {

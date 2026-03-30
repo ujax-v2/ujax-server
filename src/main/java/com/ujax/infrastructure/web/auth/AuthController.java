@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ujax.application.auth.AuthService;
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
+import com.ujax.application.auth.dto.response.SignupStartResponse;
 import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.web.auth.dto.request.EmailAvailabilityRequest;
 import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
 import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupConfirmRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupResendRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupStartRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +32,19 @@ public class AuthController {
 		return ApiResponse.success();
 	}
 
-	@PostMapping("/signup")
-	public ApiResponse<AuthTokenResponse> signup(@Valid @RequestBody SignupRequest request) {
-		return ApiResponse.success(authService.signup(request.email(), request.password(), request.name()));
+	@PostMapping("/signup/request")
+	public ApiResponse<SignupStartResponse> requestSignup(@Valid @RequestBody SignupStartRequest request) {
+		return ApiResponse.success(authService.requestSignup(request.email(), request.password(), request.name()));
+	}
+
+	@PostMapping("/signup/confirm")
+	public ApiResponse<AuthTokenResponse> confirmSignup(@Valid @RequestBody SignupConfirmRequest request) {
+		return ApiResponse.success(authService.confirmSignup(request.requestToken(), request.code()));
+	}
+
+	@PostMapping("/signup/resend")
+	public ApiResponse<SignupStartResponse> resendSignupCode(@Valid @RequestBody SignupResendRequest request) {
+		return ApiResponse.success(authService.resendSignupCode(request.requestToken()));
 	}
 
 	@PostMapping("/login")
