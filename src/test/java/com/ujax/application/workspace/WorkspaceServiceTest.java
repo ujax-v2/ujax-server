@@ -596,6 +596,12 @@ class WorkspaceServiceTest {
 				User.createLocalUser("manager-list@example.com", Password.ofEncoded("password"), "매니저")
 			);
 			User memberUser = userRepository.save(User.createLocalUser("member-list@example.com", Password.ofEncoded("password"), "멤버"));
+			owner.updateProfileImage("https://image.example.com/users/owner.png");
+			managerUser.updateProfileImage("https://image.example.com/users/manager.png");
+			memberUser.updateProfileImage("https://image.example.com/users/member.png");
+			owner = userRepository.save(owner);
+			managerUser = userRepository.save(managerUser);
+			memberUser = userRepository.save(memberUser);
 			Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
 			WorkspaceMember ownerMember = workspaceMemberRepository.save(
 				WorkspaceMember.create(workspace, owner, WorkspaceMemberRole.OWNER)
@@ -612,11 +618,26 @@ class WorkspaceServiceTest {
 
 			// then
 			assertThat(response.getContent())
-				.extracting("workspaceMemberId", "email", "role")
+				.extracting("workspaceMemberId", "email", "image", "role")
 				.containsExactly(
-					tuple(ownerMember.getId(), owner.getEmail(), WorkspaceMemberRole.OWNER),
-					tuple(manager.getId(), managerUser.getEmail(), WorkspaceMemberRole.MANAGER),
-					tuple(member.getId(), memberUser.getEmail(), WorkspaceMemberRole.MEMBER)
+					tuple(
+						ownerMember.getId(),
+						owner.getEmail(),
+						owner.getProfileImageUrl(),
+						WorkspaceMemberRole.OWNER
+					),
+					tuple(
+						manager.getId(),
+						managerUser.getEmail(),
+						managerUser.getProfileImageUrl(),
+						WorkspaceMemberRole.MANAGER
+					),
+					tuple(
+						member.getId(),
+						memberUser.getEmail(),
+						memberUser.getProfileImageUrl(),
+						WorkspaceMemberRole.MEMBER
+					)
 				);
 		}
 

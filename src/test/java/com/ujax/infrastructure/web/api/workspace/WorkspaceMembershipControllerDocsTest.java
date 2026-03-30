@@ -87,6 +87,7 @@ class WorkspaceMembershipControllerDocsTest {
 			1L,
 			"닉네임",
 			"member@example.com",
+			"https://image.example.com/users/1.png",
 			WorkspaceMemberRole.MEMBER
 		);
 		PageResponse<WorkspaceMemberListResponse> response = PageResponse.of(List.of(member), 0, 20, 1L, 1);
@@ -104,7 +105,7 @@ class WorkspaceMembershipControllerDocsTest {
 				resource(ResourceSnippetParameters.builder()
 					.tag("Workspace")
 					.summary("워크스페이스 멤버 목록 조회")
-					.description("워크스페이스 멤버를 권한(OWNER→MANAGER→MEMBER), 생성일/ID 오름차순으로 조회합니다")
+					.description("워크스페이스 멤버를 권한(OWNER→MANAGER→MEMBER), 생성일/ID 오름차순으로 조회하며 image는 사용자 프로필 이미지 URL입니다")
 					.pathParameters(
 						parameterWithName("workspaceId").description("워크스페이스 ID")
 					)
@@ -120,6 +121,7 @@ class WorkspaceMembershipControllerDocsTest {
 						fieldWithPath("data.content[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
 						fieldWithPath("data.content[].nickname").type(JsonFieldType.STRING).description("닉네임"),
 						fieldWithPath("data.content[].email").type(JsonFieldType.STRING).description("이메일"),
+						fieldWithPath("data.content[].image").type(JsonFieldType.STRING).description("사용자 프로필 이미지 URL"),
 						fieldWithPath("data.content[].role").type(JsonFieldType.STRING).description("권한"),
 						fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보"),
 						fieldWithPath("data.page.page").type(JsonFieldType.NUMBER).description("페이지 번호"),
