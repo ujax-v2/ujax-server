@@ -19,7 +19,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.constraints.Email;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -64,10 +66,15 @@ public class GlobalExceptionHandler {
 
 		log.warn("[ValidationException] fieldErrors={}", fieldErrors);
 
+		ErrorCode errorCode = ex.getBindingResult().getFieldErrors().stream()
+			.anyMatch(this::isEmailValidationError)
+			? ErrorCode.INVALID_EMAIL_FORMAT
+			: ErrorCode.INVALID_INPUT;
+
 		ProblemDetail problemDetail = createProblemDetail(
 			HttpStatus.BAD_REQUEST,
-			ErrorCode.INVALID_INPUT.getCode(),
-			ErrorCode.INVALID_INPUT.getDetail(),
+			errorCode.getCode(),
+			errorCode.getDetail(),
 			ex.getClass().getSimpleName()
 		);
 		problemDetail.setProperty("fieldErrors", fieldErrors);
@@ -86,10 +93,15 @@ public class GlobalExceptionHandler {
 
 		log.warn("[ConstraintViolationException] violations={}", violations);
 
+		ErrorCode errorCode = ex.getConstraintViolations().stream()
+			.anyMatch(this::isEmailValidationError)
+			? ErrorCode.INVALID_EMAIL_FORMAT
+			: ErrorCode.INVALID_PARAMETER;
+
 		ProblemDetail problemDetail = createProblemDetail(
 			HttpStatus.BAD_REQUEST,
-			ErrorCode.INVALID_PARAMETER.getCode(),
-			ErrorCode.INVALID_PARAMETER.getDetail(),
+			errorCode.getCode(),
+			errorCode.getDetail(),
 			ex.getClass().getSimpleName()
 		);
 		problemDetail.setProperty("violations", violations);
@@ -223,6 +235,16 @@ public class GlobalExceptionHandler {
 		problemDetail.setProperty("exception", exceptionName);
 		problemDetail.setProperty("timestamp", LocalDateTime.now());
 		return problemDetail;
+	}
+
+	private boolean isEmailValidationError(FieldError fieldError) {
+		return "email".equals(fieldError.getField())
+			&& fieldError.getCodes() != null
+			&& java.util.Arrays.stream(fieldError.getCodes()).anyMatch(code -> code.contains("Email"));
+	}
+
+	private boolean isEmailValidationError(ConstraintViolation<?> violation) {
+		return violation.getConstraintDescriptor().getAnnotation().annotationType().equals(Email.class);
 	}
 
 	/**

@@ -32,8 +32,7 @@ import lombok.NoArgsConstructor;
 		@UniqueConstraint(name = "uk_wjr_workspace_user", columnNames = {"workspace_id", "user_id"})
 	},
 	indexes = {
-		@Index(name = "idx_wjr_workspace_created_at", columnList = "workspace_id,created_at"),
-		@Index(name = "idx_wjr_user_created_at", columnList = "user_id,created_at")
+		@Index(name = "idx_wjr_workspace_created_at", columnList = "workspace_id,created_at")
 	}
 )
 @EntityListeners(AuditingEntityListener.class)

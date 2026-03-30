@@ -58,8 +58,10 @@ public enum ProgrammingLanguage {
 	 * 첫 토큰에서 뒤쪽 숫자 제거 (예: "C++17" → "C++", "PyPy3" → "PyPy", "C99" → "C")
 	 * */
 	private static String normalize(String language) {
-		String token = language.split(" ")[0];
-		return token.replaceAll("\\d+$", "");
+		String normalized = language.replaceAll("[\\p{Zs}\\s]+", " ").trim();
+		String withoutSuffix = normalized.split("\\s*/\\s*", 2)[0].trim();
+		String token = withoutSuffix.split("\\s+", 2)[0];
+		return token.replaceAll("\\d+(?:\\.\\d+)*$", "");
 	}
 
 	private static ProgrammingLanguage findByEnumName(String enumName) {

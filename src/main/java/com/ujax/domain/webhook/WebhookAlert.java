@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 	name = "webhook_alert",
 	indexes = {
 		@Index(name = "idx_webhook_alert_due", columnList = "status,scheduled_at"),
-		@Index(name = "idx_webhook_alert_workspace", columnList = "workspace_id")
+		@Index(name = "idx_webhook_alert_status_updated_at", columnList = "status,updated_at")
 	},
 	uniqueConstraints = {
 		@UniqueConstraint(

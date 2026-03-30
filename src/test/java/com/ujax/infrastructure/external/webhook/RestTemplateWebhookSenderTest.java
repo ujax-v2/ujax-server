@@ -42,7 +42,7 @@ class RestTemplateWebhookSenderTest {
 				      "title": "[알고리즘 스터디] 1000. 백준 1000 A+B",
 				      "title_link": "https://ujax.site/ws/11/ide/1000",
 				      "text": "### 문제 풀이 마감까지 얼마 남지 않았습니다.\\n\\n**마감일**\\n\\n**03월 08일 11:00**",
-				      "footer": "프로젝트명"
+				      "footer": "우작스(UJAX)"
 				    }
 				  ],
 				  "workspaceProblemId": 101,

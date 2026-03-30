@@ -7,6 +7,7 @@ public record WorkspaceMemberListResponse(
 	Long workspaceMemberId,
 	String nickname,
 	String email,
+	String image,
 	WorkspaceMemberRole role
 ) {
 
@@ -15,6 +16,7 @@ public record WorkspaceMemberListResponse(
 			member.getId(),
 			member.getNickname(),
 			member.getUser().getEmail(),
+			member.getUser().getProfileImageUrl(),
 			member.getRole()
 		);
 	}

@@ -74,6 +74,7 @@ jobs:
           scp $SSH_OPTS Dockerfile.prod $APP_HOST:$DEPLOY_DIR/
           scp $SSH_OPTS prometheus.yml $APP_HOST:$DEPLOY_DIR/
           scp $SSH_OPTS -r grafana $APP_HOST:$DEPLOY_DIR/
+          scp $SSH_OPTS promtail-config.yml $APP_HOST:$DEPLOY_DIR/
           scp $SSH_OPTS build/libs/*-SNAPSHOT.jar $APP_HOST:$DEPLOY_DIR/app.jar
           scp $SSH_OPTS .env $APP_HOST:$DEPLOY_DIR/.env
 

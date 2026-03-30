@@ -21,7 +21,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://app-mysql:3306/ujax?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-ujax}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-ujax_password_secure}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: true
       SPRING_DATA_REDIS_HOST: app-redis
       SPRING_DATA_REDIS_PORT: 6379
       JUDGE0_API_URL: http://${JUDGE0_HOST}:2358
@@ -86,11 +87,34 @@ services:
     restart: always
     <<: *default-logging
 
+  # === Log Aggregation ===
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: ujax-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    restart: always
+    <<: *default-logging
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: ujax-promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/log/docker:ro
+      - promtail-positions:/tmp
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: always
+    <<: *default-logging
+
   grafana:
     image: grafana/grafana:latest
     container_name: ujax-grafana
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ujax1234
@@ -105,3 +129,5 @@ volumes:
   mysql-data:
   redis-data:
   grafana-data:
+  loki-data:
+  promtail-positions:
