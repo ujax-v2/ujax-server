@@ -87,11 +87,34 @@ services:
     restart: always
     <<: *default-logging
 
+  # === Log Aggregation ===
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: ujax-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    restart: always
+    <<: *default-logging
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: ujax-promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/log/docker:ro
+      - promtail-positions:/tmp
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: always
+    <<: *default-logging
+
   grafana:
     image: grafana/grafana:latest
     container_name: ujax-grafana
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ujax1234
@@ -106,3 +129,5 @@ volumes:
   mysql-data:
   redis-data:
   grafana-data:
+  loki-data:
+  promtail-positions:
