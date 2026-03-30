@@ -102,7 +102,7 @@ services:
     container_name: ujax-promtail
     volumes:
       - ./promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/lib/docker/containers:/var/log/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - promtail-positions:/tmp
     command: -config.file=/etc/promtail/config.yml
     depends_on:
