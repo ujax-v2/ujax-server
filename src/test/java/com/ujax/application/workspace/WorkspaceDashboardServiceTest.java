@@ -47,6 +47,7 @@ import com.ujax.global.exception.common.ForbiddenException;
 class WorkspaceDashboardServiceTest {
 
 	private static final ZoneId TEST_ZONE = ZoneId.of("Asia/Seoul");
+	private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 3, 31, 22, 0);
 
 	@Autowired
 	private WorkspaceDashboardService workspaceDashboardService;
@@ -105,6 +106,9 @@ class WorkspaceDashboardServiceTest {
 			User aliceUser = createUser("alice@example.com", "Alice");
 			User bobUser = createUser("bob@example.com", "Bob");
 			User carolUser = createUser("carol@example.com", "Carol");
+			updateProfileImage(aliceUser, "https://image.example.com/alice.png");
+			updateProfileImage(bobUser, "https://image.example.com/bob.png");
+			updateProfileImage(carolUser, "https://image.example.com/carol.png");
 
 			Workspace workspace = workspaceRepository.save(Workspace.create("알고리즘 스터디", "소개"));
 			WorkspaceMember alice = createMember(workspace, aliceUser, WorkspaceMemberRole.OWNER);
@@ -114,7 +118,7 @@ class WorkspaceDashboardServiceTest {
 			ProblemBox mainBox = problemBoxRepository.save(ProblemBox.create(workspace, "메인 문제집", "메인"));
 			ProblemBox archiveBox = problemBoxRepository.save(ProblemBox.create(workspace, "지난 마감", "기록"));
 
-			LocalDateTime now = LocalDateTime.now(TEST_ZONE).withSecond(0).withNano(0);
+			LocalDateTime now = FIXED_NOW;
 			LocalDateTime weekStart = now.toLocalDate()
 				.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 				.atStartOfDay();
@@ -199,7 +203,11 @@ class WorkspaceDashboardServiceTest {
 				.filter(timestamp -> !timestamp.isBefore(weekStart))
 				.count();
 
-			WorkspaceDashboardResponse response = workspaceDashboardService.getDashboard(workspace.getId(), aliceUser.getId());
+			WorkspaceDashboardResponse response = workspaceDashboardService.getDashboard(
+				workspace.getId(),
+				aliceUser.getId(),
+				now
+			);
 
 			assertThat(response.recentNotices()).extracting("title")
 				.containsExactly("예전 공지", "가장 최신 공지", "중간 공지");
@@ -212,23 +220,23 @@ class WorkspaceDashboardServiceTest {
 			assertThat(response.summary().hotProblem().title()).isEqualTo("숨바꼭질");
 			assertThat(response.summary().hotProblem().weeklySubmissionCount()).isEqualTo(expectedHotProblemSubmissionCount);
 
-			assertThat(response.rankings().monthlySolved()).extracting("nickname", "solvedCount")
+			assertThat(response.rankings().monthlySolved()).extracting("nickname", "userImage", "solvedCount")
 				.containsExactly(
-					tuple("Alice", 2L),
-					tuple("Bob", 1L),
-					tuple("Carol", 0L)
+					tuple("Alice", "https://image.example.com/alice.png", 2L),
+					tuple("Bob", "https://image.example.com/bob.png", 1L),
+					tuple("Carol", "https://image.example.com/carol.png", 0L)
 				);
-			assertThat(response.rankings().streak()).extracting("nickname", "streakDays")
+			assertThat(response.rankings().streak()).extracting("nickname", "userImage", "streakDays")
 				.containsExactly(
-					tuple("Alice", 3),
-					tuple("Bob", 2),
-					tuple("Carol", 0)
+					tuple("Alice", "https://image.example.com/alice.png", 3),
+					tuple("Bob", "https://image.example.com/bob.png", 2),
+					tuple("Carol", "https://image.example.com/carol.png", 0)
 				);
-			assertThat(response.rankings().deadlineRate()).extracting("nickname", "ratePercent")
+			assertThat(response.rankings().deadlineRate()).extracting("nickname", "userImage", "ratePercent")
 				.containsExactly(
-					tuple("Alice", 100),
-					tuple("Bob", 50),
-					tuple("Carol", 0)
+					tuple("Alice", "https://image.example.com/alice.png", 100),
+					tuple("Bob", "https://image.example.com/bob.png", 50),
+					tuple("Carol", "https://image.example.com/carol.png", 0)
 				);
 		}
 
@@ -248,6 +256,11 @@ class WorkspaceDashboardServiceTest {
 
 	private User createUser(String email, String name) {
 		return userRepository.save(User.createLocalUser(email, Password.ofEncoded("password"), name));
+	}
+
+	private void updateProfileImage(User user, String profileImageUrl) {
+		user.updateProfileImage(profileImageUrl);
+		userRepository.save(user);
 	}
 
 	private WorkspaceMember createMember(Workspace workspace, User user, WorkspaceMemberRole role) {

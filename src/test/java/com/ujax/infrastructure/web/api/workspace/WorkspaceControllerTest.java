@@ -208,9 +208,16 @@ class WorkspaceControllerTest {
 					)
 				),
 				new DashboardRankingsResponse(
-					List.of(new DashboardSolvedRankingResponse(100L, "Alice", 2L)),
-					List.of(new DashboardStreakRankingResponse(100L, "Alice", 3)),
-					List.of(new DashboardDeadlineRateRankingResponse(100L, "Alice", 2L, 2L, 100))
+					List.of(new DashboardSolvedRankingResponse(100L, "Alice", "https://image.example.com/alice.png", 2L)),
+					List.of(new DashboardStreakRankingResponse(100L, "Alice", "https://image.example.com/alice.png", 3)),
+					List.of(new DashboardDeadlineRateRankingResponse(
+						100L,
+						"Alice",
+						"https://image.example.com/alice.png",
+						2L,
+						2L,
+						100
+					))
 				)
 			);
 			given(workspaceDashboardService.getDashboard(anyLong(), anyLong())).willReturn(response);
@@ -223,6 +230,9 @@ class WorkspaceControllerTest {
 				.andExpect(jsonPath("$.data.upcomingDeadlines[0].problemNumber").value(1697))
 				.andExpect(jsonPath("$.data.summary.weeklySubmissionCount").value(5))
 				.andExpect(jsonPath("$.data.summary.hotProblem.weeklySubmissionCount").value(4))
+				.andExpect(jsonPath("$.data.rankings.monthlySolved[0].userImage").value("https://image.example.com/alice.png"))
+				.andExpect(jsonPath("$.data.rankings.streak[0].userImage").value("https://image.example.com/alice.png"))
+				.andExpect(jsonPath("$.data.rankings.deadlineRate[0].userImage").value("https://image.example.com/alice.png"))
 				.andExpect(jsonPath("$.data.rankings.monthlySolved[0].solvedCount").value(2))
 				.andExpect(jsonPath("$.data.rankings.streak[0].streakDays").value(3))
 				.andExpect(jsonPath("$.data.rankings.deadlineRate[0].ratePercent").value(100));

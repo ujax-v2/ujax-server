@@ -538,6 +538,113 @@ class WorkspaceProblemServiceTest {
 		}
 
 		@Test
+		@DisplayName("제목 토큰으로 포함 검색한다")
+		void searchByTitleToken() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem1 = createProblem(1000, "A+B");
+			Problem problem2 = createProblem(1001, "A+B 심화");
+			Problem problem3 = createProblem(1002, "정렬");
+
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem1.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem2.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem3.getId(), null, null));
+
+			PageResponse<?> response = workspaceProblemService.listWorkspaceProblems(
+				workspace.getId(), problemBox.getId(), user.getId(), "A+B", 0, 20);
+
+			assertThat(response.getContent()).extracting("problemNumber")
+				.containsExactlyInAnyOrder(1000, 1001);
+		}
+
+		@Test
+		@DisplayName("숫자 토큰은 문제 번호와 제목 모두에서 부분 일치 검색한다")
+		void searchNumericTokenByProblemNumberAndTitle() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem1 = createProblem(1000, "A+B");
+			Problem problem2 = createProblem(2000, "1000");
+			Problem problem3 = createProblem(3000, "정렬");
+
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem1.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem2.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem3.getId(), null, null));
+
+			PageResponse<?> response = workspaceProblemService.listWorkspaceProblems(
+				workspace.getId(), problemBox.getId(), user.getId(), "100", 0, 20);
+
+			assertThat(response.getContent()).extracting("problemNumber")
+				.containsExactlyInAnyOrder(1000, 2000);
+		}
+
+		@Test
+		@DisplayName("여러 토큰은 AND 조건으로 검색한다")
+		void searchByMultipleTokens() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem1 = createProblem(1000, "A+B");
+			Problem problem2 = createProblem(2000, "1000 조합");
+			Problem problem3 = createProblem(3000, "조합");
+
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem1.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem2.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem3.getId(), null, null));
+
+			PageResponse<?> response = workspaceProblemService.listWorkspaceProblems(
+				workspace.getId(), problemBox.getId(), user.getId(), "1000 조합", 0, 20);
+
+			assertThat(response.getContent()).extracting("problemNumber")
+				.containsExactly(2000);
+		}
+
+		@Test
+		@DisplayName("검색어가 공백이면 전체 목록을 조회한다")
+		void listWithBlankKeyword() {
+			User user = createUser("owner@example.com");
+			Workspace workspace = createWorkspace();
+			createMember(workspace, user, WorkspaceMemberRole.OWNER);
+			ProblemBox problemBox = createProblemBox(workspace);
+			Problem problem1 = createProblem(1000, "A+B");
+			Problem problem2 = createProblem(1001, "A-B");
+
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem1.getId(), null, null));
+			workspaceProblemService.createWorkspaceProblem(
+				workspace.getId(), problemBox.getId(), user.getId(),
+				new CreateWorkspaceProblemRequest(problem2.getId(), null, null));
+
+			PageResponse<?> response = workspaceProblemService.listWorkspaceProblems(
+				workspace.getId(), problemBox.getId(), user.getId(), "   ", 0, 20);
+
+			assertThat(response.getContent()).hasSize(2);
+		}
+
+		@Test
 		@DisplayName("멤버가 아니면 오류가 발생한다")
 		void listNotMember() {
 			User owner = createUser("owner@example.com");

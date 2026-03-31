@@ -55,11 +55,14 @@ public class WorkspaceDashboardService {
 	private final WorkspaceMemberStatsService workspaceMemberStatsService;
 
 	public WorkspaceDashboardResponse getDashboard(Long workspaceId, Long userId) {
+		return getDashboard(workspaceId, userId, LocalDateTime.now(DASHBOARD_ZONE));
+	}
+
+	WorkspaceDashboardResponse getDashboard(Long workspaceId, Long userId, LocalDateTime now) {
 		findWorkspaceById(workspaceId);
 		validateMember(workspaceId, userId);
 
-		LocalDate today = LocalDate.now(DASHBOARD_ZONE);
-		LocalDateTime now = LocalDateTime.now(DASHBOARD_ZONE);
+		LocalDate today = now.toLocalDate();
 		LocalDateTime weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).atStartOfDay();
 		LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
 		List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspace_Id(workspaceId);
