@@ -1,6 +1,7 @@
 package com.ujax.infrastructure.web.problem;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,26 +21,30 @@ import com.ujax.infrastructure.web.problem.dto.request.CreateWorkspaceProblemReq
 import com.ujax.infrastructure.web.problem.dto.request.UpdateWorkspaceProblemRequest;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems")
 @RequiredArgsConstructor
+@Validated
 public class WorkspaceProblemController {
 
 	private final WorkspaceProblemService workspaceProblemService;
 
 	@GetMapping
 	public ApiResponse<PageResponse<WorkspaceProblemResponse>> listWorkspaceProblems(
-		@PathVariable Long workspaceId,
-		@PathVariable Long problemBoxId,
+		@PathVariable @Positive Long workspaceId,
+		@PathVariable @Positive Long problemBoxId,
 		@AuthenticationPrincipal UserPrincipal principal,
-		@RequestParam(defaultValue = "0") int page,
-		@RequestParam(defaultValue = "10") int size
+		@RequestParam(required = false) String keyword,
+		@RequestParam(defaultValue = "0") @Min(0) int page,
+		@RequestParam(defaultValue = "10") @Positive int size
 	) {
 		return ApiResponse.success(
 			workspaceProblemService.listWorkspaceProblems(
-				workspaceId, problemBoxId, principal.getUserId(), page, size)
+				workspaceId, problemBoxId, principal.getUserId(), keyword, page, size)
 		);
 	}
 

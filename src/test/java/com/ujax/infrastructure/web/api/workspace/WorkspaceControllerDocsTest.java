@@ -324,9 +324,16 @@ class WorkspaceControllerDocsTest {
 				)
 			),
 			new DashboardRankingsResponse(
-				List.of(new DashboardSolvedRankingResponse(100L, "Alice", 2L)),
-				List.of(new DashboardStreakRankingResponse(100L, "Alice", 3)),
-				List.of(new DashboardDeadlineRateRankingResponse(100L, "Alice", 2L, 2L, 100))
+				List.of(new DashboardSolvedRankingResponse(100L, "Alice", "https://image.example.com/alice.png", 2L)),
+				List.of(new DashboardStreakRankingResponse(100L, "Alice", "https://image.example.com/alice.png", 3)),
+				List.of(new DashboardDeadlineRateRankingResponse(
+					100L,
+					"Alice",
+					"https://image.example.com/alice.png",
+					2L,
+					2L,
+					100
+				))
 			)
 		);
 		given(workspaceDashboardService.getDashboard(anyLong(), anyLong())).willReturn(response);
@@ -379,14 +386,17 @@ class WorkspaceControllerDocsTest {
 						fieldWithPath("data.rankings.monthlySolved").type(JsonFieldType.ARRAY).description("이번 달 해결 수 랭킹"),
 						fieldWithPath("data.rankings.monthlySolved[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
 						fieldWithPath("data.rankings.monthlySolved[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.monthlySolved[].userImage").type(JsonFieldType.STRING).description("사용자 프로필 이미지 URL"),
 						fieldWithPath("data.rankings.monthlySolved[].solvedCount").type(JsonFieldType.NUMBER).description("이번 달 해결한 문제 수"),
 						fieldWithPath("data.rankings.streak").type(JsonFieldType.ARRAY).description("연속 출석 랭킹"),
 						fieldWithPath("data.rankings.streak[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
 						fieldWithPath("data.rankings.streak[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.streak[].userImage").type(JsonFieldType.STRING).description("사용자 프로필 이미지 URL"),
 						fieldWithPath("data.rankings.streak[].streakDays").type(JsonFieldType.NUMBER).description("연속 활동 일수"),
 						fieldWithPath("data.rankings.deadlineRate").type(JsonFieldType.ARRAY).description("기한 준수율 랭킹"),
 						fieldWithPath("data.rankings.deadlineRate[].workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
 						fieldWithPath("data.rankings.deadlineRate[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+						fieldWithPath("data.rankings.deadlineRate[].userImage").type(JsonFieldType.STRING).description("사용자 프로필 이미지 URL"),
 						fieldWithPath("data.rankings.deadlineRate[].solvedBeforeDeadlineCount").type(JsonFieldType.NUMBER).description("기한 내 해결한 문제 수"),
 						fieldWithPath("data.rankings.deadlineRate[].totalDeadlineProblems").type(JsonFieldType.NUMBER).description("집계 대상 마감 문제 수"),
 						fieldWithPath("data.rankings.deadlineRate[].ratePercent").type(JsonFieldType.NUMBER).description("기한 준수율(%)"),

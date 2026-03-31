@@ -49,7 +49,7 @@ class WorkspaceProblemRepositoryTest {
 
 	@Test
 	@DisplayName("문제집 ID로 문제 목록을 페이징 조회한다")
-	void findByProblemBoxIdWithProblem() {
+	void searchByProblemBoxId() {
 		// given
 		User user = userRepository.save(User.createLocalUser("test@example.com", Password.ofEncoded("password"), "유저"));
 		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
@@ -67,13 +67,46 @@ class WorkspaceProblemRepositoryTest {
 			LocalDateTime.of(2026, 3, 1, 0, 0), null));
 
 		// when
-		Page<WorkspaceProblem> result = workspaceProblemRepository.findByProblemBoxIdWithProblem(
-			problemBox.getId(), PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+		Page<WorkspaceProblem> result = workspaceProblemRepository.searchByProblemBoxId(
+			problemBox.getId(),
+			null,
+			PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+		);
 
 		// then
 		assertThat(result.getContent()).hasSize(2)
 			.extracting(wp -> wp.getProblem().getProblemNumber())
 			.containsExactly(1001, 1000);
+	}
+
+	@Test
+	@DisplayName("숫자 토큰은 문제 번호와 제목 모두에서 부분 일치 검색한다")
+	void searchByNumericToken() {
+		User user = userRepository.save(User.createLocalUser("test2@example.com", Password.ofEncoded("password"), "유저"));
+		Workspace workspace = workspaceRepository.save(Workspace.create("워크스페이스", "소개"));
+		workspaceMemberRepository.save(WorkspaceMember.create(workspace, user, WorkspaceMemberRole.OWNER));
+		ProblemBox problemBox = problemBoxRepository.save(ProblemBox.create(workspace, "문제집", "설명"));
+
+		Problem byNumber = problemRepository.save(
+			Problem.create(1000, "A+B", "Bronze V", "1초", "256MB", "설명", "입력", "출력", "https://boj.kr/1000"));
+		Problem byTitle = problemRepository.save(
+			Problem.create(2000, "1000", "Bronze V", "1초", "256MB", "설명", "입력", "출력", "https://boj.kr/2000"));
+		Problem other = problemRepository.save(
+			Problem.create(3000, "정렬", "Bronze V", "1초", "256MB", "설명", "입력", "출력", "https://boj.kr/3000"));
+
+		workspaceProblemRepository.save(WorkspaceProblem.create(problemBox, byNumber, null, null));
+		workspaceProblemRepository.save(WorkspaceProblem.create(problemBox, byTitle, null, null));
+		workspaceProblemRepository.save(WorkspaceProblem.create(problemBox, other, null, null));
+
+		Page<WorkspaceProblem> result = workspaceProblemRepository.searchByProblemBoxId(
+			problemBox.getId(),
+			"100",
+			PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+		);
+
+		assertThat(result.getContent())
+			.extracting(wp -> wp.getProblem().getProblemNumber())
+			.containsExactlyInAnyOrder(1000, 2000);
 	}
 
 	@Test
