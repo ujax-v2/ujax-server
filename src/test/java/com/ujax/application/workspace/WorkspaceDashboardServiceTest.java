@@ -47,6 +47,7 @@ import com.ujax.global.exception.common.ForbiddenException;
 class WorkspaceDashboardServiceTest {
 
 	private static final ZoneId TEST_ZONE = ZoneId.of("Asia/Seoul");
+	private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 3, 31, 22, 0);
 
 	@Autowired
 	private WorkspaceDashboardService workspaceDashboardService;
@@ -117,7 +118,7 @@ class WorkspaceDashboardServiceTest {
 			ProblemBox mainBox = problemBoxRepository.save(ProblemBox.create(workspace, "메인 문제집", "메인"));
 			ProblemBox archiveBox = problemBoxRepository.save(ProblemBox.create(workspace, "지난 마감", "기록"));
 
-			LocalDateTime now = LocalDateTime.now(TEST_ZONE).withSecond(0).withNano(0);
+			LocalDateTime now = FIXED_NOW;
 			LocalDateTime weekStart = now.toLocalDate()
 				.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 				.atStartOfDay();
@@ -202,7 +203,11 @@ class WorkspaceDashboardServiceTest {
 				.filter(timestamp -> !timestamp.isBefore(weekStart))
 				.count();
 
-			WorkspaceDashboardResponse response = workspaceDashboardService.getDashboard(workspace.getId(), aliceUser.getId());
+			WorkspaceDashboardResponse response = workspaceDashboardService.getDashboard(
+				workspace.getId(),
+				aliceUser.getId(),
+				now
+			);
 
 			assertThat(response.recentNotices()).extracting("title")
 				.containsExactly("예전 공지", "가장 최신 공지", "중간 공지");
