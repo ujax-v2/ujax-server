@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -137,11 +138,7 @@ class BoardControllerDocsTest {
 						parameterWithName("pinnedFirst").optional().description("고정글 우선 정렬")
 					)
 					.responseSchema(Schema.schema("ApiResponse-BoardList"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(boardListDataFields()))
 					.build()
 				)
 			));
@@ -167,11 +164,7 @@ class BoardControllerDocsTest {
 						parameterWithName("boardId").description("게시글 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-BoardDetail"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(boardDetailDataFields()))
 					.build()
 				)
 			));
@@ -203,11 +196,7 @@ class BoardControllerDocsTest {
 						fieldWithPath("pinned").type(JsonFieldType.BOOLEAN).description("고정 여부").optional()
 					)
 					.responseSchema(Schema.schema("ApiResponse-BoardDetail"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(boardDetailDataFields()))
 					.build()
 				)
 			));
@@ -286,11 +275,7 @@ class BoardControllerDocsTest {
 						fieldWithPath("pinned").type(JsonFieldType.BOOLEAN).description("고정 여부").optional()
 					)
 					.responseSchema(Schema.schema("ApiResponse-BoardDetail"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(boardDetailDataFields()))
 					.build()
 				)
 			));
@@ -376,13 +361,7 @@ class BoardControllerDocsTest {
 						parameterWithName("boardId").description("게시글 ID")
 					)
 					.responseSchema(Schema.schema("ApiResponse-BoardLikeStatus"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("data.likeCount").type(JsonFieldType.NUMBER).description("좋아요 수"),
-						fieldWithPath("data.myLike").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(boardLikeStatusDataFields()))
 					.build()
 				)
 			));
@@ -472,11 +451,7 @@ class BoardControllerDocsTest {
 						parameterWithName("size").optional().description("크기")
 					)
 					.responseSchema(Schema.schema("ApiResponse-CommentList"))
-					.responseFields(
-						fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-						subsectionWithPath("data").description("응답 데이터"),
-						fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-					)
+					.responseFields(apiResponseFields(commentListDataFields()))
 					.build()
 				)
 			));
@@ -507,11 +482,7 @@ class BoardControllerDocsTest {
 					.requestSchema(Schema.schema("CreateCommentRequest"))
 					.requestFields(fieldWithPath("content").type(JsonFieldType.STRING).description("댓글 내용"))
 					.responseSchema(Schema.schema("ApiResponse-Comment"))
-						.responseFields(
-							fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
-							subsectionWithPath("data").description("응답 데이터"),
-							fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional()
-						)
+						.responseFields(apiResponseFields(commentDataFields()))
 					.build()
 				)
 			));
@@ -544,6 +515,133 @@ class BoardControllerDocsTest {
 					.build()
 				)
 			));
+	}
+
+	private FieldDescriptor[] apiResponseFields(FieldDescriptor... dataFields) {
+		FieldDescriptor[] fields = new FieldDescriptor[dataFields.length + 2];
+		fields[0] = fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부");
+		System.arraycopy(dataFields, 0, fields, 1, dataFields.length);
+		fields[fields.length - 1] = fieldWithPath("message").type(JsonFieldType.STRING).description("메시지").optional();
+		return fields;
+	}
+
+	private FieldDescriptor[] boardListDataFields() {
+		return merge(
+			new FieldDescriptor[] {
+				fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+				fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("게시글 목록"),
+				fieldWithPath("data.items[].boardId").type(JsonFieldType.NUMBER).description("게시글 ID"),
+				fieldWithPath("data.items[].workspaceId").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
+				fieldWithPath("data.items[].type").type(JsonFieldType.STRING).description("게시글 타입"),
+				fieldWithPath("data.items[].pinned").type(JsonFieldType.BOOLEAN).description("고정 여부"),
+				fieldWithPath("data.items[].title").type(JsonFieldType.STRING).description("제목"),
+				fieldWithPath("data.items[].preview").type(JsonFieldType.STRING).description("내용 미리보기"),
+				fieldWithPath("data.items[].viewCount").type(JsonFieldType.NUMBER).description("조회 수"),
+				fieldWithPath("data.items[].likeCount").type(JsonFieldType.NUMBER).description("좋아요 수"),
+				fieldWithPath("data.items[].commentCount").type(JsonFieldType.NUMBER).description("댓글 수"),
+				fieldWithPath("data.items[].myLike").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부"),
+				fieldWithPath("data.items[].author").type(JsonFieldType.OBJECT).description("작성자 정보"),
+				fieldWithPath("data.items[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+				fieldWithPath("data.items[].updatedAt").type(JsonFieldType.STRING).description("수정 시각"),
+				fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보")
+			},
+			authorFields("data.items[].author"),
+			pageFields("data.page")
+		);
+	}
+
+	private FieldDescriptor[] boardDetailDataFields() {
+		return merge(
+			new FieldDescriptor[] {
+				fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+				fieldWithPath("data.boardId").type(JsonFieldType.NUMBER).description("게시글 ID"),
+				fieldWithPath("data.workspaceId").type(JsonFieldType.NUMBER).description("워크스페이스 ID"),
+				fieldWithPath("data.type").type(JsonFieldType.STRING).description("게시글 타입"),
+				fieldWithPath("data.pinned").type(JsonFieldType.BOOLEAN).description("고정 여부"),
+				fieldWithPath("data.title").type(JsonFieldType.STRING).description("제목"),
+				fieldWithPath("data.content").type(JsonFieldType.STRING).description("내용"),
+				fieldWithPath("data.viewCount").type(JsonFieldType.NUMBER).description("조회 수"),
+				fieldWithPath("data.likeCount").type(JsonFieldType.NUMBER).description("좋아요 수"),
+				fieldWithPath("data.commentCount").type(JsonFieldType.NUMBER).description("댓글 수"),
+				fieldWithPath("data.myLike").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부"),
+				fieldWithPath("data.author").type(JsonFieldType.OBJECT).description("작성자 정보"),
+				fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+				fieldWithPath("data.updatedAt").type(JsonFieldType.STRING).description("수정 시각")
+			},
+			authorFields("data.author")
+		);
+	}
+
+	private FieldDescriptor[] boardLikeStatusDataFields() {
+		return new FieldDescriptor[] {
+			fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+			fieldWithPath("data.likeCount").type(JsonFieldType.NUMBER).description("좋아요 수"),
+			fieldWithPath("data.myLike").type(JsonFieldType.BOOLEAN).description("내 좋아요 여부")
+		};
+	}
+
+	private FieldDescriptor[] commentListDataFields() {
+		return merge(
+			new FieldDescriptor[] {
+				fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+				fieldWithPath("data.items").type(JsonFieldType.ARRAY).description("댓글 목록"),
+				fieldWithPath("data.items[].boardCommentId").type(JsonFieldType.NUMBER).description("댓글 ID"),
+				fieldWithPath("data.items[].boardId").type(JsonFieldType.NUMBER).description("게시글 ID"),
+				fieldWithPath("data.items[].content").type(JsonFieldType.STRING).description("댓글 내용"),
+				fieldWithPath("data.items[].author").type(JsonFieldType.OBJECT).description("작성자 정보"),
+				fieldWithPath("data.items[].createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+				fieldWithPath("data.page").type(JsonFieldType.OBJECT).description("페이지 정보")
+			},
+			authorFields("data.items[].author"),
+			pageFields("data.page")
+		);
+	}
+
+	private FieldDescriptor[] commentDataFields() {
+		return merge(
+			new FieldDescriptor[] {
+				fieldWithPath("data").type(JsonFieldType.OBJECT).description("응답 데이터"),
+				fieldWithPath("data.boardCommentId").type(JsonFieldType.NUMBER).description("댓글 ID"),
+				fieldWithPath("data.boardId").type(JsonFieldType.NUMBER).description("게시글 ID"),
+				fieldWithPath("data.content").type(JsonFieldType.STRING).description("댓글 내용"),
+				fieldWithPath("data.author").type(JsonFieldType.OBJECT).description("작성자 정보"),
+				fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("생성 시각")
+			},
+			authorFields("data.author")
+		);
+	}
+
+	private FieldDescriptor[] authorFields(String prefix) {
+		return new FieldDescriptor[] {
+			fieldWithPath(prefix + ".workspaceMemberId").type(JsonFieldType.NUMBER).description("워크스페이스 멤버 ID"),
+			fieldWithPath(prefix + ".nickname").type(JsonFieldType.STRING).description("작성자 닉네임")
+		};
+	}
+
+	private FieldDescriptor[] pageFields(String prefix) {
+		return new FieldDescriptor[] {
+			fieldWithPath(prefix + ".page").type(JsonFieldType.NUMBER).description("페이지 번호"),
+			fieldWithPath(prefix + ".size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+			fieldWithPath(prefix + ".totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
+			fieldWithPath(prefix + ".totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
+			fieldWithPath(prefix + ".first").type(JsonFieldType.BOOLEAN).description("첫 페이지 여부"),
+			fieldWithPath(prefix + ".last").type(JsonFieldType.BOOLEAN).description("마지막 페이지 여부")
+		};
+	}
+
+	private FieldDescriptor[] merge(FieldDescriptor[]... groups) {
+		int length = 0;
+		for (FieldDescriptor[] group : groups) {
+			length += group.length;
+		}
+
+		FieldDescriptor[] merged = new FieldDescriptor[length];
+		int index = 0;
+		for (FieldDescriptor[] group : groups) {
+			System.arraycopy(group, 0, merged, index, group.length);
+			index += group.length;
+		}
+		return merged;
 	}
 
 	private record CreateBoardBody(String type, String title, String content, Boolean pinned) {
