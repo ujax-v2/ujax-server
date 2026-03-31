@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -46,11 +45,19 @@ public class WorkspaceProblemService {
 
 	public PageResponse<WorkspaceProblemResponse> listWorkspaceProblems(Long workspaceId, Long problemBoxId,
 		Long userId, int page, int size) {
+		return listWorkspaceProblems(workspaceId, problemBoxId, userId, null, page, size);
+	}
+
+	public PageResponse<WorkspaceProblemResponse> listWorkspaceProblems(Long workspaceId, Long problemBoxId,
+		Long userId, String keyword, int page, int size) {
 		findWorkspaceMember(workspaceId, userId);
 		findProblemBox(problemBoxId, workspaceId);
 
-		Page<WorkspaceProblem> result = workspaceProblemRepository.findByProblemBoxIdWithProblem(
-			problemBoxId, PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+		Page<WorkspaceProblem> result = workspaceProblemRepository.searchByProblemBoxId(
+			problemBoxId,
+			keyword,
+			PageRequest.of(page, size)
+		);
 
 		return PageResponse.of(
 			result.getContent().stream().map(WorkspaceProblemResponse::from).toList(),
