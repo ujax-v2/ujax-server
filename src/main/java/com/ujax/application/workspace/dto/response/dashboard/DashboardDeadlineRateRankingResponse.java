@@ -6,6 +6,7 @@ import com.ujax.domain.workspace.WorkspaceMember;
 public record DashboardDeadlineRateRankingResponse(
 	Long workspaceMemberId,
 	String nickname,
+	String userImage,
 	long solvedBeforeDeadlineCount,
 	long totalDeadlineProblems,
 	int ratePercent
@@ -15,6 +16,7 @@ public record DashboardDeadlineRateRankingResponse(
 		return new DashboardDeadlineRateRankingResponse(
 			member.getId(),
 			member.getNickname(),
+			member.getUser().getProfileImageUrl(),
 			stat.solvedBeforeDeadlineCount(),
 			stat.totalDeadlineProblems(),
 			stat.ratePercent()

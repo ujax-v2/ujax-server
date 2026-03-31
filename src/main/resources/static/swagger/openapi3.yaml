@@ -1166,16 +1166,19 @@ paths:
                           "monthlySolved" : [ {
                             "workspaceMemberId" : 100,
                             "nickname" : "Alice",
+                            "userImage" : "https://image.example.com/alice.png",
                             "solvedCount" : 2
                           } ],
                           "streak" : [ {
                             "workspaceMemberId" : 100,
                             "nickname" : "Alice",
+                            "userImage" : "https://image.example.com/alice.png",
                             "streakDays" : 3
                           } ],
                           "deadlineRate" : [ {
                             "workspaceMemberId" : 100,
                             "nickname" : "Alice",
+                            "userImage" : "https://image.example.com/alice.png",
                             "solvedBeforeDeadlineCount" : 2,
                             "totalDeadlineProblems" : 2,
                             "ratePercent" : 100
@@ -5572,6 +5575,7 @@ components:
                     required:
                     - nickname
                     - solvedCount
+                    - userImage
                     - workspaceMemberId
                     type: object
                     properties:
@@ -5581,6 +5585,9 @@ components:
                       nickname:
                         type: string
                         description: 닉네임
+                      userImage:
+                        type: string
+                        description: 사용자 프로필 이미지 URL
                       workspaceMemberId:
                         type: number
                         description: 워크스페이스 멤버 ID
@@ -5591,6 +5598,7 @@ components:
                     required:
                     - nickname
                     - streakDays
+                    - userImage
                     - workspaceMemberId
                     type: object
                     properties:
@@ -5600,6 +5608,9 @@ components:
                       nickname:
                         type: string
                         description: 닉네임
+                      userImage:
+                        type: string
+                        description: 사용자 프로필 이미지 URL
                       workspaceMemberId:
                         type: number
                         description: 워크스페이스 멤버 ID
@@ -5612,6 +5623,7 @@ components:
                     - ratePercent
                     - solvedBeforeDeadlineCount
                     - totalDeadlineProblems
+                    - userImage
                     - workspaceMemberId
                     type: object
                     properties:
@@ -5624,6 +5636,9 @@ components:
                       nickname:
                         type: string
                         description: 닉네임
+                      userImage:
+                        type: string
+                        description: 사용자 프로필 이미지 URL
                       totalDeadlineProblems:
                         type: number
                         description: 집계 대상 마감 문제 수
