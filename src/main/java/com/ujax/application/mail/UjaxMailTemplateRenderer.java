@@ -7,16 +7,14 @@ public final class UjaxMailTemplateRenderer {
 	private UjaxMailTemplateRenderer() {
 	}
 
-	public static RenderedMailContent renderSignupVerification(String code, String expiresAt) {
+	public static RenderedMailContent renderSignupVerification(String code) {
 		String escapedCode = escape(code);
-		String escapedExpiresAt = escape(expiresAt);
 
 		String plainText = String.join("\n",
 			"안녕하세요.",
 			"",
 			"UJAX 회원가입 이메일 인증 코드입니다.",
 			"인증 코드: " + code,
-			"만료 시간: " + expiresAt,
 			"",
 			"본인이 요청하지 않았다면 이 메일을 무시해 주세요.",
 			"감사합니다.",
@@ -34,24 +32,13 @@ public final class UjaxMailTemplateRenderer {
 			"""
 			  </div>
 			</div>
-			  <table role="presentation" width="100%" style="margin:0 0 22px;border-collapse:separate;border-spacing:0;">
-			  <tr>
-			    <td style="padding:18px 20px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;">
-			      <div style="margin:0 0 8px;color:#9a3412;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Expires At</div>
-			      <div style="color:#7c2d12;font-size:17px;font-weight:700;">"""
-			+ escapedExpiresAt +
-			"""
-			      </div>
-			    </td>
-			  </tr>
-			</table>
 			<p style="margin:0;color:#64748b;font-size:14px;line-height:1.8;">
 			  본인이 요청하지 않았다면 이 메일을 무시해 주세요. 인증 코드는 타인에게 공유하지 않는 것이 안전합니다.
 			</p>
 			""";
 
 		String htmlText = wrapLayout(
-			"회원가입 인증 코드 " + escapedCode,
+			null,
 			"회원가입 인증을 마무리해 주세요",
 			"보안 확인을 위해 1회용 인증 코드를 준비했습니다.",
 			bodyHtml,
@@ -117,6 +104,17 @@ public final class UjaxMailTemplateRenderer {
 		String actionUrl,
 		String footerHtml
 	) {
+		String previewSection = "";
+		if (previewText != null && !previewText.isBlank()) {
+			previewSection = """
+				<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+				  """
+				+ escape(previewText) +
+				"""
+				</div>
+				""";
+		}
+
 		String actionSection = "";
 		if (actionLabel != null && actionUrl != null) {
 			actionSection = """
@@ -168,11 +166,9 @@ public final class UjaxMailTemplateRenderer {
 			  </style>
 			</head>
 			<body style="margin:0;padding:0;background-color:#f3f4f6;" bgcolor="#f3f4f6">
-			  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-			    """
-			+ previewText +
+			  """
+			+ previewSection +
 			"""
-			  </div>
 			  <table role="presentation" width="100%" style="width:100%;border-collapse:collapse;background:#f3f4f6;" bgcolor="#f3f4f6">
 			    <tr>
 			      <td align="center" style="padding:32px 16px;">

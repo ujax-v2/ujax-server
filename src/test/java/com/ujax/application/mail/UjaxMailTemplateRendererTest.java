@@ -8,12 +8,13 @@ import org.junit.jupiter.api.Test;
 class UjaxMailTemplateRendererTest {
 
 	@Test
-	@DisplayName("회원가입 인증 메일 헤더 색상은 다크모드에서도 유지되도록 고정한다")
+	@DisplayName("회원가입 인증 메일 헤더 색상은 다크모드에서도 유지되고 만료 시간 없이 전체 본문을 노출한다")
 	void renderSignupVerificationKeepsHeaderColorsInDarkMode() {
-		RenderedMailContent content = UjaxMailTemplateRenderer.renderSignupVerification(
-			"123456",
-			"2026-03-30 10:30"
-		);
+		RenderedMailContent content = UjaxMailTemplateRenderer.renderSignupVerification("123456");
+
+		assertThat(content.plainText())
+			.contains("인증 코드: 123456")
+			.doesNotContain("만료 시간");
 
 		assertThat(content.htmlText())
 			.contains("<meta name=\"color-scheme\" content=\"light\">")
@@ -21,7 +22,10 @@ class UjaxMailTemplateRendererTest {
 			.contains("class=\"mail-title\"")
 			.contains("class=\"mail-lead\"")
 			.contains("-webkit-text-fill-color: #ffffff !important;")
-			.contains("-webkit-text-fill-color: #dbeafe !important;");
+			.contains("-webkit-text-fill-color: #dbeafe !important;")
+			.contains("123456")
+			.doesNotContain("Expires At")
+			.doesNotContain("display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;");
 	}
 
 	@Test

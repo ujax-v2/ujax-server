@@ -66,14 +66,16 @@ class SignupVerificationMailerTest {
 
 		assertThat(from.getAddress()).isEqualTo("no-reply@ujax.kro.kr");
 		assertThat(from.getPersonal()).isEqualTo("UJAX");
-		assertThat(message.getSubject()).isEqualTo("[UJAX] 회원가입 이메일 인증 코드");
+		assertThat(message.getSubject()).isEqualTo("[UJAX] 회원가입 인증 코드 - [ 123456 ]");
 		assertThat(to.getAddress()).isEqualTo("user@example.com");
 		String rawMessage = rawMessage(message);
 		assertThat(rawMessage)
 			.contains("text/plain")
 			.contains("text/html")
 			.contains("123456")
-			.contains("Verification Code");
+			.contains("Verification Code")
+			.doesNotContain("2026-03-30 10:30")
+			.doesNotContain("Expires At");
 	}
 
 	@Test
