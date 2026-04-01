@@ -34,40 +34,27 @@ public class PendingSignup extends BaseEntity {
 	private String email;
 
 	@Column(nullable = false)
-	private String passwordHash;
-
-	@Column(nullable = false, length = 30)
-	private String name;
-
-	@Column(nullable = false)
 	private String codeHash;
 
 	@Column(nullable = false)
 	private LocalDateTime expiresAt;
 
-	private PendingSignup(String email, String passwordHash, String name, String codeHash, LocalDateTime expiresAt) {
+	private PendingSignup(String email, String codeHash, LocalDateTime expiresAt) {
 		this.requestToken = UUID.randomUUID().toString();
 		this.email = email;
-		this.passwordHash = passwordHash;
-		this.name = name;
 		this.codeHash = codeHash;
 		this.expiresAt = expiresAt;
 	}
 
 	public static PendingSignup create(
 		String email,
-		String passwordHash,
-		String name,
 		String codeHash,
 		LocalDateTime expiresAt
 	) {
-		return new PendingSignup(email, passwordHash, name, codeHash, expiresAt);
+		return new PendingSignup(email, codeHash, expiresAt);
 	}
 
-	public void refresh(String newPasswordHash, String newName, String newCodeHash, LocalDateTime newExpiresAt) {
-		this.requestToken = UUID.randomUUID().toString();
-		this.passwordHash = newPasswordHash;
-		this.name = newName;
+	public void refreshVerification(String newCodeHash, LocalDateTime newExpiresAt) {
 		this.codeHash = newCodeHash;
 		this.expiresAt = newExpiresAt;
 	}

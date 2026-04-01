@@ -16,6 +16,7 @@ import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.global.exception.ErrorCode;
+import com.ujax.global.exception.common.BadRequestException;
 import com.ujax.global.exception.common.ConflictException;
 import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.global.exception.common.UnauthorizedException;
@@ -43,62 +44,47 @@ public class AuthService {
 	}
 
 	@Transactional
-	public SignupStartResponse requestSignup(String email, String password, String name) {
+	public SignupStartResponse requestSignup(String email) {
 		ensureEmailAvailable(email);
 
-		Password encodedPassword = Password.encode(password, passwordEncoder);
 		String verificationCode = signupVerificationCodeGenerator.generate();
 		String codeHash = verificationCodeHasher.hash(verificationCode);
 		LocalDateTime expiresAt = calculateExpiresAt();
 
 		PendingSignup pendingSignup = pendingSignupRepository.findByEmail(email)
 			.map(existing -> {
-				existing.refresh(encodedPassword.getEncodedValue(), name, codeHash, expiresAt);
+				existing.refreshVerification(codeHash, expiresAt);
 				return existing;
 			})
-			.orElseGet(() -> PendingSignup.create(email, encodedPassword.getEncodedValue(), name, codeHash, expiresAt));
+			.orElseGet(() -> PendingSignup.create(email, codeHash, expiresAt));
 
 		pendingSignupRepository.save(pendingSignup);
 		signupVerificationMailer.sendVerificationCode(email, verificationCode, expiresAt);
 
-		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getEmail(), pendingSignup.getExpiresAt());
+		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getExpiresAt());
 	}
 
 	@Transactional
-	public AuthTokenResponse confirmSignup(String requestToken, String code) {
+	public AuthTokenResponse completeSignup(String requestToken, String code, String email, String password, String name) {
 		PendingSignup pendingSignup = pendingSignupRepository.findByRequestToken(requestToken)
 			.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
 
+		if (!pendingSignup.getEmail().equals(email)) {
+			throw new BadRequestException(ErrorCode.INVALID_INPUT, "인증 요청 이메일과 일치하지 않습니다.");
+		}
+
 		pendingSignup.verifyCode(code, verificationCodeHasher);
-		ensureEmailAvailable(pendingSignup.getEmail());
+		ensureEmailAvailable(email);
 
 		User user = User.createLocalUser(
-			pendingSignup.getEmail(),
-			Password.ofEncoded(pendingSignup.getPasswordHash()),
-			pendingSignup.getName()
+			email,
+			Password.encode(password, passwordEncoder),
+			name
 		);
 		userRepository.save(user);
 		pendingSignupRepository.deleteByRequestToken(requestToken);
 
 		return issueTokens(user);
-	}
-
-	@Transactional
-	public SignupStartResponse resendSignupCode(String requestToken) {
-		PendingSignup pendingSignup = pendingSignupRepository.findByRequestToken(requestToken)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
-
-		ensureEmailAvailable(pendingSignup.getEmail());
-
-		String verificationCode = signupVerificationCodeGenerator.generate();
-		String codeHash = verificationCodeHasher.hash(verificationCode);
-		LocalDateTime expiresAt = calculateExpiresAt();
-
-		pendingSignup.refresh(pendingSignup.getPasswordHash(), pendingSignup.getName(), codeHash, expiresAt);
-		pendingSignupRepository.save(pendingSignup);
-		signupVerificationMailer.sendVerificationCode(pendingSignup.getEmail(), verificationCode, expiresAt);
-
-		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getEmail(), pendingSignup.getExpiresAt());
 	}
 
 	@Transactional

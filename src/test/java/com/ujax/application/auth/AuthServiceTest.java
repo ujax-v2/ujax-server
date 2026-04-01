@@ -23,7 +23,6 @@ import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
 import com.ujax.domain.user.AuthProvider;
-import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
 import com.ujax.global.exception.ErrorCode;
@@ -127,14 +126,13 @@ class AuthServiceTest {
 	class SignupRequestStart {
 
 		@Test
-		@DisplayName("회원정보를 대기 상태에 저장하고 메일을 발송한다")
+		@DisplayName("이메일 인증 세션을 생성하고 메일을 발송한다")
 		void requestSignup_Success() {
 			given(signupVerificationCodeGenerator.generate()).willReturn("123456");
 			given(verificationCodeHasher.hash("123456")).willReturn("hashed-code");
 
-			SignupStartResponse response = authService.requestSignup("new@example.com", "password123", "새유저");
+			SignupStartResponse response = authService.requestSignup("new@example.com");
 
-			assertThat(response.email()).isEqualTo("new@example.com");
 			assertThat(response.requestToken()).isNotBlank();
 			assertThat(response.expiresAt()).isAfter(LocalDateTime.now());
 			assertThat(pendingSignupRepository.findByEmail("new@example.com")).isPresent();
@@ -146,54 +144,84 @@ class AuthServiceTest {
 		void requestSignup_DuplicateEmail() {
 			authService.signup("existing@example.com", "password123", "기존유저");
 
-			assertThatThrownBy(() -> authService.requestSignup("existing@example.com", "password123", "새유저"))
+			assertThatThrownBy(() -> authService.requestSignup("existing@example.com"))
 				.isInstanceOf(ConflictException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.DUPLICATE_EMAIL);
 		}
+
+		@Test
+		@DisplayName("같은 이메일 재요청이면 기존 requestToken을 재사용한다")
+		void requestSignup_ReusesExistingRequestToken() {
+			given(signupVerificationCodeGenerator.generate()).willReturn("123456", "654321");
+			given(verificationCodeHasher.hash("123456")).willReturn("first-hash");
+			given(verificationCodeHasher.hash("654321")).willReturn("second-hash");
+
+			SignupStartResponse firstResponse = authService.requestSignup("retry@example.com");
+			SignupStartResponse secondResponse = authService.requestSignup("retry@example.com");
+
+			assertThat(secondResponse.requestToken()).isEqualTo(firstResponse.requestToken());
+			assertThat(secondResponse.expiresAt()).isAfter(firstResponse.expiresAt());
+			assertThat(pendingSignupRepository.findByEmail("retry@example.com"))
+				.get()
+				.extracting(PendingSignup::getCodeHash)
+				.isEqualTo("second-hash");
+			verify(signupVerificationMailer, times(2))
+				.sendVerificationCode(eq("retry@example.com"), anyString(), any(LocalDateTime.class));
+		}
 	}
 
 	@Nested
-	@DisplayName("회원가입 인증 확인")
-	class SignupConfirm {
+	@DisplayName("회원가입 완료")
+	class SignupComplete {
 
 		@Test
 		@DisplayName("코드가 일치하면 실제 회원을 생성한다")
-		void confirmSignup_Success() {
-			Password encodedPassword = Password.encode("password123", new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder());
+		void completeSignup_Success() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
 				PendingSignup.create(
 					"confirm@example.com",
-					encodedPassword.getEncodedValue(),
-					"확인유저",
 					"hashed-code",
 					LocalDateTime.now().plusMinutes(5)
 				)
 			);
 			given(verificationCodeHasher.matches("123456", "hashed-code")).willReturn(true);
 
-			AuthTokenResponse response = authService.confirmSignup(pendingSignup.getRequestToken(), "123456");
+			AuthTokenResponse response = authService.completeSignup(
+				pendingSignup.getRequestToken(),
+				"123456",
+				"confirm@example.com",
+				"password123",
+				"확인유저"
+			);
 
 			assertThat(response).extracting("accessToken", "refreshToken").doesNotContainNull();
-			assertThat(userRepository.findByEmail("confirm@example.com")).isPresent();
+			assertThat(userRepository.findByEmail("confirm@example.com"))
+				.get()
+				.extracting(User::getName)
+				.isEqualTo("확인유저");
 			assertThat(pendingSignupRepository.findByRequestToken(pendingSignup.getRequestToken())).isEmpty();
 		}
 
 		@Test
 		@DisplayName("코드가 일치하지 않으면 실패한다")
-		void confirmSignup_InvalidCode() {
+		void completeSignup_InvalidCode() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
 				PendingSignup.create(
 					"confirm@example.com",
-					"encoded-password",
-					"확인유저",
 					"hashed-code",
 					LocalDateTime.now().plusMinutes(5)
 				)
 			);
 			given(verificationCodeHasher.matches("000000", "hashed-code")).willReturn(false);
 
-			assertThatThrownBy(() -> authService.confirmSignup(pendingSignup.getRequestToken(), "000000"))
+			assertThatThrownBy(() -> authService.completeSignup(
+				pendingSignup.getRequestToken(),
+				"000000",
+				"confirm@example.com",
+				"password123",
+				"확인유저"
+			))
 				.isInstanceOf(BadRequestException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_VERIFICATION_CODE);
@@ -201,51 +229,48 @@ class AuthServiceTest {
 
 		@Test
 		@DisplayName("만료된 코드면 실패한다")
-		void confirmSignup_ExpiredCode() {
+		void completeSignup_ExpiredCode() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
 				PendingSignup.create(
 					"expired@example.com",
-					"encoded-password",
-					"만료유저",
 					"hashed-code",
 					LocalDateTime.now().minusMinutes(1)
 				)
 			);
 
-			assertThatThrownBy(() -> authService.confirmSignup(pendingSignup.getRequestToken(), "123456"))
+			assertThatThrownBy(() -> authService.completeSignup(
+				pendingSignup.getRequestToken(),
+				"123456",
+				"expired@example.com",
+				"password123",
+				"만료유저"
+			))
 				.isInstanceOf(BadRequestException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.EXPIRED_VERIFICATION_CODE);
 		}
-	}
-
-	@Nested
-	@DisplayName("회원가입 인증 재발송")
-	class SignupResend {
 
 		@Test
-		@DisplayName("기존 대기 상태를 갱신하고 새 코드를 발송한다")
-		void resendSignupCode_Success() {
+		@DisplayName("인증 세션 이메일과 요청 이메일이 다르면 실패한다")
+		void completeSignup_EmailMismatch() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
 				PendingSignup.create(
-					"resend@example.com",
-					"encoded-password",
-					"재발송유저",
-					"old-code",
+					"confirm@example.com",
+					"hashed-code",
 					LocalDateTime.now().plusMinutes(5)
 				)
 			);
-			String oldRequestToken = pendingSignup.getRequestToken();
-			given(signupVerificationCodeGenerator.generate()).willReturn("654321");
-			given(verificationCodeHasher.hash("654321")).willReturn("new-code-hash");
 
-			SignupStartResponse response = authService.resendSignupCode(oldRequestToken);
-
-			assertThat(response.email()).isEqualTo("resend@example.com");
-			assertThat(response.requestToken()).isNotEqualTo(oldRequestToken);
-			assertThat(pendingSignupRepository.findByRequestToken(response.requestToken())).isPresent();
-			assertThat(pendingSignupRepository.findByRequestToken(oldRequestToken)).isEmpty();
-			verify(signupVerificationMailer).sendVerificationCode(eq("resend@example.com"), eq("654321"), any(LocalDateTime.class));
+			assertThatThrownBy(() -> authService.completeSignup(
+				pendingSignup.getRequestToken(),
+				"123456",
+				"other@example.com",
+				"password123",
+				"확인유저"
+			))
+				.isInstanceOf(BadRequestException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_INPUT);
 		}
 	}
 

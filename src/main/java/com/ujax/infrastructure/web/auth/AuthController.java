@@ -12,8 +12,7 @@ import com.ujax.global.dto.ApiResponse;
 import com.ujax.infrastructure.web.auth.dto.request.EmailAvailabilityRequest;
 import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
 import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupConfirmRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupResendRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupCompleteRequest;
 import com.ujax.infrastructure.web.auth.dto.request.SignupStartRequest;
 
 import jakarta.validation.Valid;
@@ -34,17 +33,18 @@ public class AuthController {
 
 	@PostMapping("/signup/request")
 	public ApiResponse<SignupStartResponse> requestSignup(@Valid @RequestBody SignupStartRequest request) {
-		return ApiResponse.success(authService.requestSignup(request.email(), request.password(), request.name()));
+		return ApiResponse.success(authService.requestSignup(request.email()));
 	}
 
-	@PostMapping("/signup/confirm")
-	public ApiResponse<AuthTokenResponse> confirmSignup(@Valid @RequestBody SignupConfirmRequest request) {
-		return ApiResponse.success(authService.confirmSignup(request.requestToken(), request.code()));
-	}
-
-	@PostMapping("/signup/resend")
-	public ApiResponse<SignupStartResponse> resendSignupCode(@Valid @RequestBody SignupResendRequest request) {
-		return ApiResponse.success(authService.resendSignupCode(request.requestToken()));
+	@PostMapping("/signup/complete")
+	public ApiResponse<AuthTokenResponse> completeSignup(@Valid @RequestBody SignupCompleteRequest request) {
+		return ApiResponse.success(authService.completeSignup(
+			request.requestToken(),
+			request.code(),
+			request.email(),
+			request.password(),
+			request.name()
+		));
 	}
 
 	@PostMapping("/login")
