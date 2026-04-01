@@ -40,7 +40,7 @@ public class WorkspaceInviteMailer {
 			var helper = new MimeMessageHelper(message, true, "UTF-8");
 			helper.setTo(email);
 			helper.setFrom(fromAddress, fromName);
-			helper.setSubject("[UJAX] 워크스페이스 초대");
+			helper.setSubject(String.format("[UJAX] %s에서 당신을 초대했습니다.", workspaceName));
 			helper.setText(content.plainText(), content.htmlText());
 			mailSender.send(message);
 		});

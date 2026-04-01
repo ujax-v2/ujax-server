@@ -69,7 +69,7 @@ class  WorkspaceInviteMailerTest {
 
 		assertThat(from.getAddress()).isEqualTo("no-reply@ujax.kro.kr");
 		assertThat(from.getPersonal()).isEqualTo("UJAX");
-		assertThat(message.getSubject()).isEqualTo("[UJAX] 워크스페이스 초대");
+		assertThat(message.getSubject()).isEqualTo("[UJAX] 워크스페이스에서 당신을 초대했습니다.");
 		assertThat(to.getAddress()).isEqualTo(email);
 		String rawMessage = rawMessage(message);
 		assertThat(rawMessage)
