@@ -20,9 +20,9 @@ public class WorkspaceInviteMailer {
 	public WorkspaceInviteMailer(
 		JavaMailSender mailSender,
 		MailDeliveryRetryExecutor mailDeliveryRetryExecutor,
-		@Value("${app.ujax.base-url:https://ujax.site}") String baseUrl,
-		@Value("${app.ujax.mail.from:noreply@ujax.site}") String fromAddress,
-		@Value("${app.ujax.mail.name:UJAX}") String fromName
+		@Value("${app.ujax.base-url}") String baseUrl,
+		@Value("${app.ujax.mail.from}") String fromAddress,
+		@Value("${app.ujax.mail.name}") String fromName
 	) {
 		this.mailSender = mailSender;
 		this.mailDeliveryRetryExecutor = mailDeliveryRetryExecutor;
