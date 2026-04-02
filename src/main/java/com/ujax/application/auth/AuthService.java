@@ -36,7 +36,7 @@ public class AuthService {
 	private final PendingSignupRepository pendingSignupRepository;
 	private final SignupVerificationCodeGenerator signupVerificationCodeGenerator;
 	private final VerificationCodeHasher verificationCodeHasher;
-	private final SignupVerificationMailer signupVerificationMailer;
+	private final SignupVerificationMailOutboxProducer signupVerificationMailOutboxProducer;
 	private final SignupVerificationProperties signupVerificationProperties;
 
 	public void checkEmailAvailability(String email) {
@@ -59,7 +59,7 @@ public class AuthService {
 			.orElseGet(() -> PendingSignup.create(email, codeHash, expiresAt));
 
 		pendingSignupRepository.save(pendingSignup);
-		signupVerificationMailer.sendVerificationCode(email, verificationCode, expiresAt);
+		signupVerificationMailOutboxProducer.enqueue(email, verificationCode, expiresAt);
 
 		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getExpiresAt());
 	}

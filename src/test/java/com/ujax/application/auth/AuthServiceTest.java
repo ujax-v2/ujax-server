@@ -1,11 +1,10 @@
 package com.ujax.application.auth;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
-import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,12 +15,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
 import com.ujax.application.auth.dto.response.SignupStartResponse;
+import com.ujax.application.mail.outbox.SignupVerificationMailPayload;
 import com.ujax.domain.auth.PendingSignup;
 import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
+import com.ujax.domain.mail.MailOutbox;
+import com.ujax.domain.mail.MailOutboxRepository;
+import com.ujax.domain.mail.MailOutboxStatus;
+import com.ujax.domain.mail.MailType;
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -46,17 +51,21 @@ class AuthServiceTest {
 	@Autowired
 	private PendingSignupRepository pendingSignupRepository;
 
+	@Autowired
+	private MailOutboxRepository mailOutboxRepository;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
 	@MockitoBean
 	private SignupVerificationCodeGenerator signupVerificationCodeGenerator;
 
 	@MockitoBean
 	private VerificationCodeHasher verificationCodeHasher;
 
-	@MockitoBean
-	private SignupVerificationMailer signupVerificationMailer;
-
 	@BeforeEach
 	void setUp() {
+		mailOutboxRepository.deleteAllInBatch();
 		pendingSignupRepository.deleteAll();
 		refreshTokenRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
@@ -132,11 +141,18 @@ class AuthServiceTest {
 			given(verificationCodeHasher.hash("123456")).willReturn("hashed-code");
 
 			SignupStartResponse response = authService.requestSignup("new@example.com");
+			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
+			MailOutbox outbox = outboxes.get(0);
 
 			assertThat(response.requestToken()).isNotBlank();
 			assertThat(response.expiresAt()).isAfter(LocalDateTime.now());
 			assertThat(pendingSignupRepository.findByEmail("new@example.com")).isPresent();
-			verify(signupVerificationMailer).sendVerificationCode(eq("new@example.com"), eq("123456"), any(LocalDateTime.class));
+			assertThat(outboxes).hasSize(1);
+			assertThat(outbox.getMailType()).isEqualTo(MailType.SIGNUP_VERIFICATION);
+			assertThat(outbox.getRecipientEmail()).isEqualTo("new@example.com");
+			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
+			assertThat(readSignupPayload(outbox))
+				.isEqualTo(new SignupVerificationMailPayload("123456", response.expiresAt()));
 		}
 
 		@Test
@@ -159,6 +175,10 @@ class AuthServiceTest {
 
 			SignupStartResponse firstResponse = authService.requestSignup("retry@example.com");
 			SignupStartResponse secondResponse = authService.requestSignup("retry@example.com");
+			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
+			List<SignupVerificationMailPayload> payloads = outboxes.stream()
+				.map(AuthServiceTest.this::readSignupPayload)
+				.toList();
 
 			assertThat(secondResponse.requestToken()).isEqualTo(firstResponse.requestToken());
 			assertThat(secondResponse.expiresAt()).isAfter(firstResponse.expiresAt());
@@ -166,8 +186,19 @@ class AuthServiceTest {
 				.get()
 				.extracting(PendingSignup::getCodeHash)
 				.isEqualTo("second-hash");
-			verify(signupVerificationMailer, times(2))
-				.sendVerificationCode(eq("retry@example.com"), anyString(), any(LocalDateTime.class));
+			assertThat(outboxes).hasSize(2);
+			assertThat(outboxes)
+				.extracting(MailOutbox::getRecipientEmail)
+				.containsOnly("retry@example.com");
+			assertThat(outboxes)
+				.extracting(MailOutbox::getStatus)
+				.containsOnly(MailOutboxStatus.PENDING);
+			assertThat(payloads)
+				.extracting(SignupVerificationMailPayload::code)
+				.containsExactly("123456", "654321");
+			assertThat(payloads)
+				.extracting(SignupVerificationMailPayload::expiresAt)
+				.containsExactly(firstResponse.expiresAt(), secondResponse.expiresAt());
 		}
 	}
 
@@ -365,5 +396,13 @@ class AuthServiceTest {
 		// then
 		assertThatThrownBy(() -> authService.refresh(tokens.refreshToken()))
 			.isInstanceOf(UnauthorizedException.class);
+	}
+
+	private SignupVerificationMailPayload readSignupPayload(MailOutbox outbox) {
+		try {
+			return objectMapper.readValue(outbox.getPayloadJson(), SignupVerificationMailPayload.class);
+		} catch (Exception exception) {
+			throw new RuntimeException(exception);
+		}
 	}
 }
