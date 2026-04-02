@@ -30,6 +30,10 @@ app:
     signup-verification:
       ttl-minutes: ${SIGNUP_VERIFICATION_TTL_MINUTES:5}
       code-length: ${SIGNUP_VERIFICATION_CODE_LENGTH:6}
+    pending-signup-cleanup:
+      enabled: ${PENDING_SIGNUP_CLEANUP_ENABLED:true}
+      fixed-delay-millis: ${PENDING_SIGNUP_CLEANUP_FIXED_DELAY_MILLIS:60000}
+      batch-size: ${PENDING_SIGNUP_CLEANUP_BATCH_SIZE:100}
   jwt:
     secret: ${JWT_SECRET:defaultDevSecretKeyThatIsAtLeast256BitsLongForHmacSha256Algorithm}
     access-expiration: 1800000
