@@ -3,6 +3,8 @@ package com.ujax.application.workspace;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
@@ -26,6 +29,10 @@ import com.ujax.domain.problem.WorkspaceProblemRepository;
 import com.ujax.domain.solution.SolutionCommentRepository;
 import com.ujax.domain.solution.SolutionLikeRepository;
 import com.ujax.domain.solution.SolutionRepository;
+import com.ujax.domain.mail.MailOutbox;
+import com.ujax.domain.mail.MailOutboxRepository;
+import com.ujax.domain.mail.MailOutboxStatus;
+import com.ujax.domain.mail.MailType;
 import com.ujax.domain.user.Password;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -44,6 +51,7 @@ import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.external.s3.S3StorageService;
 import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
 import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
+import com.ujax.application.mail.outbox.WorkspaceInviteMailPayload;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -103,14 +111,18 @@ class WorkspaceServiceTest {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	@MockitoBean
-	private WorkspaceInviteMailer workspaceInviteMailer;
+	@Autowired
+	private MailOutboxRepository mailOutboxRepository;
+
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	@MockitoBean
 	private S3StorageService s3StorageService;
 
 	@BeforeEach
 	void setUp() {
+		mailOutboxRepository.deleteAllInBatch();
 		solutionLikeRepository.deleteAllInBatch();
 		solutionCommentRepository.deleteAllInBatch();
 		boardLikeRepository.deleteAllInBatch();
@@ -1264,7 +1276,15 @@ class WorkspaceServiceTest {
 			WorkspaceMember member = workspaceMemberRepository
 				.findByWorkspace_IdAndUser_Id(workspace.getId(), target.getId())
 				.orElseThrow();
+			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
+			MailOutbox outbox = outboxes.get(0);
 			assertThat(member.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
+			assertThat(outboxes).hasSize(1);
+			assertThat(outbox.getMailType()).isEqualTo(MailType.WORKSPACE_INVITE);
+			assertThat(outbox.getRecipientEmail()).isEqualTo(target.getEmail());
+			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
+			assertThat(readWorkspaceInvitePayload(outbox))
+				.isEqualTo(new WorkspaceInviteMailPayload(workspace.getId(), workspace.getName()));
 		}
 
 		@Test
@@ -1286,6 +1306,7 @@ class WorkspaceServiceTest {
 			))
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
+			assertThat(mailOutboxRepository.count()).isZero();
 		}
 
 		@Test
@@ -1306,6 +1327,7 @@ class WorkspaceServiceTest {
 			))
 				.isInstanceOf(ConflictException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_WORKSPACE_MEMBER);
+			assertThat(mailOutboxRepository.count()).isZero();
 		}
 
 		@Test
@@ -1330,6 +1352,7 @@ class WorkspaceServiceTest {
 				.orElseThrow();
 			assertThat(restored.isDeleted()).isFalse();
 			assertThat(restored.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
+			assertThat(mailOutboxRepository.count()).isEqualTo(1);
 		}
 
 		@Test
@@ -1348,7 +1371,15 @@ class WorkspaceServiceTest {
 			))
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND);
+			assertThat(mailOutboxRepository.count()).isZero();
 		}
 	}
 
+	private WorkspaceInviteMailPayload readWorkspaceInvitePayload(MailOutbox outbox) {
+		try {
+			return objectMapper.readValue(outbox.getPayloadJson(), WorkspaceInviteMailPayload.class);
+		} catch (Exception exception) {
+			throw new RuntimeException(exception);
+		}
+	}
 }

@@ -34,7 +34,7 @@ public class WorkspaceMembershipService {
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceMemberActivationService workspaceMemberActivationService;
-	private final WorkspaceInviteMailer workspaceInviteMailer;
+	private final WorkspaceInviteMailOutboxProducer workspaceInviteMailOutboxProducer;
 
 	public PageResponse<WorkspaceMemberListResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
 		validatePageable(page, size);
@@ -75,7 +75,7 @@ public class WorkspaceMembershipService {
 			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
 		workspaceMemberActivationService.activateMember(workspace, user);
-		workspaceInviteMailer.sendInvitation(email, workspace.getName(), workspaceId);
+		workspaceInviteMailOutboxProducer.enqueue(email, workspace.getName(), workspaceId);
 	}
 
 	@Transactional
