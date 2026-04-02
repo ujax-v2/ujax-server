@@ -74,9 +74,6 @@ class WorkspaceJoinRequestServiceTest {
 	private JdbcTemplate jdbcTemplate;
 
 	@MockitoBean
-	private WorkspaceInviteMailer workspaceInviteMailer;
-
-	@MockitoBean
 	private S3StorageService s3StorageService;
 
 	@BeforeEach
