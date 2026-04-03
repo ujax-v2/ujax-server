@@ -6,9 +6,12 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.mail.outbox.MailOutboxLogRecorder;
 import com.ujax.application.mail.outbox.WorkspaceInviteMailPayload;
 import com.ujax.domain.mail.MailOutbox;
+import com.ujax.domain.mail.MailOutboxLogEventType;
 import com.ujax.domain.mail.MailOutboxRepository;
+import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class WorkspaceInviteMailOutboxProducer {
 
 	private final MailOutboxRepository mailOutboxRepository;
+	private final MailOutboxLogRecorder mailOutboxLogRecorder;
 	private final ObjectMapper objectMapper;
 
 	public void enqueue(String email, String workspaceName, Long workspaceId) {
@@ -28,7 +32,8 @@ public class WorkspaceInviteMailOutboxProducer {
 			payloadJson,
 			LocalDateTime.now()
 		);
-		mailOutboxRepository.save(outbox);
+		MailOutbox savedOutbox = mailOutboxRepository.save(outbox);
+		mailOutboxLogRecorder.record(savedOutbox, MailOutboxLogEventType.ENQUEUED, null, MailOutboxStatus.PENDING);
 	}
 
 	private String serializePayload(WorkspaceInviteMailPayload payload) {

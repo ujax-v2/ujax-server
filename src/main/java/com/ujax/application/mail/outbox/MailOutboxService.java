@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.domain.mail.MailOutbox;
+import com.ujax.domain.mail.MailOutboxLogEventType;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -25,6 +26,7 @@ public class MailOutboxService {
 	private final List<MailOutboxHandler> handlers;
 	private final UjaxSmtpMailSender ujaxSmtpMailSender;
 	private final MailOutboxDeliveryProperties properties;
+	private final MailOutboxLogRecorder mailOutboxLogRecorder;
 
 	@Transactional
 	public void recoverStuckProcessing(LocalDateTime now) {
@@ -35,6 +37,12 @@ public class MailOutboxService {
 
 		for (MailOutbox outbox : stuckOutboxes) {
 			outbox.recoverToPending(now);
+			mailOutboxLogRecorder.record(
+				outbox,
+				MailOutboxLogEventType.RECOVERED,
+				MailOutboxStatus.PROCESSING,
+				outbox.getStatus()
+			);
 		}
 	}
 
@@ -51,7 +59,14 @@ public class MailOutboxService {
 		);
 
 		for (MailOutbox outbox : dueOutboxes) {
+			MailOutboxStatus fromStatus = outbox.getStatus();
 			outbox.markProcessing();
+			mailOutboxLogRecorder.record(
+				outbox,
+				MailOutboxLogEventType.PROCESSING_STARTED,
+				fromStatus,
+				outbox.getStatus()
+			);
 		}
 
 		return dueOutboxes.stream()
@@ -70,7 +85,9 @@ public class MailOutboxService {
 		try {
 			PreparedMailMessage preparedMail = resolveHandler(outbox.getMailType()).prepare(outbox.getPayloadJson());
 			ujaxSmtpMailSender.send(outbox.getRecipientEmail(), preparedMail.subject(), preparedMail.content());
+			MailOutboxStatus fromStatus = outbox.getStatus();
 			outbox.markSent(now);
+			mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.SENT, fromStatus, outbox.getStatus());
 		} catch (RuntimeException exception) {
 			handleFailure(outbox, now, exception);
 		}
@@ -78,11 +95,14 @@ public class MailOutboxService {
 
 	private void handleFailure(MailOutbox outbox, LocalDateTime now, RuntimeException exception) {
 		String summarizedError = summarizeError(exception);
+		MailOutboxStatus fromStatus = outbox.getStatus();
 		if (outbox.isRetryExhausted(properties.maxAttempts())) {
 			outbox.markFailed(summarizedError);
+			mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.FAILED, fromStatus, outbox.getStatus());
 			return;
 		}
 		outbox.scheduleRetry(now.plusMinutes(properties.retryDelayMinutes()), summarizedError);
+		mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.RETRY_SCHEDULED, fromStatus, outbox.getStatus());
 	}
 
 	private MailOutboxHandler resolveHandler(MailType mailType) {

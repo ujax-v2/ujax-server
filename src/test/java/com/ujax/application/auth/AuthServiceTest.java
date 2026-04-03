@@ -24,6 +24,9 @@ import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
 import com.ujax.domain.mail.MailOutbox;
+import com.ujax.domain.mail.MailOutboxLog;
+import com.ujax.domain.mail.MailOutboxLogEventType;
+import com.ujax.domain.mail.MailOutboxLogRepository;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -55,6 +58,9 @@ class AuthServiceTest {
 	private MailOutboxRepository mailOutboxRepository;
 
 	@Autowired
+	private MailOutboxLogRepository mailOutboxLogRepository;
+
+	@Autowired
 	private ObjectMapper objectMapper;
 
 	@MockitoBean
@@ -65,6 +71,7 @@ class AuthServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		mailOutboxLogRepository.deleteAllInBatch();
 		mailOutboxRepository.deleteAllInBatch();
 		pendingSignupRepository.deleteAll();
 		refreshTokenRepository.deleteAllInBatch();
@@ -142,7 +149,9 @@ class AuthServiceTest {
 
 			SignupStartResponse response = authService.requestSignup("new@example.com");
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
+			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 			MailOutbox outbox = outboxes.get(0);
+			MailOutboxLog log = logs.get(0);
 
 			assertThat(response.requestToken()).isNotBlank();
 			assertThat(response.expiresAt()).isAfter(LocalDateTime.now());
@@ -153,6 +162,11 @@ class AuthServiceTest {
 			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(readSignupPayload(outbox))
 				.isEqualTo(new SignupVerificationMailPayload("123456", response.expiresAt()));
+			assertThat(logs).hasSize(1);
+			assertThat(log.getMailOutboxId()).isEqualTo(outbox.getId());
+			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.ENQUEUED);
+			assertThat(log.getFromStatus()).isNull();
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.PENDING);
 		}
 
 		@Test
@@ -176,6 +190,7 @@ class AuthServiceTest {
 			SignupStartResponse firstResponse = authService.requestSignup("retry@example.com");
 			SignupStartResponse secondResponse = authService.requestSignup("retry@example.com");
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
+			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 			List<SignupVerificationMailPayload> payloads = outboxes.stream()
 				.map(AuthServiceTest.this::readSignupPayload)
 				.toList();
@@ -199,6 +214,10 @@ class AuthServiceTest {
 			assertThat(payloads)
 				.extracting(SignupVerificationMailPayload::expiresAt)
 				.containsExactly(firstResponse.expiresAt(), secondResponse.expiresAt());
+			assertThat(logs).hasSize(2);
+			assertThat(logs)
+				.extracting(MailOutboxLog::getEventType)
+				.containsOnly(MailOutboxLogEventType.ENQUEUED);
 		}
 	}
 
