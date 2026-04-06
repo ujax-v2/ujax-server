@@ -14,6 +14,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.workspace.dto.response.WorkspaceMyJoinRequestStatus;
 import com.ujax.domain.auth.RefreshTokenRepository;
+import com.ujax.domain.board.BoardCommentRepository;
+import com.ujax.domain.board.BoardLikeRepository;
+import com.ujax.domain.board.BoardRepository;
 import com.ujax.domain.problem.AlgorithmTagRepository;
 import com.ujax.domain.problem.ProblemBoxRepository;
 import com.ujax.domain.problem.ProblemRepository;
@@ -56,6 +59,15 @@ class WorkspaceJoinRequestServiceTest {
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
+	private BoardRepository boardRepository;
+
+	@Autowired
+	private BoardCommentRepository boardCommentRepository;
+
+	@Autowired
+	private BoardLikeRepository boardLikeRepository;
+
+	@Autowired
 	private SolutionRepository solutionRepository;
 
 	@Autowired
@@ -78,6 +90,9 @@ class WorkspaceJoinRequestServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		boardLikeRepository.deleteAllInBatch();
+		boardCommentRepository.deleteAllInBatch();
+		boardRepository.deleteAllInBatch();
 		solutionRepository.deleteAllInBatch();
 		workspaceJoinRequestRepository.deleteAllInBatch();
 		workspaceProblemRepository.deleteAllInBatch();
