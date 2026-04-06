@@ -34,7 +34,6 @@ class MailOutboxTest {
 				"status",
 				"attemptNo",
 				"nextAttemptAt",
-				"sentAt",
 				"lastError"
 			).containsExactly(
 				MailType.SIGNUP_VERIFICATION,
@@ -43,7 +42,6 @@ class MailOutboxTest {
 				MailOutboxStatus.PENDING,
 				0,
 				BASE_TIME,
-				null,
 				null
 			);
 		}
@@ -75,31 +73,6 @@ class MailOutboxTest {
 
 			assertThat(outbox).extracting("status", "attemptNo", "nextAttemptAt", "lastError")
 				.containsExactly(MailOutboxStatus.PENDING, 1, retryAt, "smtp timeout");
-		}
-
-		@Test
-		@DisplayName("PROCESSING 상태에서 성공 처리할 수 있다")
-		void markSent() {
-			MailOutbox outbox = createPendingOutbox();
-			outbox.markProcessing();
-			LocalDateTime sentAt = BASE_TIME.plusSeconds(30);
-
-			outbox.markSent(sentAt);
-
-			assertThat(outbox).extracting("status", "sentAt", "lastError")
-				.containsExactly(MailOutboxStatus.SENT, sentAt, null);
-		}
-
-		@Test
-		@DisplayName("PROCESSING 상태에서 최종 실패 처리할 수 있다")
-		void markFailed() {
-			MailOutbox outbox = createPendingOutbox();
-			outbox.markProcessing();
-
-			outbox.markFailed("smtp rejected");
-
-			assertThat(outbox).extracting("status", "attemptNo", "lastError")
-				.containsExactly(MailOutboxStatus.FAILED, 1, "smtp rejected");
 		}
 
 		@Test

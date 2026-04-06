@@ -55,11 +55,11 @@ public class MailOutboxLog {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "from_status", length = 20)
-	private MailOutboxStatus fromStatus;
+	private MailOutboxLogStatus fromStatus;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "to_status", length = 20)
-	private MailOutboxStatus toStatus;
+	private MailOutboxLogStatus toStatus;
 
 	@Column(name = "attempt_no")
 	private Integer attemptNo;
@@ -82,8 +82,8 @@ public class MailOutboxLog {
 		MailType mailType,
 		String recipientEmail,
 		MailOutboxLogEventType eventType,
-		MailOutboxStatus fromStatus,
-		MailOutboxStatus toStatus,
+		MailOutboxLogStatus fromStatus,
+		MailOutboxLogStatus toStatus,
 		Integer attemptNo,
 		LocalDateTime nextAttemptAt,
 		LocalDateTime sentAt,
@@ -101,11 +101,67 @@ public class MailOutboxLog {
 		this.lastError = normalizeLastError(lastError);
 	}
 
-	public static MailOutboxLog fromOutbox(
+	public static MailOutboxLog enqueued(MailOutbox outbox) {
+		return create(
+			outbox,
+			MailOutboxLogEventType.ENQUEUED,
+			null,
+			MailOutboxLogStatus.PENDING,
+			outbox.getNextAttemptAt(),
+			null,
+			outbox.getLastError()
+		);
+	}
+
+	public static MailOutboxLog transition(
 		MailOutbox outbox,
 		MailOutboxLogEventType eventType,
 		MailOutboxStatus fromStatus,
 		MailOutboxStatus toStatus
+	) {
+		return create(
+			outbox,
+			eventType,
+			MailOutboxLogStatus.from(fromStatus),
+			MailOutboxLogStatus.from(toStatus),
+			outbox.getNextAttemptAt(),
+			null,
+			outbox.getLastError()
+		);
+	}
+
+	public static MailOutboxLog sent(MailOutbox outbox, LocalDateTime sentAt) {
+		return create(
+			outbox,
+			MailOutboxLogEventType.SENT,
+			MailOutboxLogStatus.PROCESSING,
+			MailOutboxLogStatus.SENT,
+			null,
+			Objects.requireNonNull(sentAt),
+			null
+		);
+	}
+
+	public static MailOutboxLog failed(MailOutbox outbox, String lastError) {
+		return create(
+			outbox,
+			MailOutboxLogEventType.FAILED,
+			MailOutboxLogStatus.PROCESSING,
+			MailOutboxLogStatus.FAILED,
+			null,
+			null,
+			lastError
+		);
+	}
+
+	private static MailOutboxLog create(
+		MailOutbox outbox,
+		MailOutboxLogEventType eventType,
+		MailOutboxLogStatus fromStatus,
+		MailOutboxLogStatus toStatus,
+		LocalDateTime nextAttemptAt,
+		LocalDateTime sentAt,
+		String lastError
 	) {
 		Objects.requireNonNull(outbox);
 		return new MailOutboxLog(
@@ -116,9 +172,9 @@ public class MailOutboxLog {
 			fromStatus,
 			toStatus,
 			outbox.getAttemptNo(),
-			outbox.getNextAttemptAt(),
-			outbox.getSentAt(),
-			outbox.getLastError()
+			nextAttemptAt,
+			sentAt,
+			lastError
 		);
 	}
 

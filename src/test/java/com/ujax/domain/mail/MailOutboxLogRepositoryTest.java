@@ -45,12 +45,12 @@ class MailOutboxLogRepositoryTest {
 		);
 
 		MailOutboxLog enqueued = mailOutboxLogRepository.saveAndFlush(
-			MailOutboxLog.fromOutbox(outbox, MailOutboxLogEventType.ENQUEUED, null, MailOutboxStatus.PENDING)
+			MailOutboxLog.enqueued(outbox)
 		);
 		outbox.markProcessing();
 		mailOutboxRepository.saveAndFlush(outbox);
 		MailOutboxLog processingStarted = mailOutboxLogRepository.saveAndFlush(
-			MailOutboxLog.fromOutbox(
+			MailOutboxLog.transition(
 				outbox,
 				MailOutboxLogEventType.PROCESSING_STARTED,
 				MailOutboxStatus.PENDING,

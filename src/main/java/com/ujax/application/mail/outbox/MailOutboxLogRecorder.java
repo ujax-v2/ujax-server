@@ -1,5 +1,7 @@
 package com.ujax.application.mail.outbox;
 
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Component;
 
 import com.ujax.domain.mail.MailOutbox;
@@ -16,13 +18,24 @@ public class MailOutboxLogRecorder {
 
 	private final MailOutboxLogRepository mailOutboxLogRepository;
 
-	public void record(
+	public void recordEnqueued(MailOutbox outbox) {
+		mailOutboxLogRepository.save(MailOutboxLog.enqueued(outbox));
+	}
+
+	public void recordTransition(
 		MailOutbox outbox,
 		MailOutboxLogEventType eventType,
 		MailOutboxStatus fromStatus,
 		MailOutboxStatus toStatus
 	) {
-		MailOutboxLog log = MailOutboxLog.fromOutbox(outbox, eventType, fromStatus, toStatus);
-		mailOutboxLogRepository.save(log);
+		mailOutboxLogRepository.save(MailOutboxLog.transition(outbox, eventType, fromStatus, toStatus));
+	}
+
+	public void recordSent(MailOutbox outbox, LocalDateTime sentAt) {
+		mailOutboxLogRepository.save(MailOutboxLog.sent(outbox, sentAt));
+	}
+
+	public void recordFailed(MailOutbox outbox, String lastError) {
+		mailOutboxLogRepository.save(MailOutboxLog.failed(outbox, lastError));
 	}
 }

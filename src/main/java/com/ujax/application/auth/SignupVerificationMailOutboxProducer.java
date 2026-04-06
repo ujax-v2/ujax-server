@@ -9,9 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.mail.outbox.SignupVerificationMailPayload;
 import com.ujax.application.mail.outbox.MailOutboxLogRecorder;
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxLogEventType;
 import com.ujax.domain.mail.MailOutboxRepository;
-import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
 
 import lombok.RequiredArgsConstructor;
@@ -33,7 +31,7 @@ public class SignupVerificationMailOutboxProducer {
 			LocalDateTime.now()
 		);
 		MailOutbox savedOutbox = mailOutboxRepository.save(outbox);
-		mailOutboxLogRecorder.record(savedOutbox, MailOutboxLogEventType.ENQUEUED, null, MailOutboxStatus.PENDING);
+		mailOutboxLogRecorder.recordEnqueued(savedOutbox);
 	}
 
 	private String serializePayload(SignupVerificationMailPayload payload) {

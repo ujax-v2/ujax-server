@@ -25,6 +25,7 @@ import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxLog;
 import com.ujax.domain.mail.MailOutboxLogEventType;
 import com.ujax.domain.mail.MailOutboxLogRepository;
+import com.ujax.domain.mail.MailOutboxLogStatus;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -100,7 +101,7 @@ class MailOutboxServiceTest {
 				.containsOnly(MailOutboxLogEventType.PROCESSING_STARTED);
 			assertThat(logs)
 				.extracting(MailOutboxLog::getToStatus)
-				.containsOnly(MailOutboxStatus.PROCESSING);
+				.containsOnly(MailOutboxLogStatus.PROCESSING);
 		}
 	}
 
@@ -133,8 +134,8 @@ class MailOutboxServiceTest {
 			assertThat(recovered.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(recovered.getNextAttemptAt()).isEqualTo(LocalDateTime.of(2026, 4, 2, 9, 30));
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.RECOVERED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.PENDING);
+			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
 		}
 	}
 
@@ -159,8 +160,8 @@ class MailOutboxServiceTest {
 			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
 			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.SENT);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.SENT);
+			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.SENT);
 			assertThat(log.getSentAt()).isEqualTo(now);
 			then(ujaxSmtpMailSender).should().send(
 				eq("user@example.com"),
@@ -191,8 +192,8 @@ class MailOutboxServiceTest {
 			assertThat(retried.getNextAttemptAt()).isEqualTo(now.plusMinutes(7));
 			assertThat(retried.getLastError()).isEqualTo("smtp timeout");
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.RETRY_SCHEDULED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.PENDING);
+			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
 			assertThat(log.getLastError()).isEqualTo("smtp timeout");
 		}
 
@@ -216,8 +217,8 @@ class MailOutboxServiceTest {
 			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
 			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.FAILED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.FAILED);
+			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.FAILED);
 			assertThat(log.getLastError()).isEqualTo("smtp rejected");
 		}
 	}

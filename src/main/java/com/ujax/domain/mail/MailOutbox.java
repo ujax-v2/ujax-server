@@ -59,9 +59,6 @@ public class MailOutbox {
 	@Column(name = "next_attempt_at", nullable = false)
 	private LocalDateTime nextAttemptAt;
 
-	@Column(name = "sent_at")
-	private LocalDateTime sentAt;
-
 	@Column(name = "last_error", length = 500)
 	private String lastError;
 
@@ -108,20 +105,6 @@ public class MailOutbox {
 		validateStatus(MailOutboxStatus.PROCESSING);
 		this.status = MailOutboxStatus.PENDING;
 		this.nextAttemptAt = Objects.requireNonNull(retryAt);
-	}
-
-	public void markSent(LocalDateTime sentAt) {
-		validateStatus(MailOutboxStatus.PROCESSING);
-		this.status = MailOutboxStatus.SENT;
-		this.sentAt = Objects.requireNonNull(sentAt);
-		this.nextAttemptAt = sentAt;
-		this.lastError = null;
-	}
-
-	public void markFailed(String lastError) {
-		validateStatus(MailOutboxStatus.PROCESSING);
-		this.status = MailOutboxStatus.FAILED;
-		this.lastError = lastError;
 	}
 
 	public boolean isRetryExhausted(int maxAttempts) {

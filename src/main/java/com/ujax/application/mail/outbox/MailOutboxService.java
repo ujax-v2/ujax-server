@@ -37,7 +37,7 @@ public class MailOutboxService {
 
 		for (MailOutbox outbox : stuckOutboxes) {
 			outbox.recoverToPending(now);
-			mailOutboxLogRecorder.record(
+			mailOutboxLogRecorder.recordTransition(
 				outbox,
 				MailOutboxLogEventType.RECOVERED,
 				MailOutboxStatus.PROCESSING,
@@ -61,7 +61,7 @@ public class MailOutboxService {
 		for (MailOutbox outbox : dueOutboxes) {
 			MailOutboxStatus fromStatus = outbox.getStatus();
 			outbox.markProcessing();
-			mailOutboxLogRecorder.record(
+			mailOutboxLogRecorder.recordTransition(
 				outbox,
 				MailOutboxLogEventType.PROCESSING_STARTED,
 				fromStatus,
@@ -92,9 +92,7 @@ public class MailOutboxService {
 	}
 
 	private void recordSuccessAndDelete(MailOutbox outbox, LocalDateTime now) {
-		MailOutboxStatus fromStatus = outbox.getStatus();
-		outbox.markSent(now);
-		mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.SENT, fromStatus, outbox.getStatus());
+		mailOutboxLogRecorder.recordSent(outbox, now);
 		mailOutboxRepository.delete(outbox);
 	}
 
@@ -102,13 +100,17 @@ public class MailOutboxService {
 		String summarizedError = summarizeError(exception);
 		MailOutboxStatus fromStatus = outbox.getStatus();
 		if (outbox.isRetryExhausted(properties.maxAttempts())) {
-			outbox.markFailed(summarizedError);
-			mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.FAILED, fromStatus, outbox.getStatus());
+			mailOutboxLogRecorder.recordFailed(outbox, summarizedError);
 			mailOutboxRepository.delete(outbox);
 			return;
 		}
 		outbox.scheduleRetry(now.plusMinutes(properties.retryDelayMinutes()), summarizedError);
-		mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.RETRY_SCHEDULED, fromStatus, outbox.getStatus());
+		mailOutboxLogRecorder.recordTransition(
+			outbox,
+			MailOutboxLogEventType.RETRY_SCHEDULED,
+			fromStatus,
+			outbox.getStatus()
+		);
 	}
 
 	private MailOutboxHandler resolveHandler(MailType mailType) {

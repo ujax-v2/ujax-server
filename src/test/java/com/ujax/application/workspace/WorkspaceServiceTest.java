@@ -33,6 +33,7 @@ import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxLog;
 import com.ujax.domain.mail.MailOutboxLogEventType;
 import com.ujax.domain.mail.MailOutboxLogRepository;
+import com.ujax.domain.mail.MailOutboxLogStatus;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -1297,7 +1298,7 @@ class WorkspaceServiceTest {
 			assertThat(logs).hasSize(1);
 			assertThat(log.getMailOutboxId()).isEqualTo(outbox.getId());
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.ENQUEUED);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.PENDING);
+			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
 		}
 
 		@Test
