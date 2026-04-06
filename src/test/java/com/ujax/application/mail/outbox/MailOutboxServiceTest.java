@@ -143,7 +143,7 @@ class MailOutboxServiceTest {
 	class Deliver {
 
 		@Test
-		@DisplayName("전송 성공 시 SENT 로 완료한다")
+		@DisplayName("전송 성공 시 로그를 남기고 outbox 에서 제거한다")
 		void deliver_Success() throws Exception {
 			MailOutbox outbox = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"user@example.com",
@@ -156,10 +156,8 @@ class MailOutboxServiceTest {
 			LocalDateTime now = LocalDateTime.of(2026, 4, 2, 10, 1);
 			mailOutboxService.deliver(outbox.getId(), now);
 
-			MailOutbox delivered = mailOutboxRepository.findById(outbox.getId()).orElseThrow();
+			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
 			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
-			assertThat(delivered.getStatus()).isEqualTo(MailOutboxStatus.SENT);
-			assertThat(delivered.getSentAt()).isEqualTo(now);
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.SENT);
 			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
 			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.SENT);
@@ -199,7 +197,7 @@ class MailOutboxServiceTest {
 		}
 
 		@Test
-		@DisplayName("전송 실패 시 최대 시도 횟수를 넘기면 FAILED 로 종료한다")
+		@DisplayName("전송 실패 시 최대 시도 횟수를 넘기면 로그를 남기고 outbox 에서 제거한다")
 		void deliver_MarksFailedWhenRetryExhausted() throws Exception {
 			MailOutbox outbox = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"user@example.com",
@@ -215,10 +213,8 @@ class MailOutboxServiceTest {
 
 			mailOutboxService.deliver(outbox.getId(), LocalDateTime.of(2026, 4, 2, 10, 6));
 
-			MailOutbox failed = mailOutboxRepository.findById(outbox.getId()).orElseThrow();
+			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
 			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
-			assertThat(failed.getStatus()).isEqualTo(MailOutboxStatus.FAILED);
-			assertThat(failed.getLastError()).isEqualTo("smtp rejected");
 			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.FAILED);
 			assertThat(log.getFromStatus()).isEqualTo(MailOutboxStatus.PROCESSING);
 			assertThat(log.getToStatus()).isEqualTo(MailOutboxStatus.FAILED);

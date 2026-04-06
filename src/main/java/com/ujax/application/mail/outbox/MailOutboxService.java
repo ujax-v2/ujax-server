@@ -85,12 +85,17 @@ public class MailOutboxService {
 		try {
 			PreparedMailMessage preparedMail = resolveHandler(outbox.getMailType()).prepare(outbox.getPayloadJson());
 			ujaxSmtpMailSender.send(outbox.getRecipientEmail(), preparedMail.subject(), preparedMail.content());
-			MailOutboxStatus fromStatus = outbox.getStatus();
-			outbox.markSent(now);
-			mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.SENT, fromStatus, outbox.getStatus());
+			recordSuccessAndDelete(outbox, now);
 		} catch (RuntimeException exception) {
 			handleFailure(outbox, now, exception);
 		}
+	}
+
+	private void recordSuccessAndDelete(MailOutbox outbox, LocalDateTime now) {
+		MailOutboxStatus fromStatus = outbox.getStatus();
+		outbox.markSent(now);
+		mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.SENT, fromStatus, outbox.getStatus());
+		mailOutboxRepository.delete(outbox);
 	}
 
 	private void handleFailure(MailOutbox outbox, LocalDateTime now, RuntimeException exception) {
@@ -99,6 +104,7 @@ public class MailOutboxService {
 		if (outbox.isRetryExhausted(properties.maxAttempts())) {
 			outbox.markFailed(summarizedError);
 			mailOutboxLogRecorder.record(outbox, MailOutboxLogEventType.FAILED, fromStatus, outbox.getStatus());
+			mailOutboxRepository.delete(outbox);
 			return;
 		}
 		outbox.scheduleRetry(now.plusMinutes(properties.retryDelayMinutes()), summarizedError);
