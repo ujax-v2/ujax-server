@@ -10,8 +10,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -24,10 +27,6 @@ import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxLog;
-import com.ujax.domain.mail.MailOutboxLogEventType;
-import com.ujax.domain.mail.MailOutboxLogRepository;
-import com.ujax.domain.mail.MailOutboxLogStatus;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -41,6 +40,7 @@ import com.ujax.global.exception.common.UnauthorizedException;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@ExtendWith(OutputCaptureExtension.class)
 class AuthServiceTest {
 
 	@Autowired
@@ -59,9 +59,6 @@ class AuthServiceTest {
 	private MailOutboxRepository mailOutboxRepository;
 
 	@Autowired
-	private MailOutboxLogRepository mailOutboxLogRepository;
-
-	@Autowired
 	private ObjectMapper objectMapper;
 
 	@MockitoBean
@@ -72,7 +69,6 @@ class AuthServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		mailOutboxLogRepository.deleteAllInBatch();
 		mailOutboxRepository.deleteAllInBatch();
 		pendingSignupRepository.deleteAll();
 		refreshTokenRepository.deleteAllInBatch();
@@ -144,15 +140,13 @@ class AuthServiceTest {
 
 		@Test
 		@DisplayName("이메일 인증 세션을 생성하고 메일을 발송한다")
-		void requestSignup_Success() {
+		void requestSignup_Success(CapturedOutput output) {
 			given(signupVerificationCodeGenerator.generate()).willReturn("123456");
 			given(verificationCodeHasher.hash("123456")).willReturn("hashed-code");
 
 			SignupStartResponse response = authService.requestSignup("new@example.com");
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
-			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 			MailOutbox outbox = outboxes.get(0);
-			MailOutboxLog log = logs.get(0);
 
 			assertThat(response.requestToken()).isNotBlank();
 			assertThat(response.expiresAt()).isAfter(LocalDateTime.now());
@@ -163,11 +157,10 @@ class AuthServiceTest {
 			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(readSignupPayload(outbox))
 				.isEqualTo(new SignupVerificationMailPayload("123456", response.expiresAt()));
-			assertThat(logs).hasSize(1);
-			assertThat(log.getMailOutboxId()).isEqualTo(outbox.getId());
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.ENQUEUED);
-			assertThat(log.getFromStatus()).isNull();
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
+			assertThat(output.getOut())
+				.contains("event=mail_outbox")
+				.contains("eventType=ENQUEUED")
+				.contains("outboxId=" + outbox.getId());
 		}
 
 		@Test
@@ -191,7 +184,6 @@ class AuthServiceTest {
 			SignupStartResponse firstResponse = authService.requestSignup("retry@example.com");
 			SignupStartResponse secondResponse = authService.requestSignup("retry@example.com");
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
-			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 			List<SignupVerificationMailPayload> payloads = outboxes.stream()
 				.map(AuthServiceTest.this::readSignupPayload)
 				.toList();
@@ -215,10 +207,6 @@ class AuthServiceTest {
 			assertThat(payloads)
 				.extracting(SignupVerificationMailPayload::expiresAt)
 				.containsExactly(firstResponse.expiresAt(), secondResponse.expiresAt());
-			assertThat(logs).hasSize(2);
-			assertThat(logs)
-				.extracting(MailOutboxLog::getEventType)
-				.containsOnly(MailOutboxLogEventType.ENQUEUED);
 		}
 	}
 

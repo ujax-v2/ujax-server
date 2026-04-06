@@ -1,6 +1,6 @@
 package com.ujax.domain.mail;
 
-public enum MailOutboxLogEventType {
+public enum MailOutboxEventType {
 
 	ENQUEUED,
 	PROCESSING_STARTED,

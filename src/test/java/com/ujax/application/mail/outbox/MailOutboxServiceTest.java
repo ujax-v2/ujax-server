@@ -11,8 +11,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -22,16 +25,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.mail.RenderedMailContent;
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxLog;
-import com.ujax.domain.mail.MailOutboxLogEventType;
-import com.ujax.domain.mail.MailOutboxLogRepository;
-import com.ujax.domain.mail.MailOutboxLogStatus;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@ExtendWith(OutputCaptureExtension.class)
 @TestPropertySource(properties = {
 	"app.ujax.mail.outbox.delivery.retry-delay-minutes=7",
 	"app.ujax.mail.outbox.delivery.stuck-processing-minutes=10",
@@ -46,9 +46,6 @@ class MailOutboxServiceTest {
 	private MailOutboxRepository mailOutboxRepository;
 
 	@Autowired
-	private MailOutboxLogRepository mailOutboxLogRepository;
-
-	@Autowired
 	private ObjectMapper objectMapper;
 
 	@Autowired
@@ -59,7 +56,6 @@ class MailOutboxServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		mailOutboxLogRepository.deleteAllInBatch();
 		mailOutboxRepository.deleteAllInBatch();
 	}
 
@@ -69,7 +65,7 @@ class MailOutboxServiceTest {
 
 		@Test
 		@DisplayName("due 순서대로 limit 만큼 PROCESSING 으로 선점한다")
-		void reserveDueMailOutboxIds() throws Exception {
+		void reserveDueMailOutboxIds(CapturedOutput output) throws Exception {
 			MailOutbox first = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"first@example.com",
 				"111111",
@@ -90,18 +86,15 @@ class MailOutboxServiceTest {
 				LocalDateTime.of(2026, 4, 2, 10, 10),
 				2
 			);
-			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 
 			assertThat(reservedIds).containsExactly(first.getId(), second.getId());
 			assertThat(mailOutboxRepository.findAllById(reservedIds))
 				.extracting(MailOutbox::getStatus)
 				.containsOnly(MailOutboxStatus.PROCESSING);
-			assertThat(logs)
-				.extracting(MailOutboxLog::getEventType)
-				.containsOnly(MailOutboxLogEventType.PROCESSING_STARTED);
-			assertThat(logs)
-				.extracting(MailOutboxLog::getToStatus)
-				.containsOnly(MailOutboxLogStatus.PROCESSING);
+			assertThat(output.getOut())
+				.contains("eventType=PROCESSING_STARTED")
+				.contains("outboxId=" + first.getId())
+				.contains("outboxId=" + second.getId());
 		}
 	}
 
@@ -111,7 +104,7 @@ class MailOutboxServiceTest {
 
 		@Test
 		@DisplayName("오래된 PROCESSING row 를 다시 PENDING 으로 돌린다")
-		void recoverStuckProcessing() throws Exception {
+		void recoverStuckProcessing(CapturedOutput output) throws Exception {
 			MailOutbox stuck = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"stuck@example.com",
 				"111111",
@@ -130,12 +123,11 @@ class MailOutboxServiceTest {
 			mailOutboxService.recoverStuckProcessing(LocalDateTime.of(2026, 4, 2, 9, 30));
 
 			MailOutbox recovered = mailOutboxRepository.findById(stuck.getId()).orElseThrow();
-			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
 			assertThat(recovered.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(recovered.getNextAttemptAt()).isEqualTo(LocalDateTime.of(2026, 4, 2, 9, 30));
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.RECOVERED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
+			assertThat(output.getOut())
+				.contains("eventType=RECOVERED")
+				.contains("outboxId=" + stuck.getId());
 		}
 	}
 
@@ -145,7 +137,7 @@ class MailOutboxServiceTest {
 
 		@Test
 		@DisplayName("전송 성공 시 로그를 남기고 outbox 에서 제거한다")
-		void deliver_Success() throws Exception {
+		void deliver_Success(CapturedOutput output) throws Exception {
 			MailOutbox outbox = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"user@example.com",
 				"123456",
@@ -158,11 +150,10 @@ class MailOutboxServiceTest {
 			mailOutboxService.deliver(outbox.getId(), now);
 
 			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
-			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.SENT);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.SENT);
-			assertThat(log.getSentAt()).isEqualTo(now);
+			assertThat(output.getOut())
+				.contains("eventType=SENT")
+				.contains("outboxId=" + outbox.getId())
+				.contains("sentAt=" + now);
 			then(ujaxSmtpMailSender).should().send(
 				eq("user@example.com"),
 				eq("[UJAX] 회원가입 인증 코드 - [ 123456 ]"),
@@ -172,7 +163,7 @@ class MailOutboxServiceTest {
 
 		@Test
 		@DisplayName("전송 실패 시 재시도 가능한 경우 PENDING 으로 되돌린다")
-		void deliver_SchedulesRetryOnFailure() throws Exception {
+		void deliver_SchedulesRetryOnFailure(CapturedOutput output) throws Exception {
 			MailOutbox outbox = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"user@example.com",
 				"123456",
@@ -187,19 +178,18 @@ class MailOutboxServiceTest {
 			mailOutboxService.deliver(outbox.getId(), now);
 
 			MailOutbox retried = mailOutboxRepository.findById(outbox.getId()).orElseThrow();
-			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
 			assertThat(retried.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(retried.getNextAttemptAt()).isEqualTo(now.plusMinutes(7));
 			assertThat(retried.getLastError()).isEqualTo("smtp timeout");
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.RETRY_SCHEDULED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
-			assertThat(log.getLastError()).isEqualTo("smtp timeout");
+			assertThat(output.getOut())
+				.contains("eventType=RETRY_SCHEDULED")
+				.contains("outboxId=" + outbox.getId())
+				.contains("lastError=smtp timeout");
 		}
 
 		@Test
 		@DisplayName("전송 실패 시 최대 시도 횟수를 넘기면 로그를 남기고 outbox 에서 제거한다")
-		void deliver_MarksFailedWhenRetryExhausted() throws Exception {
+		void deliver_MarksFailedWhenRetryExhausted(CapturedOutput output) throws Exception {
 			MailOutbox outbox = mailOutboxRepository.saveAndFlush(createSignupOutbox(
 				"user@example.com",
 				"123456",
@@ -215,11 +205,10 @@ class MailOutboxServiceTest {
 			mailOutboxService.deliver(outbox.getId(), LocalDateTime.of(2026, 4, 2, 10, 6));
 
 			assertThat(mailOutboxRepository.findById(outbox.getId())).isEmpty();
-			MailOutboxLog log = mailOutboxLogRepository.findAll().get(0);
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.FAILED);
-			assertThat(log.getFromStatus()).isEqualTo(MailOutboxLogStatus.PROCESSING);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.FAILED);
-			assertThat(log.getLastError()).isEqualTo("smtp rejected");
+			assertThat(output.getOut())
+				.contains("eventType=FAILED")
+				.contains("outboxId=" + outbox.getId())
+				.contains("lastError=smtp rejected");
 		}
 	}
 

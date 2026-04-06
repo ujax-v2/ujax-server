@@ -30,10 +30,6 @@ import com.ujax.domain.solution.SolutionCommentRepository;
 import com.ujax.domain.solution.SolutionLikeRepository;
 import com.ujax.domain.solution.SolutionRepository;
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxLog;
-import com.ujax.domain.mail.MailOutboxLogEventType;
-import com.ujax.domain.mail.MailOutboxLogRepository;
-import com.ujax.domain.mail.MailOutboxLogStatus;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -119,9 +115,6 @@ class WorkspaceServiceTest {
 	private MailOutboxRepository mailOutboxRepository;
 
 	@Autowired
-	private MailOutboxLogRepository mailOutboxLogRepository;
-
-	@Autowired
 	private ObjectMapper objectMapper;
 
 	@MockitoBean
@@ -129,7 +122,6 @@ class WorkspaceServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		mailOutboxLogRepository.deleteAllInBatch();
 		mailOutboxRepository.deleteAllInBatch();
 		solutionLikeRepository.deleteAllInBatch();
 		solutionCommentRepository.deleteAllInBatch();
@@ -1285,9 +1277,7 @@ class WorkspaceServiceTest {
 				.findByWorkspace_IdAndUser_Id(workspace.getId(), target.getId())
 				.orElseThrow();
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
-			List<MailOutboxLog> logs = mailOutboxLogRepository.findAll();
 			MailOutbox outbox = outboxes.get(0);
-			MailOutboxLog log = logs.get(0);
 			assertThat(member.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
 			assertThat(outboxes).hasSize(1);
 			assertThat(outbox.getMailType()).isEqualTo(MailType.WORKSPACE_INVITE);
@@ -1295,10 +1285,6 @@ class WorkspaceServiceTest {
 			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(readWorkspaceInvitePayload(outbox))
 				.isEqualTo(new WorkspaceInviteMailPayload(workspace.getId(), workspace.getName()));
-			assertThat(logs).hasSize(1);
-			assertThat(log.getMailOutboxId()).isEqualTo(outbox.getId());
-			assertThat(log.getEventType()).isEqualTo(MailOutboxLogEventType.ENQUEUED);
-			assertThat(log.getToStatus()).isEqualTo(MailOutboxLogStatus.PENDING);
 		}
 
 		@Test
@@ -1321,7 +1307,6 @@ class WorkspaceServiceTest {
 				.isInstanceOf(ForbiddenException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.WORKSPACE_OWNER_REQUIRED);
 			assertThat(mailOutboxRepository.count()).isZero();
-			assertThat(mailOutboxLogRepository.count()).isZero();
 		}
 
 		@Test
@@ -1343,7 +1328,6 @@ class WorkspaceServiceTest {
 				.isInstanceOf(ConflictException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_WORKSPACE_MEMBER);
 			assertThat(mailOutboxRepository.count()).isZero();
-			assertThat(mailOutboxLogRepository.count()).isZero();
 		}
 
 		@Test
@@ -1369,7 +1353,6 @@ class WorkspaceServiceTest {
 			assertThat(restored.isDeleted()).isFalse();
 			assertThat(restored.getRole()).isEqualTo(WorkspaceMemberRole.MEMBER);
 			assertThat(mailOutboxRepository.count()).isEqualTo(1);
-			assertThat(mailOutboxLogRepository.count()).isEqualTo(1);
 		}
 
 		@Test
@@ -1389,7 +1372,6 @@ class WorkspaceServiceTest {
 				.isInstanceOf(NotFoundException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND);
 			assertThat(mailOutboxRepository.count()).isZero();
-			assertThat(mailOutboxLogRepository.count()).isZero();
 		}
 	}
 

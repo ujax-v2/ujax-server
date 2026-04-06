@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.mail.outbox.MailOutboxEventLogger;
 import com.ujax.application.mail.outbox.SignupVerificationMailPayload;
-import com.ujax.application.mail.outbox.MailOutboxLogRecorder;
 import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailType;
@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class SignupVerificationMailOutboxProducer {
 
 	private final MailOutboxRepository mailOutboxRepository;
-	private final MailOutboxLogRecorder mailOutboxLogRecorder;
+	private final MailOutboxEventLogger mailOutboxEventLogger;
 	private final ObjectMapper objectMapper;
 
 	public void enqueue(String email, String code, LocalDateTime expiresAt) {
@@ -31,7 +31,7 @@ public class SignupVerificationMailOutboxProducer {
 			LocalDateTime.now()
 		);
 		MailOutbox savedOutbox = mailOutboxRepository.save(outbox);
-		mailOutboxLogRecorder.recordEnqueued(savedOutbox);
+		mailOutboxEventLogger.logEnqueued(savedOutbox);
 	}
 
 	private String serializePayload(SignupVerificationMailPayload payload) {

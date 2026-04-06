@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxLogEventType;
+import com.ujax.domain.mail.MailOutboxEventType;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -26,7 +26,7 @@ public class MailOutboxService {
 	private final List<MailOutboxHandler> handlers;
 	private final UjaxSmtpMailSender ujaxSmtpMailSender;
 	private final MailOutboxDeliveryProperties properties;
-	private final MailOutboxLogRecorder mailOutboxLogRecorder;
+	private final MailOutboxEventLogger mailOutboxEventLogger;
 
 	@Transactional
 	public void recoverStuckProcessing(LocalDateTime now) {
@@ -37,9 +37,9 @@ public class MailOutboxService {
 
 		for (MailOutbox outbox : stuckOutboxes) {
 			outbox.recoverToPending(now);
-			mailOutboxLogRecorder.recordTransition(
+			mailOutboxEventLogger.logTransition(
 				outbox,
-				MailOutboxLogEventType.RECOVERED,
+				MailOutboxEventType.RECOVERED,
 				MailOutboxStatus.PROCESSING,
 				outbox.getStatus()
 			);
@@ -61,9 +61,9 @@ public class MailOutboxService {
 		for (MailOutbox outbox : dueOutboxes) {
 			MailOutboxStatus fromStatus = outbox.getStatus();
 			outbox.markProcessing();
-			mailOutboxLogRecorder.recordTransition(
+			mailOutboxEventLogger.logTransition(
 				outbox,
-				MailOutboxLogEventType.PROCESSING_STARTED,
+				MailOutboxEventType.PROCESSING_STARTED,
 				fromStatus,
 				outbox.getStatus()
 			);
@@ -92,7 +92,7 @@ public class MailOutboxService {
 	}
 
 	private void recordSuccessAndDelete(MailOutbox outbox, LocalDateTime now) {
-		mailOutboxLogRecorder.recordSent(outbox, now);
+		mailOutboxEventLogger.logSent(outbox, now);
 		mailOutboxRepository.delete(outbox);
 	}
 
@@ -100,14 +100,14 @@ public class MailOutboxService {
 		String summarizedError = summarizeError(exception);
 		MailOutboxStatus fromStatus = outbox.getStatus();
 		if (outbox.isRetryExhausted(properties.maxAttempts())) {
-			mailOutboxLogRecorder.recordFailed(outbox, summarizedError);
+			mailOutboxEventLogger.logFailed(outbox, summarizedError);
 			mailOutboxRepository.delete(outbox);
 			return;
 		}
 		outbox.scheduleRetry(now.plusMinutes(properties.retryDelayMinutes()), summarizedError);
-		mailOutboxLogRecorder.recordTransition(
+		mailOutboxEventLogger.logTransition(
 			outbox,
-			MailOutboxLogEventType.RETRY_SCHEDULED,
+			MailOutboxEventType.RETRY_SCHEDULED,
 			fromStatus,
 			outbox.getStatus()
 		);
