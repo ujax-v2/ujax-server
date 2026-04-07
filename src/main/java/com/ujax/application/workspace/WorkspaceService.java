@@ -53,7 +53,9 @@ public class WorkspaceService {
 		validatePageable(page, size);
 		String normalizedName = name == null ? null : name.trim();
 		PageRequest pageable = PageRequest.of(page, size, WORKSPACE_DEFAULT_SORT);
-		Page<Workspace> workspaces = workspaceRepository.findByNameContainingOrAll(normalizedName, pageable);
+		Page<Workspace> workspaces = normalizedName == null || normalizedName.isBlank()
+			? workspaceRepository.findAll(pageable)
+			: workspaceRepository.findByNameContaining(normalizedName, pageable);
 		return PageResponse.of(
 			workspaces.getContent().stream().map(WorkspaceResponse::from).toList(),
 			workspaces.getNumber(),

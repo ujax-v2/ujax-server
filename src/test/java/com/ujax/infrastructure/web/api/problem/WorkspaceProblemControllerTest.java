@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.problem.WorkspaceProblemService;
+import com.ujax.global.exception.GlobalExceptionHandler;
 import com.ujax.infrastructure.security.UserPrincipal;
 import com.ujax.infrastructure.web.problem.WorkspaceProblemController;
 import com.ujax.support.TestSecurityConfig;
@@ -26,7 +27,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
 @WebMvcTest(WorkspaceProblemController.class)
-@Import(TestSecurityConfig.class)
+@Import({TestSecurityConfig.class, GlobalExceptionHandler.class})
 class WorkspaceProblemControllerTest {
 
 	@Autowired
@@ -65,6 +66,17 @@ class WorkspaceProblemControllerTest {
 		mockMvc.perform(post("/api/v1/workspaces/1/problem-boxes/1/problems")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body))
+			.andDo(print())
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("page 또는 size가 잘못되면 400 오류가 발생한다")
+	void listWithInvalidPageable() throws Exception {
+		mockMvc.perform(get("/api/v1/workspaces/1/problem-boxes/1/problems")
+				.param("page", "-1")
+				.param("size", "0")
+				.contentType(MediaType.APPLICATION_JSON))
 			.andDo(print())
 			.andExpect(status().isBadRequest());
 	}

@@ -5,6 +5,7 @@ import com.ujax.domain.workspace.WorkspaceMember;
 public record DashboardStreakRankingResponse(
 	Long workspaceMemberId,
 	String nickname,
+	String userImage,
 	int streakDays
 ) {
 
@@ -12,6 +13,7 @@ public record DashboardStreakRankingResponse(
 		return new DashboardStreakRankingResponse(
 			member.getId(),
 			member.getNickname(),
+			member.getUser().getProfileImageUrl(),
 			streakDays
 		);
 	}

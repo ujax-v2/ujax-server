@@ -88,11 +88,13 @@ class WorkspaceProblemControllerDocsTest {
 			1L, 1000, "A+B", "Bronze V", now.plusDays(7), now, now);
 
 		PageResponse<WorkspaceProblemResponse> response = PageResponse.of(List.of(item), 0, 10, 1L, 1);
-		given(workspaceProblemService.listWorkspaceProblems(anyLong(), anyLong(), anyLong(), anyInt(), anyInt()))
+		given(workspaceProblemService.listWorkspaceProblems(
+			anyLong(), anyLong(), anyLong(), nullable(String.class), anyInt(), anyInt()))
 			.willReturn(response);
 
 		// when & then
 		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/problem-boxes/{problemBoxId}/problems", 1, 1)
+				.param("keyword", "A+B")
 				.param("page", "0")
 				.param("size", "10")
 				.contentType(MediaType.APPLICATION_JSON))
@@ -110,6 +112,7 @@ class WorkspaceProblemControllerDocsTest {
 						parameterWithName("problemBoxId").description("문제집 ID")
 					)
 					.queryParameters(
+						parameterWithName("keyword").optional().description("문제 번호/제목 검색어"),
 						parameterWithName("page").optional().description("페이지 번호"),
 						parameterWithName("size").optional().description("페이지 크기")
 					)
@@ -143,7 +146,8 @@ class WorkspaceProblemControllerDocsTest {
 	@DisplayName("문제 목록 조회 API - 권한 없음")
 	void listWorkspaceProblemsForbidden() throws Exception {
 		// given
-		given(workspaceProblemService.listWorkspaceProblems(anyLong(), anyLong(), anyLong(), anyInt(), anyInt()))
+		given(workspaceProblemService.listWorkspaceProblems(
+			anyLong(), anyLong(), anyLong(), nullable(String.class), anyInt(), anyInt()))
 			.willThrow(new ForbiddenException(ErrorCode.WORKSPACE_MEMBER_FORBIDDEN));
 
 		// when & then

@@ -49,14 +49,13 @@ class WorkspaceRepositoryTest {
 
 	@Test
 	@DisplayName("검색어가 없으면 최신순으로 전체 워크스페이스를 조회한다")
-	void findByNameContainingOrAllWithoutName() {
+	void findAllLatestOrder() {
 		// given
 		Workspace older = workspaceRepository.save(Workspace.create("오래된 공간", "소개"));
 		Workspace newer = workspaceRepository.save(Workspace.create("새 공간", "소개"));
 
 		// when
-		Page<Workspace> result = workspaceRepository.findByNameContainingOrAll(
-			null,
+		Page<Workspace> result = workspaceRepository.findAll(
 			PageRequest.of(0, 10, org.springframework.data.domain.Sort.by(
 				org.springframework.data.domain.Sort.Order.desc("createdAt"),
 				org.springframework.data.domain.Sort.Order.desc("id")

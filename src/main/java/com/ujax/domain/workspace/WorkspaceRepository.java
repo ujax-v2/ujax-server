@@ -43,10 +43,4 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, Long> {
 	boolean existsByName(String name);
 
 	Page<Workspace> findByNameContaining(String name, Pageable pageable);
-
-	@Query("""
-		SELECT w FROM Workspace w
-		WHERE (:name IS NULL OR :name = '' OR w.name LIKE CONCAT('%', :name, '%'))
-		""")
-	Page<Workspace> findByNameContainingOrAll(@Param("name") String name, Pageable pageable);
 }
