@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.infrastructure.external.mail;
 
 import java.io.UnsupportedEncodingException;
 
@@ -9,12 +9,13 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 import com.ujax.application.mail.RenderedMailContent;
+import com.ujax.application.mail.outbox.MailSender;
 import com.ujax.global.exception.common.ExternalApiException;
 
 import jakarta.mail.MessagingException;
 
 @Component
-public class UjaxSmtpMailSender {
+public class SmtpMailSender implements MailSender {
 
 	private static final String SMTP_SERVICE = "SMTP";
 
@@ -22,7 +23,7 @@ public class UjaxSmtpMailSender {
 	private final String fromAddress;
 	private final String fromName;
 
-	public UjaxSmtpMailSender(
+	public SmtpMailSender(
 		JavaMailSender mailSender,
 		@Value("${app.ujax.mail.from}") String fromAddress,
 		@Value("${app.ujax.mail.name}") String fromName
@@ -32,6 +33,7 @@ public class UjaxSmtpMailSender {
 		this.fromName = fromName;
 	}
 
+	@Override
 	public void send(String recipientEmail, String subject, RenderedMailContent content) {
 		try {
 			var message = mailSender.createMimeMessage();

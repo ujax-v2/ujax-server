@@ -52,7 +52,7 @@ class MailOutboxServiceTest {
 	private JdbcTemplate jdbcTemplate;
 
 	@MockitoBean
-	private UjaxSmtpMailSender ujaxSmtpMailSender;
+	private MailSender mailSender;
 
 	@BeforeEach
 	void setUp() {
@@ -154,7 +154,7 @@ class MailOutboxServiceTest {
 				.contains("eventType=SENT")
 				.contains("outboxId=" + outbox.getId())
 				.contains("sentAt=" + now);
-			then(ujaxSmtpMailSender).should().send(
+			then(mailSender).should().send(
 				eq("user@example.com"),
 				eq("[UJAX] 회원가입 인증 코드 - [ 123456 ]"),
 				any(RenderedMailContent.class)
@@ -171,7 +171,7 @@ class MailOutboxServiceTest {
 			));
 			outbox.markProcessing();
 			mailOutboxRepository.saveAndFlush(outbox);
-			willThrow(new RuntimeException("smtp timeout")).given(ujaxSmtpMailSender)
+			willThrow(new RuntimeException("smtp timeout")).given(mailSender)
 				.send(anyString(), anyString(), any(RenderedMailContent.class));
 
 			LocalDateTime now = LocalDateTime.of(2026, 4, 2, 10, 1);
@@ -199,7 +199,7 @@ class MailOutboxServiceTest {
 			outbox.scheduleRetry(LocalDateTime.of(2026, 4, 2, 10, 5), "smtp timeout");
 			outbox.markProcessing();
 			mailOutboxRepository.saveAndFlush(outbox);
-			willThrow(new RuntimeException("smtp rejected")).given(ujaxSmtpMailSender)
+			willThrow(new RuntimeException("smtp rejected")).given(mailSender)
 				.send(anyString(), anyString(), any(RenderedMailContent.class));
 
 			mailOutboxService.deliver(outbox.getId(), LocalDateTime.of(2026, 4, 2, 10, 6));

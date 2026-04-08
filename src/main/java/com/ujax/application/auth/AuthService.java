@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
 import com.ujax.application.auth.dto.response.SignupStartResponse;
+import com.ujax.application.mail.MailNotifier;
 import com.ujax.domain.auth.PendingSignup;
 import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
@@ -36,7 +37,7 @@ public class AuthService {
 	private final PendingSignupRepository pendingSignupRepository;
 	private final SignupVerificationCodeGenerator signupVerificationCodeGenerator;
 	private final VerificationCodeHasher verificationCodeHasher;
-	private final SignupVerificationMailOutboxProducer signupVerificationMailOutboxProducer;
+	private final MailNotifier mailNotifier;
 	private final SignupVerificationProperties signupVerificationProperties;
 
 	public void checkEmailAvailability(String email) {
@@ -59,7 +60,7 @@ public class AuthService {
 			.orElseGet(() -> PendingSignup.create(email, codeHash, expiresAt));
 
 		pendingSignupRepository.save(pendingSignup);
-		signupVerificationMailOutboxProducer.enqueue(email, verificationCode, expiresAt);
+		mailNotifier.enqueueSignupVerification(email, verificationCode, expiresAt);
 
 		return new SignupStartResponse(pendingSignup.getRequestToken(), pendingSignup.getExpiresAt());
 	}

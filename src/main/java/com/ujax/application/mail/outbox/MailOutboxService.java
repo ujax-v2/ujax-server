@@ -24,7 +24,7 @@ public class MailOutboxService {
 
 	private final MailOutboxRepository mailOutboxRepository;
 	private final List<MailOutboxHandler> handlers;
-	private final UjaxSmtpMailSender ujaxSmtpMailSender;
+	private final MailSender mailSender;
 	private final MailOutboxDeliveryProperties properties;
 	private final MailOutboxEventLogger mailOutboxEventLogger;
 
@@ -84,7 +84,7 @@ public class MailOutboxService {
 
 		try {
 			PreparedMailMessage preparedMail = resolveHandler(outbox.getMailType()).prepare(outbox.getPayloadJson());
-			ujaxSmtpMailSender.send(outbox.getRecipientEmail(), preparedMail.subject(), preparedMail.content());
+			mailSender.send(outbox.getRecipientEmail(), preparedMail.subject(), preparedMail.content());
 			recordSuccessAndDelete(outbox, now);
 		} catch (RuntimeException exception) {
 			handleFailure(outbox, now, exception);

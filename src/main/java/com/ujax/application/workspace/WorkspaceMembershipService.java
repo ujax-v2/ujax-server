@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ujax.application.mail.MailNotifier;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberListResponse;
 import com.ujax.application.workspace.dto.response.WorkspaceMemberResponse;
 import com.ujax.domain.user.User;
@@ -34,7 +35,7 @@ public class WorkspaceMembershipService {
 	private final WorkspaceMemberRepository workspaceMemberRepository;
 	private final UserRepository userRepository;
 	private final WorkspaceMemberActivationService workspaceMemberActivationService;
-	private final WorkspaceInviteMailOutboxProducer workspaceInviteMailOutboxProducer;
+	private final MailNotifier mailNotifier;
 
 	public PageResponse<WorkspaceMemberListResponse> listWorkspaceMembers(Long workspaceId, Long userId, int page, int size) {
 		validatePageable(page, size);
@@ -75,7 +76,7 @@ public class WorkspaceMembershipService {
 			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
 		workspaceMemberActivationService.activateMember(workspace, user);
-		workspaceInviteMailOutboxProducer.enqueue(email, workspace.getName(), workspaceId);
+		mailNotifier.enqueueWorkspaceInvite(email, workspace.getName(), workspaceId);
 	}
 
 	@Transactional
