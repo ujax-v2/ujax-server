@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.infrastructure.config.mail;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;

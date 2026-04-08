@@ -1,10 +1,13 @@
-package com.ujax.application.auth;
+package com.ujax.infrastructure.scheduling.auth;
 
 import java.time.LocalDateTime;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import com.ujax.application.auth.PendingSignupCleanupService;
+import com.ujax.infrastructure.config.auth.PendingSignupCleanupSchedulerProperties;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

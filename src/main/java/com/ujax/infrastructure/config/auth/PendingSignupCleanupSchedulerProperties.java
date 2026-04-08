@@ -1,4 +1,4 @@
-package com.ujax.application.auth;
+package com.ujax.infrastructure.config.auth;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

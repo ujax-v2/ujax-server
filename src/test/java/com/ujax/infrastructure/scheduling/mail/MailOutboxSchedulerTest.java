@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.infrastructure.scheduling.mail;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
@@ -9,6 +9,9 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+
+import com.ujax.application.mail.outbox.MailOutboxService;
+import com.ujax.infrastructure.config.mail.MailOutboxSchedulerProperties;
 
 class MailOutboxSchedulerTest {
 

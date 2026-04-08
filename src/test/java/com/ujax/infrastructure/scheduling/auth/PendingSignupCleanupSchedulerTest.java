@@ -1,10 +1,13 @@
-package com.ujax.application.auth;
+package com.ujax.infrastructure.scheduling.auth;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.ujax.application.auth.PendingSignupCleanupService;
+import com.ujax.infrastructure.config.auth.PendingSignupCleanupSchedulerProperties;
 
 class PendingSignupCleanupSchedulerTest {
 

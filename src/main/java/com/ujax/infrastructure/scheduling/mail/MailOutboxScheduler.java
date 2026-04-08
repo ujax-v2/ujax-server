@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.infrastructure.scheduling.mail;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -6,6 +6,9 @@ import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import com.ujax.application.mail.outbox.MailOutboxService;
+import com.ujax.infrastructure.config.mail.MailOutboxSchedulerProperties;
 
 import lombok.RequiredArgsConstructor;
 
