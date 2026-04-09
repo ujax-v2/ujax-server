@@ -3,7 +3,6 @@ package com.ujax.application.mail.outbox;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +47,7 @@ public class MailOutboxService {
 			return List.of();
 		}
 
-		List<MailOutbox> dueOutboxes = mailOutboxRepository.findAllByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
-			MailOutboxStatus.PENDING,
-			now,
-			PageRequest.of(0, limit)
-		);
+		List<MailOutbox> dueOutboxes = mailOutboxRepository.findDuePendingOutboxesForUpdate(now, limit);
 
 		for (MailOutbox outbox : dueOutboxes) {
 			MailOutboxStatus fromStatus = outbox.getStatus();

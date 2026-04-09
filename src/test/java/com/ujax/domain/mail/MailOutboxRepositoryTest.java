@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -35,8 +34,8 @@ class MailOutboxRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("PENDING 상태이고 현재 시각 이전인 메일만 due 순서로 조회한다")
-	void findAllByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc() {
+	@DisplayName("due 메일을 잠금과 함께 due 순서로 조회한다")
+	void findDuePendingOutboxesForUpdate() {
 		MailOutbox dueFirst = mailOutboxRepository.saveAndFlush(
 			MailOutbox.create(MailType.SIGNUP_VERIFICATION, "first@example.com", "{\"code\":\"111111\"}",
 				LocalDateTime.of(2026, 4, 2, 10, 0))
@@ -50,10 +49,9 @@ class MailOutboxRepositoryTest {
 				LocalDateTime.of(2026, 4, 2, 10, 30))
 		);
 
-		List<MailOutbox> result = mailOutboxRepository.findAllByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
-			MailOutboxStatus.PENDING,
+		List<MailOutbox> result = mailOutboxRepository.findDuePendingOutboxesForUpdate(
 			LocalDateTime.of(2026, 4, 2, 10, 10),
-			PageRequest.of(0, 10)
+			10
 		);
 
 		assertThat(result)
