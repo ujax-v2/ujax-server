@@ -26,6 +26,8 @@ spring:
         "[mail.smtp.writetimeout]": 5000
 
 app:
+  scheduler:
+    pool-size: ${APP_SCHEDULER_POOL_SIZE:4}
   auth:
     signup-verification:
       ttl-minutes: ${SIGNUP_VERIFICATION_TTL_MINUTES:5}
