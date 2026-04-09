@@ -1,0 +1,129 @@
+<svg width="1600" height="760" viewBox="0 0 1600 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="header" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#155E75"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10V0Z" fill="#64748B"/>
+    </marker>
+    <style>
+      .title { font: 700 28px 'Inter', 'Arial', sans-serif; fill: #FFFFFF; }
+      .subtitle { font: 500 14px 'Inter', 'Arial', sans-serif; fill: #CFFAFE; }
+      .box-title { font: 700 18px 'Inter', 'Arial', sans-serif; fill: #0F172A; }
+      .box-body { font: 500 13px 'Inter', 'Arial', sans-serif; fill: #475569; }
+      .label { font: 600 12px 'Inter', 'Arial', sans-serif; fill: #0F172A; }
+      .small { font: 500 12px 'Inter', 'Arial', sans-serif; fill: #64748B; }
+      .line { stroke: #64748B; stroke-width: 3; marker-end: url(#arrow); }
+      .dashed { stroke: #94A3B8; stroke-width: 2.5; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .box { fill: #FFFFFF; stroke: #CBD5E1; stroke-width: 2; rx: 18; }
+      .box-alt { fill: #F8FAFC; stroke: #BFDBFE; stroke-width: 2; rx: 18; }
+      .box-template { fill: #ECFEFF; stroke: #67E8F9; stroke-width: 2; rx: 18; }
+      .box-layout { fill: #F1F5F9; stroke: #94A3B8; stroke-width: 2; rx: 18; }
+    </style>
+  </defs>
+
+  <rect x="24" y="24" width="1552" height="84" rx="24" fill="url(#header)"/>
+  <text x="56" y="63" class="title">Mail Outbox Class Flow</text>
+  <text x="56" y="89" class="subtitle">Service → Port → Outbox → Scheduler → Handler → Template → SMTP</text>
+
+  <!-- Row 1 -->
+  <rect x="48" y="156" width="180" height="96" class="box"/>
+  <text x="72" y="192" class="box-title">Caller Service</text>
+  <text x="72" y="215" class="box-body">회원가입 / 초대 등</text>
+  <text x="72" y="236" class="box-body">메일 요청을 생성</text>
+
+  <rect x="270" y="156" width="180" height="96" class="box"/>
+  <text x="294" y="192" class="box-title">MailNotifier</text>
+  <text x="294" y="215" class="box-body">메일 요청 포트</text>
+  <text x="294" y="236" class="box-body">application entry</text>
+
+  <rect x="492" y="156" width="220" height="96" class="box-alt"/>
+  <text x="516" y="192" class="box-title">OutboxMailNotifier</text>
+  <text x="516" y="215" class="box-body">payload 직렬화</text>
+  <text x="516" y="236" class="box-body">mail_outbox row 적재</text>
+
+  <rect x="754" y="156" width="220" height="96" class="box"/>
+  <text x="778" y="192" class="box-title">MailOutboxScheduler</text>
+  <text x="778" y="215" class="box-body">due outbox batch 실행</text>
+  <text x="778" y="236" class="box-body">fixedDelay scheduling</text>
+
+  <rect x="1016" y="156" width="220" height="96" class="box-alt"/>
+  <text x="1040" y="192" class="box-title">MailOutboxService</text>
+  <text x="1040" y="215" class="box-body">recover / reserve / deliver</text>
+  <text x="1040" y="236" class="box-body">retry / failed 처리</text>
+
+  <line x1="228" y1="204" x2="270" y2="204" class="line"/>
+  <line x1="450" y1="204" x2="492" y2="204" class="line"/>
+  <line x1="712" y1="204" x2="754" y2="204" class="line"/>
+  <line x1="974" y1="204" x2="1016" y2="204" class="line"/>
+
+  <!-- Row 2 -->
+  <rect x="1090" y="334" width="220" height="96" class="box"/>
+  <text x="1114" y="370" class="box-title">MailOutboxHandler</text>
+  <text x="1114" y="393" class="box-body">MailType 별 payload 해석</text>
+  <text x="1114" y="414" class="box-body">PreparedMailMessage 반환</text>
+
+  <rect x="1352" y="334" width="180" height="96" class="box-alt"/>
+  <text x="1376" y="370" class="box-title">MailSender</text>
+  <text x="1376" y="393" class="box-body">발송 포트</text>
+  <text x="1376" y="414" class="box-body">RenderedMailContent 전달</text>
+
+  <rect x="1352" y="500" width="180" height="96" class="box"/>
+  <text x="1376" y="536" class="box-title">SmtpMailSender</text>
+  <text x="1376" y="559" class="box-body">JavaMailSender 기반</text>
+  <text x="1376" y="580" class="box-body">SMTP warn log / 예외 변환</text>
+
+  <line x1="1126" y1="252" x2="1126" y2="334" class="line"/>
+  <line x1="1310" y1="382" x2="1352" y2="382" class="line"/>
+  <line x1="1442" y1="430" x2="1442" y2="500" class="line"/>
+
+  <!-- Handler branches -->
+  <rect x="732" y="334" width="300" height="96" class="box-template"/>
+  <text x="756" y="370" class="box-title">SignupVerificationMailOutboxHandler</text>
+  <text x="756" y="393" class="box-body">signup payload 파싱</text>
+  <text x="756" y="414" class="box-body">subject + signup template 선택</text>
+
+  <rect x="732" y="500" width="300" height="96" class="box-template"/>
+  <text x="756" y="536" class="box-title">WorkspaceInviteMailOutboxHandler</text>
+  <text x="756" y="559" class="box-body">invite payload 파싱</text>
+  <text x="756" y="580" class="box-body">subject + invite template 선택</text>
+
+  <line x1="1090" y1="382" x2="1032" y2="382" class="dashed"/>
+  <line x1="1090" y1="382" x2="1032" y2="548" class="dashed"/>
+
+  <!-- Template renderers -->
+  <rect x="372" y="334" width="300" height="96" class="box-template"/>
+  <text x="396" y="370" class="box-title">SignupVerificationMailTemplateRenderer</text>
+  <text x="396" y="393" class="box-body">회원가입 인증 메일 본문 생성</text>
+  <text x="396" y="414" class="box-body">RenderedMailContent 반환</text>
+
+  <rect x="372" y="500" width="300" height="96" class="box-template"/>
+  <text x="396" y="536" class="box-title">WorkspaceInviteMailTemplateRenderer</text>
+  <text x="396" y="559" class="box-body">워크스페이스 초대 본문 생성</text>
+  <text x="396" y="580" class="box-body">RenderedMailContent 반환</text>
+
+  <line x1="732" y1="382" x2="672" y2="382" class="line"/>
+  <line x1="732" y1="548" x2="672" y2="548" class="line"/>
+
+  <!-- Shared layout -->
+  <rect x="48" y="414" width="264" height="96" class="box-layout"/>
+  <text x="72" y="450" class="box-title">MailTemplateLayout</text>
+  <text x="72" y="473" class="box-body">공통 HTML wrapper</text>
+  <text x="72" y="494" class="box-body">escape / header / footer 재사용</text>
+
+  <line x1="372" y1="382" x2="312" y2="448" class="dashed"/>
+  <line x1="372" y1="548" x2="312" y2="476" class="dashed"/>
+
+  <!-- Legend -->
+  <rect x="48" y="654" width="1504" height="72" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="76" y="678" width="18" height="18" class="box"/>
+  <text x="106" y="692" class="label">공통 오케스트레이션 / 포트</text>
+  <rect x="334" y="678" width="18" height="18" class="box-alt"/>
+  <text x="364" y="692" class="label">Outbox / 실행 제어</text>
+  <rect x="548" y="678" width="18" height="18" class="box-template"/>
+  <text x="578" y="692" class="label">타입별 handler / template</text>
+  <rect x="838" y="678" width="18" height="18" class="box-layout"/>
+  <text x="868" y="692" class="label">공통 레이아웃 helper</text>
+  <text x="1120" y="692" class="small">실선: 주 실행 흐름 / 점선: 타입별 분기 및 공통 재사용</text>
+</svg>
