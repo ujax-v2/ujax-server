@@ -1,6 +1,6 @@
-<svg width="1600" height="760" viewBox="0 0 1600 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1700" height="920" viewBox="0 0 1700 920" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="header" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+    <linearGradient id="header" x1="0" y1="0" x2="1700" y2="0" gradientUnits="userSpaceOnUse">
       <stop stop-color="#0F172A"/>
       <stop offset="1" stop-color="#155E75"/>
     </linearGradient>
@@ -14,18 +14,19 @@
       .box-body { font: 500 13px 'Inter', 'Arial', sans-serif; fill: #475569; }
       .label { font: 600 12px 'Inter', 'Arial', sans-serif; fill: #0F172A; }
       .small { font: 500 12px 'Inter', 'Arial', sans-serif; fill: #64748B; }
-      .line { stroke: #64748B; stroke-width: 3; marker-end: url(#arrow); }
-      .dashed { stroke: #94A3B8; stroke-width: 2.5; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .line { stroke: #64748B; stroke-width: 3; marker-end: url(#arrow); fill: none; }
+      .dashed { stroke: #94A3B8; stroke-width: 2.5; stroke-dasharray: 8 8; marker-end: url(#arrow); fill: none; }
       .box { fill: #FFFFFF; stroke: #CBD5E1; stroke-width: 2; rx: 18; }
       .box-alt { fill: #F8FAFC; stroke: #BFDBFE; stroke-width: 2; rx: 18; }
       .box-template { fill: #ECFEFF; stroke: #67E8F9; stroke-width: 2; rx: 18; }
       .box-layout { fill: #F1F5F9; stroke: #94A3B8; stroke-width: 2; rx: 18; }
+      .box-log { fill: #FFFBEB; stroke: #F59E0B; stroke-width: 2; rx: 18; }
     </style>
   </defs>
 
-  <rect x="24" y="24" width="1552" height="84" rx="24" fill="url(#header)"/>
+  <rect x="24" y="24" width="1652" height="84" rx="24" fill="url(#header)"/>
   <text x="56" y="63" class="title">Mail Outbox Class Flow</text>
-  <text x="56" y="89" class="subtitle">Service → Port → Outbox → Scheduler → Handler → Template → SMTP</text>
+  <text x="56" y="89" class="subtitle">Service → Port → Outbox → Scheduler → Handler → Template → SMTP + Logging</text>
 
   <!-- Row 1 -->
   <rect x="48" y="156" width="180" height="96" class="box"/>
@@ -115,15 +116,48 @@
   <line x1="372" y1="382" x2="312" y2="448" class="dashed"/>
   <line x1="372" y1="548" x2="312" y2="476" class="dashed"/>
 
+  <!-- Logging -->
+  <rect x="1028" y="500" width="264" height="96" class="box-log"/>
+  <text x="1052" y="536" class="box-title">MailOutboxEventLogger</text>
+  <text x="1052" y="559" class="box-body">ENQUEUED / SENT / FAILED</text>
+  <text x="1052" y="580" class="box-body">mail_outbox 구조 로그 기록</text>
+
+  <rect x="1028" y="640" width="264" height="88" class="box-log"/>
+  <text x="1052" y="674" class="box-title">Application Logs</text>
+  <text x="1052" y="697" class="box-body">stdout / Docker / Loki</text>
+  <text x="1052" y="718" class="box-body">운영 로그 조회 대상</text>
+
+  <rect x="1352" y="640" width="180" height="88" class="box-log"/>
+  <text x="1376" y="674" class="box-title">MailOutbox.lastError</text>
+  <text x="1376" y="697" class="box-body">retry / failed 요약</text>
+  <text x="1376" y="718" class="box-body">DB 상태 추적용</text>
+
+  <path d="M602 252 L602 460 L1028 460 L1028 548" class="dashed"/>
+  <text x="636" y="452" class="small">enqueue log</text>
+
+  <path d="M1180 252 L1180 500" class="dashed"/>
+  <text x="1192" y="392" class="small">state events</text>
+
+  <path d="M1160 596 L1160 640" class="dashed"/>
+  <text x="1172" y="624" class="small">slf4j</text>
+
+  <path d="M1442 596 L1442 640 L1292 640" class="dashed"/>
+  <text x="1460" y="620" class="small">warn log</text>
+
+  <path d="M1236 252 L1236 684 L1352 684" class="dashed"/>
+  <text x="1248" y="670" class="small">summarizeError</text>
+
   <!-- Legend -->
-  <rect x="48" y="654" width="1504" height="72" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-  <rect x="76" y="678" width="18" height="18" class="box"/>
-  <text x="106" y="692" class="label">공통 오케스트레이션 / 포트</text>
-  <rect x="334" y="678" width="18" height="18" class="box-alt"/>
-  <text x="364" y="692" class="label">Outbox / 실행 제어</text>
-  <rect x="548" y="678" width="18" height="18" class="box-template"/>
-  <text x="578" y="692" class="label">타입별 handler / template</text>
-  <rect x="838" y="678" width="18" height="18" class="box-layout"/>
-  <text x="868" y="692" class="label">공통 레이아웃 helper</text>
-  <text x="1120" y="692" class="small">실선: 주 실행 흐름 / 점선: 타입별 분기 및 공통 재사용</text>
+  <rect x="48" y="772" width="1604" height="96" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="76" y="802" width="18" height="18" class="box"/>
+  <text x="106" y="816" class="label">공통 오케스트레이션 / 포트</text>
+  <rect x="334" y="802" width="18" height="18" class="box-alt"/>
+  <text x="364" y="816" class="label">Outbox / 실행 제어</text>
+  <rect x="548" y="802" width="18" height="18" class="box-template"/>
+  <text x="578" y="816" class="label">타입별 handler / template</text>
+  <rect x="838" y="802" width="18" height="18" class="box-layout"/>
+  <text x="868" y="816" class="label">공통 레이아웃 helper</text>
+  <rect x="1110" y="802" width="18" height="18" class="box-log"/>
+  <text x="1140" y="816" class="label">로그 / 운영 추적</text>
+  <text x="76" y="850" class="small">실선: 주 실행 흐름 / 점선: 타입별 분기, 공통 재사용, 로그 및 상태 추적 흐름</text>
 </svg>
