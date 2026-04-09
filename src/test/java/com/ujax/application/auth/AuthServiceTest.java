@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
 import com.ujax.application.auth.dto.response.SignupStartResponse;
-import com.ujax.application.mail.outbox.SignupVerificationMailPayload;
+import com.ujax.application.mail.outbox.message.SignupVerificationMailPayload;
 import com.ujax.domain.auth.PendingSignup;
 import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;

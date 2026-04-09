@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ujax.application.mail.outbox.message.WorkspaceInviteMailPayload;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
 import com.ujax.domain.board.BoardRepository;
@@ -51,7 +52,6 @@ import com.ujax.global.exception.common.NotFoundException;
 import com.ujax.infrastructure.external.s3.S3StorageService;
 import com.ujax.infrastructure.external.s3.dto.PresignedUrlResult;
 import com.ujax.infrastructure.web.workspace.dto.request.WorkspaceImageUploadRequest;
-import com.ujax.application.mail.outbox.WorkspaceInviteMailPayload;
 
 @SpringBootTest
 @ActiveProfiles("test")
