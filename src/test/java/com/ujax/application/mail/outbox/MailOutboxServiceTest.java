@@ -23,7 +23,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ujax.application.mail.RenderedMailContent;
+import com.ujax.application.mail.outbox.message.SignupVerificationMailPayload;
+import com.ujax.application.mail.template.RenderedMailContent;
 import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;

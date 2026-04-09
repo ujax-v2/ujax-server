@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.application.mail.outbox.message;
 
 import java.time.LocalDateTime;
 

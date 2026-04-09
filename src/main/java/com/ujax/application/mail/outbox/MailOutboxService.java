@@ -7,8 +7,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ujax.application.mail.outbox.handler.MailOutboxHandler;
+import com.ujax.application.mail.outbox.message.PreparedMailMessage;
 import com.ujax.domain.mail.MailOutbox;
-import com.ujax.domain.mail.MailOutboxEventType;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
@@ -37,12 +38,7 @@ public class MailOutboxService {
 
 		for (MailOutbox outbox : stuckOutboxes) {
 			outbox.recoverToPending(now);
-			mailOutboxEventLogger.logTransition(
-				outbox,
-				MailOutboxEventType.RECOVERED,
-				MailOutboxStatus.PROCESSING,
-				outbox.getStatus()
-			);
+			mailOutboxEventLogger.logRecovered(outbox);
 		}
 	}
 
@@ -61,12 +57,7 @@ public class MailOutboxService {
 		for (MailOutbox outbox : dueOutboxes) {
 			MailOutboxStatus fromStatus = outbox.getStatus();
 			outbox.markProcessing();
-			mailOutboxEventLogger.logTransition(
-				outbox,
-				MailOutboxEventType.PROCESSING_STARTED,
-				fromStatus,
-				outbox.getStatus()
-			);
+			mailOutboxEventLogger.logProcessingStarted(outbox, fromStatus);
 		}
 
 		return dueOutboxes.stream()
@@ -105,12 +96,7 @@ public class MailOutboxService {
 			return;
 		}
 		outbox.scheduleRetry(now.plusMinutes(properties.retryDelayMinutes()), summarizedError);
-		mailOutboxEventLogger.logTransition(
-			outbox,
-			MailOutboxEventType.RETRY_SCHEDULED,
-			fromStatus,
-			outbox.getStatus()
-		);
+		mailOutboxEventLogger.logRetryScheduled(outbox, fromStatus);
 	}
 
 	private MailOutboxHandler resolveHandler(MailType mailType) {

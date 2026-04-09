@@ -1,4 +1,4 @@
-package com.ujax.application.mail.outbox;
+package com.ujax.application.mail.outbox.handler;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ujax.application.mail.UjaxMailTemplateRenderer;
+import com.ujax.application.mail.outbox.message.PreparedMailMessage;
+import com.ujax.application.mail.outbox.message.WorkspaceInviteMailPayload;
+import com.ujax.application.mail.template.WorkspaceInviteMailTemplateRenderer;
 import com.ujax.domain.mail.MailType;
 
 import lombok.RequiredArgsConstructor;
@@ -35,7 +37,7 @@ public class WorkspaceInviteMailOutboxHandler implements MailOutboxHandler {
 			String link = String.format("%s/workspaces/%d", baseUrl, workspaceId);
 			return new PreparedMailMessage(
 				String.format("[UJAX] %s에서 당신을 초대했습니다.", workspaceName),
-				UjaxMailTemplateRenderer.renderWorkspaceInvitation(workspaceName, link)
+				WorkspaceInviteMailTemplateRenderer.render(workspaceName, link)
 			);
 		} catch (IOException exception) {
 			throw new IllegalArgumentException("invalid workspace invite mail payload", exception);

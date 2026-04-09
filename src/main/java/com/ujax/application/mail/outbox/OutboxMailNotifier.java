@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ujax.application.mail.MailNotifier;
+import com.ujax.application.mail.outbox.message.SignupVerificationMailPayload;
+import com.ujax.application.mail.outbox.message.WorkspaceInviteMailPayload;
 import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailType;
