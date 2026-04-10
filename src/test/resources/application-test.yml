@@ -39,6 +39,9 @@ app:
     access-key: test-access-key
     secret-key: test-secret-key
     presigned-url-expiry: 300
+  auth:
+    pending-signup-cleanup:
+      enabled: false
   jwt:
     secret: testSecretKeyThatIsAtLeast256BitsLongForHmacSha256AlgorithmInTestProfile
     access-expiration: 1800000
@@ -52,3 +55,8 @@ app:
       retry-delay-minutes: ${WEBHOOK_ALERT_RETRY_DELAY_MINUTES:1}
       stuck-processing-minutes: ${WEBHOOK_ALERT_STUCK_PROCESSING_MINUTES:10}
       max-attempts: ${WEBHOOK_ALERT_MAX_ATTEMPTS:5}
+  ujax:
+    mail:
+      outbox:
+        scheduler:
+          enabled: false

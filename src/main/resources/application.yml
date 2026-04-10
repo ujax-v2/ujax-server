@@ -26,10 +26,16 @@ spring:
         "[mail.smtp.writetimeout]": 5000
 
 app:
+  scheduler:
+    pool-size: ${APP_SCHEDULER_POOL_SIZE:4}
   auth:
     signup-verification:
       ttl-minutes: ${SIGNUP_VERIFICATION_TTL_MINUTES:5}
       code-length: ${SIGNUP_VERIFICATION_CODE_LENGTH:6}
+    pending-signup-cleanup:
+      enabled: ${PENDING_SIGNUP_CLEANUP_ENABLED:true}
+      fixed-delay-millis: ${PENDING_SIGNUP_CLEANUP_FIXED_DELAY_MILLIS:60000}
+      batch-size: ${PENDING_SIGNUP_CLEANUP_BATCH_SIZE:100}
   jwt:
     secret: ${JWT_SECRET:defaultDevSecretKeyThatIsAtLeast256BitsLongForHmacSha256Algorithm}
     access-expiration: 1800000
@@ -46,6 +52,15 @@ app:
     mail:
       from: ${UJAX_MAIL_FROM:noreply@ujax.site}
       name: ${UJAX_MAIL_NAME:UJAX}
+      outbox:
+        scheduler:
+          enabled: ${MAIL_OUTBOX_SCHEDULER_ENABLED:true}
+          fixed-delay-millis: ${MAIL_OUTBOX_SCHEDULER_FIXED_DELAY_MILLIS:60000}
+          batch-size: ${MAIL_OUTBOX_SCHEDULER_BATCH_SIZE:100}
+        delivery:
+          retry-delay-minutes: ${MAIL_OUTBOX_RETRY_DELAY_MINUTES:1}
+          stuck-processing-minutes: ${MAIL_OUTBOX_STUCK_PROCESSING_MINUTES:10}
+          max-attempts: ${MAIL_OUTBOX_MAX_ATTEMPTS:5}
   webhook-alert:
     scheduler:
       enabled: ${WEBHOOK_ALERT_SCHEDULER_ENABLED:true}

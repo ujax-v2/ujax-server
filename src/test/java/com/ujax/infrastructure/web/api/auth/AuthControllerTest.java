@@ -26,8 +26,7 @@ import com.ujax.infrastructure.web.auth.AuthController;
 import com.ujax.infrastructure.web.auth.dto.request.EmailAvailabilityRequest;
 import com.ujax.infrastructure.web.auth.dto.request.LoginRequest;
 import com.ujax.infrastructure.web.auth.dto.request.RefreshRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupConfirmRequest;
-import com.ujax.infrastructure.web.auth.dto.request.SignupResendRequest;
+import com.ujax.infrastructure.web.auth.dto.request.SignupCompleteRequest;
 import com.ujax.infrastructure.web.auth.dto.request.SignupStartRequest;
 import com.ujax.support.TestSecurityConfig;
 
@@ -98,9 +97,9 @@ class AuthControllerTest {
 		@Test
 		@DisplayName("회원가입 인증 요청을 처리한다")
 		void requestSignup() throws Exception {
-			SignupStartRequest request = new SignupStartRequest("test@example.com", "password123", "이름");
-			given(authService.requestSignup("test@example.com", "password123", "이름"))
-				.willReturn(new SignupStartResponse("request-token", "test@example.com",
+			SignupStartRequest request = new SignupStartRequest("test@example.com");
+			given(authService.requestSignup("test@example.com"))
+				.willReturn(new SignupStartResponse("request-token",
 					java.time.LocalDateTime.parse("2026-03-30T10:30:00")));
 
 			mockMvc.perform(post("/api/v1/auth/signup/request")
@@ -110,17 +109,24 @@ class AuthControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.requestToken").value("request-token"))
-				.andExpect(jsonPath("$.data.email").value("test@example.com"));
+				.andExpect(jsonPath("$.data.expiresAt").value("2026-03-30T10:30:00"))
+				.andExpect(jsonPath("$.data.email").doesNotExist());
 		}
 
 		@Test
-		@DisplayName("회원가입 인증 확인을 처리한다")
-		void confirmSignup() throws Exception {
-			SignupConfirmRequest request = new SignupConfirmRequest("request-token", "123456");
-			given(authService.confirmSignup("request-token", "123456"))
+		@DisplayName("회원가입 완료를 처리한다")
+		void completeSignup() throws Exception {
+			SignupCompleteRequest request = new SignupCompleteRequest(
+				"request-token",
+				"123456",
+				"test@example.com",
+				"password123",
+				"이름"
+			);
+			given(authService.completeSignup("request-token", "123456", "test@example.com", "password123", "이름"))
 				.willReturn(new AuthTokenResponse("access.token", "refresh.token"));
 
-			mockMvc.perform(post("/api/v1/auth/signup/confirm")
+			mockMvc.perform(post("/api/v1/auth/signup/complete")
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(request)))
 				.andDo(print())
@@ -131,39 +137,9 @@ class AuthControllerTest {
 		}
 
 		@Test
-		@DisplayName("회원가입 인증 코드를 재발송한다")
-		void resendSignup() throws Exception {
-			SignupResendRequest request = new SignupResendRequest("request-token");
-			given(authService.resendSignupCode("request-token"))
-				.willReturn(new SignupStartResponse("new-request-token", "test@example.com",
-					java.time.LocalDateTime.parse("2026-03-30T10:35:00")));
-
-			mockMvc.perform(post("/api/v1/auth/signup/resend")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(objectMapper.writeValueAsString(request)))
-				.andDo(print())
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.success").value(true))
-				.andExpect(jsonPath("$.data.requestToken").value("new-request-token"))
-				.andExpect(jsonPath("$.data.email").value("test@example.com"));
-		}
-
-		@Test
 		@DisplayName("이메일이 비어있으면 오류가 발생한다")
 		void requestSignup_BlankEmail() throws Exception {
-			SignupStartRequest request = new SignupStartRequest("", "password123", "이름");
-
-			mockMvc.perform(post("/api/v1/auth/signup/request")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(objectMapper.writeValueAsString(request)))
-				.andDo(print())
-				.andExpect(status().isBadRequest());
-		}
-
-		@Test
-		@DisplayName("비밀번호가 비어있으면 오류가 발생한다")
-		void requestSignup_BlankPassword() throws Exception {
-			SignupStartRequest request = new SignupStartRequest("test@example.com", "", "이름");
+			SignupStartRequest request = new SignupStartRequest("");
 
 			mockMvc.perform(post("/api/v1/auth/signup/request")
 					.contentType(MediaType.APPLICATION_JSON)
@@ -175,7 +151,7 @@ class AuthControllerTest {
 		@Test
 		@DisplayName("이메일 형식이 올바르지 않으면 오류가 발생한다")
 		void requestSignup_InvalidEmail() throws Exception {
-			SignupStartRequest request = new SignupStartRequest("invalid-email", "password123", "이름");
+			SignupStartRequest request = new SignupStartRequest("invalid-email");
 
 			mockMvc.perform(post("/api/v1/auth/signup/request")
 					.contentType(MediaType.APPLICATION_JSON)
@@ -186,11 +162,11 @@ class AuthControllerTest {
 		}
 
 		@Test
-		@DisplayName("이름이 비어있으면 오류가 발생한다")
-		void requestSignup_BlankName() throws Exception {
-			SignupStartRequest request = new SignupStartRequest("test@example.com", "password123", "");
+		@DisplayName("회원가입 완료에서 비밀번호가 비어있으면 오류가 발생한다")
+		void completeSignup_BlankPassword() throws Exception {
+			SignupCompleteRequest request = new SignupCompleteRequest("request-token", "123456", "test@example.com", "", "이름");
 
-			mockMvc.perform(post("/api/v1/auth/signup/request")
+			mockMvc.perform(post("/api/v1/auth/signup/complete")
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(objectMapper.writeValueAsString(request)))
 				.andDo(print())
