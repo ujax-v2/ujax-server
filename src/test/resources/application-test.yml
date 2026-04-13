@@ -51,6 +51,9 @@ app:
       enabled: ${WEBHOOK_ALERT_SCHEDULER_ENABLED:false}
       fixed-delay-millis: ${WEBHOOK_ALERT_SCHEDULER_FIXED_DELAY_MILLIS:60000}
       batch-size: ${WEBHOOK_ALERT_SCHEDULER_BATCH_SIZE:100}
+    http:
+      connect-timeout-millis: ${WEBHOOK_ALERT_CONNECT_TIMEOUT_MILLIS:1000}
+      read-timeout-millis: ${WEBHOOK_ALERT_READ_TIMEOUT_MILLIS:2000}
     delivery:
       retry-delay-minutes: ${WEBHOOK_ALERT_RETRY_DELAY_MINUTES:1}
       stuck-processing-minutes: ${WEBHOOK_ALERT_STUCK_PROCESSING_MINUTES:10}
