@@ -26,10 +26,14 @@ import com.ujax.domain.auth.PendingSignup;
 import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
+
 import com.ujax.domain.mail.MailOutbox;
 import com.ujax.domain.mail.MailOutboxRepository;
 import com.ujax.domain.mail.MailOutboxStatus;
 import com.ujax.domain.mail.MailType;
+
+import com.ujax.domain.metrics.UserLoginLogRepository;
+
 import com.ujax.domain.user.AuthProvider;
 import com.ujax.domain.user.User;
 import com.ujax.domain.user.UserRepository;
@@ -61,6 +65,9 @@ class AuthServiceTest {
 	@Autowired
 	private ObjectMapper objectMapper;
 
+	@Autowired
+	private UserLoginLogRepository userLoginLogRepository;
+
 	@MockitoBean
 	private SignupVerificationCodeGenerator signupVerificationCodeGenerator;
 
@@ -72,6 +79,7 @@ class AuthServiceTest {
 		mailOutboxRepository.deleteAllInBatch();
 		pendingSignupRepository.deleteAll();
 		refreshTokenRepository.deleteAllInBatch();
+		userLoginLogRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
 	}
 
@@ -83,7 +91,7 @@ class AuthServiceTest {
 		@DisplayName("가입되지 않은 이메일은 사용 가능하다")
 		void checkEmailAvailability_Available() {
 			assertThatCode(() -> authService.checkEmailAvailability("new@example.com"))
-				.doesNotThrowAnyException();
+					.doesNotThrowAnyException();
 		}
 
 		@Test
@@ -92,9 +100,9 @@ class AuthServiceTest {
 			authService.signup("existing@example.com", "password123", "기존유저");
 
 			assertThatThrownBy(() -> authService.checkEmailAvailability("existing@example.com"))
-				.isInstanceOf(ConflictException.class)
-				.extracting("errorCode")
-				.isEqualTo(com.ujax.global.exception.ErrorCode.DUPLICATE_EMAIL);
+					.isInstanceOf(ConflictException.class)
+					.extracting("errorCode")
+					.isEqualTo(com.ujax.global.exception.ErrorCode.DUPLICATE_EMAIL);
 		}
 	}
 
@@ -110,7 +118,7 @@ class AuthServiceTest {
 
 			// then
 			assertThat(response).extracting("accessToken", "refreshToken")
-				.doesNotContainNull();
+					.doesNotContainNull();
 			assertThat(userRepository.findByEmail("new@example.com")).isPresent();
 		}
 
@@ -119,7 +127,7 @@ class AuthServiceTest {
 		void signup_InvalidPassword() {
 			// when & then
 			assertThatThrownBy(() -> authService.signup("new@example.com", "short1", "유저"))
-				.isInstanceOf(BadRequestException.class);
+					.isInstanceOf(BadRequestException.class);
 		}
 
 		@Test
@@ -130,7 +138,7 @@ class AuthServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> authService.signup("existing@example.com", "password456", "새유저"))
-				.isInstanceOf(ConflictException.class);
+					.isInstanceOf(ConflictException.class);
 		}
 	}
 
@@ -156,11 +164,11 @@ class AuthServiceTest {
 			assertThat(outbox.getRecipientEmail()).isEqualTo("new@example.com");
 			assertThat(outbox.getStatus()).isEqualTo(MailOutboxStatus.PENDING);
 			assertThat(readSignupPayload(outbox))
-				.isEqualTo(new SignupVerificationMailPayload("123456", response.expiresAt()));
+					.isEqualTo(new SignupVerificationMailPayload("123456", response.expiresAt()));
 			assertThat(output.getOut())
-				.contains("event=mail_outbox")
-				.contains("eventType=ENQUEUED")
-				.contains("outboxId=" + outbox.getId());
+					.contains("event=mail_outbox")
+					.contains("eventType=ENQUEUED")
+					.contains("outboxId=" + outbox.getId());
 		}
 
 		@Test
@@ -169,9 +177,9 @@ class AuthServiceTest {
 			authService.signup("existing@example.com", "password123", "기존유저");
 
 			assertThatThrownBy(() -> authService.requestSignup("existing@example.com"))
-				.isInstanceOf(ConflictException.class)
-				.extracting("errorCode")
-				.isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+					.isInstanceOf(ConflictException.class)
+					.extracting("errorCode")
+					.isEqualTo(ErrorCode.DUPLICATE_EMAIL);
 		}
 
 		@Test
@@ -185,28 +193,28 @@ class AuthServiceTest {
 			SignupStartResponse secondResponse = authService.requestSignup("retry@example.com");
 			List<MailOutbox> outboxes = mailOutboxRepository.findAll();
 			List<SignupVerificationMailPayload> payloads = outboxes.stream()
-				.map(AuthServiceTest.this::readSignupPayload)
-				.toList();
+					.map(AuthServiceTest.this::readSignupPayload)
+					.toList();
 
 			assertThat(secondResponse.requestToken()).isEqualTo(firstResponse.requestToken());
 			assertThat(secondResponse.expiresAt()).isAfter(firstResponse.expiresAt());
 			assertThat(pendingSignupRepository.findByEmail("retry@example.com"))
-				.get()
-				.extracting(PendingSignup::getCodeHash)
-				.isEqualTo("second-hash");
+					.get()
+					.extracting(PendingSignup::getCodeHash)
+					.isEqualTo("second-hash");
 			assertThat(outboxes).hasSize(2);
 			assertThat(outboxes)
-				.extracting(MailOutbox::getRecipientEmail)
-				.containsOnly("retry@example.com");
+					.extracting(MailOutbox::getRecipientEmail)
+					.containsOnly("retry@example.com");
 			assertThat(outboxes)
-				.extracting(MailOutbox::getStatus)
-				.containsOnly(MailOutboxStatus.PENDING);
+					.extracting(MailOutbox::getStatus)
+					.containsOnly(MailOutboxStatus.PENDING);
 			assertThat(payloads)
-				.extracting(SignupVerificationMailPayload::code)
-				.containsExactly("123456", "654321");
+					.extracting(SignupVerificationMailPayload::code)
+					.containsExactly("123456", "654321");
 			assertThat(payloads)
-				.extracting(SignupVerificationMailPayload::expiresAt)
-				.containsExactly(firstResponse.expiresAt(), secondResponse.expiresAt());
+					.extracting(SignupVerificationMailPayload::expiresAt)
+					.containsExactly(firstResponse.expiresAt(), secondResponse.expiresAt());
 		}
 	}
 
@@ -218,27 +226,27 @@ class AuthServiceTest {
 		@DisplayName("코드가 일치하면 실제 회원을 생성한다")
 		void completeSignup_Success() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
-				PendingSignup.create(
-					"confirm@example.com",
-					"hashed-code",
-					LocalDateTime.now().plusMinutes(5)
-				)
+					PendingSignup.create(
+							"confirm@example.com",
+							"hashed-code",
+							LocalDateTime.now().plusMinutes(5)
+					)
 			);
 			given(verificationCodeHasher.matches("123456", "hashed-code")).willReturn(true);
 
 			AuthTokenResponse response = authService.completeSignup(
-				pendingSignup.getRequestToken(),
-				"123456",
-				"confirm@example.com",
-				"password123",
-				"확인유저"
+					pendingSignup.getRequestToken(),
+					"123456",
+					"confirm@example.com",
+					"password123",
+					"확인유저"
 			);
 
 			assertThat(response).extracting("accessToken", "refreshToken").doesNotContainNull();
 			assertThat(userRepository.findByEmail("confirm@example.com"))
-				.get()
-				.extracting(User::getName)
-				.isEqualTo("확인유저");
+					.get()
+					.extracting(User::getName)
+					.isEqualTo("확인유저");
 			assertThat(pendingSignupRepository.findByRequestToken(pendingSignup.getRequestToken())).isEmpty();
 		}
 
@@ -246,70 +254,70 @@ class AuthServiceTest {
 		@DisplayName("코드가 일치하지 않으면 실패한다")
 		void completeSignup_InvalidCode() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
-				PendingSignup.create(
-					"confirm@example.com",
-					"hashed-code",
-					LocalDateTime.now().plusMinutes(5)
-				)
+					PendingSignup.create(
+							"confirm@example.com",
+							"hashed-code",
+							LocalDateTime.now().plusMinutes(5)
+					)
 			);
 			given(verificationCodeHasher.matches("000000", "hashed-code")).willReturn(false);
 
 			assertThatThrownBy(() -> authService.completeSignup(
-				pendingSignup.getRequestToken(),
-				"000000",
-				"confirm@example.com",
-				"password123",
-				"확인유저"
+					pendingSignup.getRequestToken(),
+					"000000",
+					"confirm@example.com",
+					"password123",
+					"확인유저"
 			))
-				.isInstanceOf(BadRequestException.class)
-				.extracting("errorCode")
-				.isEqualTo(ErrorCode.INVALID_VERIFICATION_CODE);
+					.isInstanceOf(BadRequestException.class)
+					.extracting("errorCode")
+					.isEqualTo(ErrorCode.INVALID_VERIFICATION_CODE);
 		}
 
 		@Test
 		@DisplayName("만료된 코드면 실패한다")
 		void completeSignup_ExpiredCode() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
-				PendingSignup.create(
-					"expired@example.com",
-					"hashed-code",
-					LocalDateTime.now().minusMinutes(1)
-				)
+					PendingSignup.create(
+							"expired@example.com",
+							"hashed-code",
+							LocalDateTime.now().minusMinutes(1)
+					)
 			);
 
 			assertThatThrownBy(() -> authService.completeSignup(
-				pendingSignup.getRequestToken(),
-				"123456",
-				"expired@example.com",
-				"password123",
-				"만료유저"
+					pendingSignup.getRequestToken(),
+					"123456",
+					"expired@example.com",
+					"password123",
+					"만료유저"
 			))
-				.isInstanceOf(BadRequestException.class)
-				.extracting("errorCode")
-				.isEqualTo(ErrorCode.EXPIRED_VERIFICATION_CODE);
+					.isInstanceOf(BadRequestException.class)
+					.extracting("errorCode")
+					.isEqualTo(ErrorCode.EXPIRED_VERIFICATION_CODE);
 		}
 
 		@Test
 		@DisplayName("인증 세션 이메일과 요청 이메일이 다르면 실패한다")
 		void completeSignup_EmailMismatch() {
 			PendingSignup pendingSignup = pendingSignupRepository.save(
-				PendingSignup.create(
-					"confirm@example.com",
-					"hashed-code",
-					LocalDateTime.now().plusMinutes(5)
-				)
+					PendingSignup.create(
+							"confirm@example.com",
+							"hashed-code",
+							LocalDateTime.now().plusMinutes(5)
+					)
 			);
 
 			assertThatThrownBy(() -> authService.completeSignup(
-				pendingSignup.getRequestToken(),
-				"123456",
-				"other@example.com",
-				"password123",
-				"확인유저"
+					pendingSignup.getRequestToken(),
+					"123456",
+					"other@example.com",
+					"password123",
+					"확인유저"
 			))
-				.isInstanceOf(BadRequestException.class)
-				.extracting("errorCode")
-				.isEqualTo(ErrorCode.INVALID_INPUT);
+					.isInstanceOf(BadRequestException.class)
+					.extracting("errorCode")
+					.isEqualTo(ErrorCode.INVALID_INPUT);
 		}
 	}
 
@@ -328,7 +336,7 @@ class AuthServiceTest {
 
 			// then
 			assertThat(response).extracting("accessToken", "refreshToken")
-				.doesNotContainNull();
+					.doesNotContainNull();
 		}
 
 		@Test
@@ -336,7 +344,7 @@ class AuthServiceTest {
 		void login_UserNotFound() {
 			// when & then
 			assertThatThrownBy(() -> authService.login("nonexistent@example.com", "password"))
-				.isInstanceOf(UnauthorizedException.class);
+					.isInstanceOf(UnauthorizedException.class);
 		}
 
 		@Test
@@ -347,7 +355,7 @@ class AuthServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> authService.login("user@example.com", "wrongpassword"))
-				.isInstanceOf(UnauthorizedException.class);
+					.isInstanceOf(UnauthorizedException.class);
 		}
 
 		@Test
@@ -355,12 +363,12 @@ class AuthServiceTest {
 		void login_OAuthUser() {
 			// given
 			User oauthUser = User.createOAuthUser("oauth@example.com", "OAuth유저", null,
-				AuthProvider.GOOGLE, "google123");
+					AuthProvider.GOOGLE, "google123");
 			userRepository.save(oauthUser);
 
 			// when & then
 			assertThatThrownBy(() -> authService.login("oauth@example.com", "password"))
-				.isInstanceOf(UnauthorizedException.class);
+					.isInstanceOf(UnauthorizedException.class);
 		}
 	}
 
@@ -379,7 +387,7 @@ class AuthServiceTest {
 
 			// then
 			assertThat(newTokens).extracting("accessToken", "refreshToken")
-				.doesNotContainNull();
+					.doesNotContainNull();
 			assertThat(newTokens.refreshToken()).isNotEqualTo(tokens.refreshToken());
 		}
 
@@ -388,7 +396,7 @@ class AuthServiceTest {
 		void refresh_InvalidToken() {
 			// when & then
 			assertThatThrownBy(() -> authService.refresh("invalidToken"))
-				.isInstanceOf(UnauthorizedException.class);
+					.isInstanceOf(UnauthorizedException.class);
 		}
 	}
 
@@ -403,7 +411,7 @@ class AuthServiceTest {
 
 		// then
 		assertThatThrownBy(() -> authService.refresh(tokens.refreshToken()))
-			.isInstanceOf(UnauthorizedException.class);
+				.isInstanceOf(UnauthorizedException.class);
 	}
 
 	private SignupVerificationMailPayload readSignupPayload(MailOutbox outbox) {
