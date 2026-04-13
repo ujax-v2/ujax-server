@@ -8,8 +8,8 @@ import com.ujax.global.exception.common.Judge0Exception;
 import com.ujax.infrastructure.external.judge0.dto.Judge0RawResponse;
 import com.ujax.infrastructure.web.submission.dto.SubmissionRequest;
 import com.ujax.infrastructure.web.submission.dto.SubmissionResultResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
@@ -21,7 +21,6 @@ import java.util.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SubmissionService {
 
     private final RestTemplate restTemplate;
@@ -30,6 +29,16 @@ public class SubmissionService {
 
     @Value("${judge0.api.url}")
     private String judge0Url;
+
+    public SubmissionService(
+        @Qualifier("judge0RestTemplate") RestTemplate restTemplate,
+        StringRedisTemplate redisTemplate,
+        ObjectMapper objectMapper
+    ) {
+        this.restTemplate = restTemplate;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
+    }
 
     private record TestCaseMetadata(String input, String expected) {
     }
