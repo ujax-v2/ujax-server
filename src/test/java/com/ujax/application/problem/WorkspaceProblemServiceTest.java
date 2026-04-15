@@ -16,7 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.ujax.application.problem.dto.response.WorkspaceProblemResponse;
-import com.ujax.application.webhook.WebhookAlertService;
+import com.ujax.application.webhook.WebhookAlertNotifier;
 import com.ujax.domain.auth.RefreshTokenRepository;
 import com.ujax.domain.board.BoardCommentRepository;
 import com.ujax.domain.board.BoardLikeRepository;
@@ -81,7 +81,7 @@ class WorkspaceProblemServiceTest {
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@MockitoBean
-	private WebhookAlertService webhookAlertService;
+	private WebhookAlertNotifier webhookAlertNotifier;
 
 	@BeforeEach
 	void setUp() {
@@ -151,7 +151,7 @@ class WorkspaceProblemServiceTest {
 
 			assertThat(response).extracting("problemNumber", "title", "deadline")
 				.containsExactly(1000, "A+B", deadline);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -169,7 +169,7 @@ class WorkspaceProblemServiceTest {
 				new CreateWorkspaceProblemRequest(problem.getId(), deadline, null)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -186,7 +186,7 @@ class WorkspaceProblemServiceTest {
 				workspace.getId(), problemBox.getId(), user.getId(),
 				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt));
 
-			then(webhookAlertService).should()
+			then(webhookAlertNotifier).should()
 				.reserveOrUpdate(response.id(), workspace.getId(), scheduledAt, user.getId());
 		}
 
@@ -205,7 +205,7 @@ class WorkspaceProblemServiceTest {
 				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -223,7 +223,7 @@ class WorkspaceProblemServiceTest {
 				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -241,7 +241,7 @@ class WorkspaceProblemServiceTest {
 				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -324,7 +324,7 @@ class WorkspaceProblemServiceTest {
 
 			assertThat(response).extracting("deadline", "scheduledAt")
 				.containsExactly(newDeadline, newScheduledAt);
-			then(webhookAlertService).should()
+			then(webhookAlertNotifier).should()
 				.reserveOrUpdate(created.id(), workspace.getId(), newScheduledAt, user.getId());
 		}
 
@@ -347,7 +347,7 @@ class WorkspaceProblemServiceTest {
 				new UpdateWorkspaceProblemRequest(deadline, null)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -363,14 +363,14 @@ class WorkspaceProblemServiceTest {
 			WorkspaceProblemResponse created = workspaceProblemService.createWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), user.getId(),
 				new CreateWorkspaceProblemRequest(problem.getId(), null, scheduledAt));
-			Mockito.reset(webhookAlertService);
+			Mockito.reset(webhookAlertNotifier);
 
 			WorkspaceProblemResponse response = workspaceProblemService.updateWorkspaceProblem(
 				workspace.getId(), problemBox.getId(), created.id(), user.getId(),
 				new UpdateWorkspaceProblemRequest(null, null));
 
 			assertThat(response.scheduledAt()).isNull();
-			then(webhookAlertService).should().deactivate(created.id(), user.getId());
+			then(webhookAlertNotifier).should().deactivate(created.id(), user.getId());
 		}
 
 		@Test
@@ -392,7 +392,7 @@ class WorkspaceProblemServiceTest {
 				new UpdateWorkspaceProblemRequest(null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -414,7 +414,7 @@ class WorkspaceProblemServiceTest {
 				new UpdateWorkspaceProblemRequest(null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -436,7 +436,7 @@ class WorkspaceProblemServiceTest {
 				new UpdateWorkspaceProblemRequest(null, scheduledAt)))
 				.isInstanceOf(BusinessRuleViolationException.class)
 				.hasFieldOrPropertyWithValue("errorCode", ErrorCode.BUSINESS_RULE_VIOLATION);
-			then(webhookAlertService).shouldHaveNoInteractions();
+			then(webhookAlertNotifier).shouldHaveNoInteractions();
 		}
 
 		@Test
@@ -485,7 +485,7 @@ class WorkspaceProblemServiceTest {
 			PageResponse<?> response = workspaceProblemService.listWorkspaceProblems(
 				workspace.getId(), problemBox.getId(), user.getId(), 0, 20);
 			assertThat(response.getContent()).isEmpty();
-			then(webhookAlertService).should().cancel(created.id(), user.getId());
+			then(webhookAlertNotifier).should().cancel(created.id(), user.getId());
 		}
 
 		@Test

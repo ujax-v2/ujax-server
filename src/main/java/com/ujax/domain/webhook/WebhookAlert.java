@@ -41,6 +41,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WebhookAlert {
 
+	private static final int MAX_ERROR_LENGTH = 500;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "webhook_alert_id")
@@ -64,6 +66,9 @@ public class WebhookAlert {
 
 	@Column(name = "attempt_no", nullable = false)
 	private int attemptNo;
+
+	@Column(name = "last_error", length = 500)
+	private String lastError;
 
 	@CreatedDate
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -100,9 +105,10 @@ public class WebhookAlert {
 		this.scheduledAt = newScheduledAt;
 		this.nextScheduledAt = null;
 		this.attemptNo = 0;
+		this.lastError = null;
 	}
 
-	public void markRetry(LocalDateTime retryAt, int maxAttempt) {
+	public void markRetry(LocalDateTime retryAt, int maxAttempt, String lastError) {
 		validateStatus(WebhookAlertStatus.PROCESSING);
 		if (isRetryExhausted(maxAttempt)) {
 			throw new IllegalStateException("retry attempts exhausted");
@@ -110,6 +116,7 @@ public class WebhookAlert {
 		this.attemptNo = this.attemptNo + 1;
 		this.scheduledAt = Objects.requireNonNull(retryAt);
 		this.status = WebhookAlertStatus.PENDING;
+		this.lastError = normalizeLastError(lastError);
 	}
 
 	public void recoverToPending(LocalDateTime fallbackScheduledAt) {
@@ -119,6 +126,7 @@ public class WebhookAlert {
 		}
 		this.scheduledAt = Objects.requireNonNull(fallbackScheduledAt);
 		this.status = WebhookAlertStatus.PENDING;
+		this.lastError = null;
 	}
 
 	public boolean applyDeferredScheduleIfPresent() {
@@ -129,6 +137,7 @@ public class WebhookAlert {
 		this.nextScheduledAt = null;
 		this.attemptNo = 0;
 		this.status = WebhookAlertStatus.PENDING;
+		this.lastError = null;
 		return true;
 	}
 
@@ -137,6 +146,13 @@ public class WebhookAlert {
 			throw new IllegalArgumentException("maxAttempt must be greater than zero");
 		}
 		return this.attemptNo >= maxAttempt;
+	}
+
+	private String normalizeLastError(String value) {
+		if (value == null) {
+			return null;
+		}
+		return value.length() <= MAX_ERROR_LENGTH ? value : value.substring(0, MAX_ERROR_LENGTH);
 	}
 
 	private void validateStatus(WebhookAlertStatus expected) {

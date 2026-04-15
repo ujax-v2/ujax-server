@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.ujax.application.problem.dto.response.WorkspaceProblemResponse;
-import com.ujax.application.webhook.WebhookAlertService;
+import com.ujax.application.webhook.WebhookAlertNotifier;
 import com.ujax.domain.problem.Problem;
 import com.ujax.domain.problem.ProblemBox;
 import com.ujax.domain.problem.ProblemBoxRepository;
@@ -41,7 +41,7 @@ public class WorkspaceProblemService {
 	private final ProblemBoxRepository problemBoxRepository;
 	private final ProblemRepository problemRepository;
 	private final WorkspaceMemberRepository workspaceMemberRepository;
-	private final WebhookAlertService webhookAlertService;
+	private final WebhookAlertNotifier webhookAlertNotifier;
 
 	public PageResponse<WorkspaceProblemResponse> listWorkspaceProblems(Long workspaceId, Long problemBoxId,
 		Long userId, int page, int size) {
@@ -91,7 +91,7 @@ public class WorkspaceProblemService {
 		workspaceProblemRepository.save(workspaceProblem);
 
 		if (workspaceProblem.getScheduledAt() != null) {
-			webhookAlertService.reserveOrUpdate(
+			webhookAlertNotifier.reserveOrUpdate(
 				workspaceProblem.getId(),
 				workspaceId,
 				workspaceProblem.getScheduledAt(),
@@ -121,14 +121,14 @@ public class WorkspaceProblemService {
 		workspaceProblem.update(request.deadline(), request.scheduledAt());
 
 		if (workspaceProblem.getScheduledAt() != null) {
-			webhookAlertService.reserveOrUpdate(
+			webhookAlertNotifier.reserveOrUpdate(
 				workspaceProblem.getId(),
 				workspaceId,
 				workspaceProblem.getScheduledAt(),
 				userId
 			);
 		} else {
-			webhookAlertService.deactivate(workspaceProblem.getId(), userId);
+			webhookAlertNotifier.deactivate(workspaceProblem.getId(), userId);
 		}
 
 		return WorkspaceProblemResponse.from(workspaceProblem);
@@ -140,7 +140,7 @@ public class WorkspaceProblemService {
 
 		WorkspaceProblem workspaceProblem = findWorkspaceProblem(workspaceId, workspaceProblemId, problemBoxId);
 		workspaceProblemRepository.delete(workspaceProblem);
-		webhookAlertService.cancel(workspaceProblemId, userId);
+		webhookAlertNotifier.cancel(workspaceProblemId, userId);
 	}
 
 	private WorkspaceMember findWorkspaceMember(Long workspaceId, Long userId) {
