@@ -35,9 +35,31 @@ class WebhookAlertRepositoryTest {
 	}
 
 	@Test
+	@DisplayName("due 순서대로 limit 만큼 PENDING alert 를 조회한다")
+	void findDuePendingAlertsForUpdate() {
+		WebhookAlert dueFirst = webhookAlertRepository.saveAndFlush(
+			WebhookAlert.create(101L, 11L, LocalDateTime.of(2026, 3, 27, 10, 0))
+		);
+		WebhookAlert dueSecond = webhookAlertRepository.saveAndFlush(
+			WebhookAlert.create(102L, 11L, LocalDateTime.of(2026, 3, 27, 10, 5))
+		);
+		webhookAlertRepository.saveAndFlush(
+			WebhookAlert.create(103L, 11L, LocalDateTime.of(2026, 3, 27, 11, 0))
+		);
+
+		List<WebhookAlert> result = webhookAlertRepository.findDuePendingAlertsForUpdate(
+			LocalDateTime.of(2026, 3, 27, 10, 10),
+			2
+		);
+
+		assertThat(result)
+			.extracting(WebhookAlert::getId)
+			.containsExactly(dueFirst.getId(), dueSecond.getId());
+	}
+
+	@Test
 	@DisplayName("PROCESSING 상태이면서 cutoff 이전에 갱신된 alert만 조회한다")
 	void findAllByStatusAndUpdatedAtBefore() {
-		// given
 		WebhookAlert stuckAlert = webhookAlertRepository.saveAndFlush(
 			WebhookAlert.create(101L, 11L, LocalDateTime.of(2026, 3, 27, 10, 0))
 		);
@@ -62,13 +84,11 @@ class WebhookAlertRepositoryTest {
 			stuckAlert.getId()
 		);
 
-		// when
 		List<WebhookAlert> result = webhookAlertRepository.findAllByStatusAndUpdatedAtBefore(
 			WebhookAlertStatus.PROCESSING,
 			cutoff
 		);
 
-		// then
 		assertThat(result)
 			.extracting(WebhookAlert::getId)
 			.containsExactly(stuckAlert.getId());
@@ -78,15 +98,12 @@ class WebhookAlertRepositoryTest {
 	@Test
 	@DisplayName("같은 workspaceProblemId의 alert는 하나만 생성된다")
 	void uniqueWorkspaceProblemId() {
-		// given
 		webhookAlertRepository.saveAndFlush(
 			WebhookAlert.create(201L, 21L, LocalDateTime.of(2026, 3, 27, 10, 0))
 		);
 
-		// when & then
 		assertThatThrownBy(() -> webhookAlertRepository.saveAndFlush(
 			WebhookAlert.create(201L, 21L, LocalDateTime.of(2026, 3, 27, 11, 0))
 		)).isInstanceOf(DataIntegrityViolationException.class);
 	}
-
 }

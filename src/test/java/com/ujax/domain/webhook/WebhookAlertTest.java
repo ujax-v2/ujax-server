@@ -31,14 +31,16 @@ class WebhookAlertTest {
 				"scheduledAt",
 				"nextScheduledAt",
 				"status",
-				"attemptNo"
+				"attemptNo",
+				"lastError"
 			).containsExactly(
 				WORKSPACE_PROBLEM_ID,
 				WORKSPACE_ID,
 				scheduledAt,
 				null,
 				WebhookAlertStatus.PENDING,
-				0
+				0,
+				null
 			);
 		}
 
@@ -66,18 +68,18 @@ class WebhookAlertTest {
 		}
 
 		@Test
-		@DisplayName("PENDING 상태에서는 scheduledAt을 즉시 갱신하고 attemptNo를 초기화한다")
+		@DisplayName("PENDING 상태에서는 scheduledAt을 즉시 갱신하고 attemptNo와 lastError를 초기화한다")
 		void applyScheduleUpdateImmediatelyWhenPending() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
-			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS);
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS, "timeout");
 
 			LocalDateTime updatedAt = LocalDateTime.of(2026, 3, 2, 11, 0);
 			alert.applyScheduleUpdate(updatedAt);
 
-			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
-				.containsExactly(updatedAt, null, WebhookAlertStatus.PENDING, 0);
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo", "lastError")
+				.containsExactly(updatedAt, null, WebhookAlertStatus.PENDING, 0, null);
 		}
 
 		@Test
@@ -100,17 +102,17 @@ class WebhookAlertTest {
 		}
 
 		@Test
-		@DisplayName("retry 시 attemptNo를 증가시키고 다음 배치 대상으로 되돌린다")
+		@DisplayName("retry 시 attemptNo를 증가시키고 다음 배치 대상으로 되돌리며 lastError를 저장한다")
 		void markRetry() {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			LocalDateTime retryAt = LocalDateTime.of(2026, 3, 2, 10, 1);
 			alert.markProcessing();
 
-			alert.markRetry(retryAt, MAX_ATTEMPTS);
+			alert.markRetry(retryAt, MAX_ATTEMPTS, "network timeout");
 
-			assertThat(alert).extracting("status", "attemptNo", "scheduledAt", "nextScheduledAt")
-				.containsExactly(WebhookAlertStatus.PENDING, 1, retryAt, null);
+			assertThat(alert).extracting("status", "attemptNo", "scheduledAt", "nextScheduledAt", "lastError")
+				.containsExactly(WebhookAlertStatus.PENDING, 1, retryAt, null, "network timeout");
 		}
 
 		@Test
@@ -120,18 +122,19 @@ class WebhookAlertTest {
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
 			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
-			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS);
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 1), MAX_ATTEMPTS, "timeout");
 			alert.markProcessing();
 			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 12, 0));
 
 			alert.recoverToPending(LocalDateTime.of(2026, 3, 2, 12, 30));
 
-			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo", "lastError")
 				.containsExactly(
 					LocalDateTime.of(2026, 3, 2, 12, 0),
 					null,
 					WebhookAlertStatus.PENDING,
-					0
+					0,
+					null
 				);
 		}
 
@@ -141,12 +144,14 @@ class WebhookAlertTest {
 			WebhookAlert alert = WebhookAlert.create(WORKSPACE_PROBLEM_ID, WORKSPACE_ID,
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 5), MAX_ATTEMPTS, "timeout");
+			alert.markProcessing();
 			LocalDateTime recoveredAt = LocalDateTime.of(2026, 3, 2, 10, 10);
 
 			alert.recoverToPending(recoveredAt);
 
-			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
-				.containsExactly(recoveredAt, null, WebhookAlertStatus.PENDING, 0);
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo", "lastError")
+				.containsExactly(recoveredAt, null, WebhookAlertStatus.PENDING, 1, null);
 		}
 
 		@Test
@@ -156,16 +161,20 @@ class WebhookAlertTest {
 				LocalDateTime.of(2026, 3, 2, 10, 0));
 			alert.markProcessing();
 			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
+			alert.markRetry(LocalDateTime.of(2026, 3, 2, 10, 30), MAX_ATTEMPTS, "timeout");
+			alert.markProcessing();
+			alert.applyScheduleUpdate(LocalDateTime.of(2026, 3, 2, 11, 0));
 
 			boolean applied = alert.applyDeferredScheduleIfPresent();
 
 			assertThat(applied).isTrue();
-			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo")
+			assertThat(alert).extracting("scheduledAt", "nextScheduledAt", "status", "attemptNo", "lastError")
 				.containsExactly(
 					LocalDateTime.of(2026, 3, 2, 11, 0),
 					null,
 					WebhookAlertStatus.PENDING,
-					0
+					0,
+					null
 				);
 		}
 	}
@@ -194,11 +203,11 @@ class WebhookAlertTest {
 
 			for (int i = 0; i < MAX_ATTEMPTS; i++) {
 				alert.markProcessing();
-				alert.markRetry(base.plusMinutes(i + 1), MAX_ATTEMPTS);
+				alert.markRetry(base.plusMinutes(i + 1), MAX_ATTEMPTS, "timeout");
 			}
 			alert.markProcessing();
 
-			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10), MAX_ATTEMPTS))
+			assertThatThrownBy(() -> alert.markRetry(base.plusMinutes(10), MAX_ATTEMPTS, "timeout"))
 				.isInstanceOf(IllegalStateException.class);
 			assertThat(alert.isRetryExhausted(MAX_ATTEMPTS)).isTrue();
 		}

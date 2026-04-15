@@ -1,4 +1,4 @@
-package com.ujax.application.webhook;
+package com.ujax.infrastructure.config.webhook;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
