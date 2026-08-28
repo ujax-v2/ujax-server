@@ -9,20 +9,17 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.ujax.application.webhook.WebhookAlertMessage;
 import com.ujax.application.webhook.WebhookSender;
 
-import lombok.RequiredArgsConstructor;
-
 @Component
-@RequiredArgsConstructor
 public class RestTemplateWebhookSender implements WebhookSender {
 
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MM월 dd일 HH:mm");
@@ -32,6 +29,14 @@ public class RestTemplateWebhookSender implements WebhookSender {
 
 	private final RestTemplate restTemplate;
 	private final ObjectMapper objectMapper;
+
+	public RestTemplateWebhookSender(
+		@Qualifier("webhookRestTemplate") RestTemplate restTemplate,
+		ObjectMapper objectMapper
+	) {
+		this.restTemplate = restTemplate;
+		this.objectMapper = objectMapper;
+	}
 
 	@Override
 	public void send(String hookUrl, WebhookAlertMessage message) {
