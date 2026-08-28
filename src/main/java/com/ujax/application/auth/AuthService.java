@@ -8,7 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ujax.application.auth.dto.response.AuthTokenResponse;
 import com.ujax.application.auth.dto.response.SignupStartResponse;
+
 import com.ujax.application.mail.MailNotifier;
+
+import com.ujax.application.metrics.LoginMetricsService;
+
 import com.ujax.domain.auth.PendingSignup;
 import com.ujax.domain.auth.PendingSignupRepository;
 import com.ujax.domain.auth.VerificationCodeHasher;
@@ -39,6 +43,7 @@ public class AuthService {
 	private final VerificationCodeHasher verificationCodeHasher;
 	private final MailNotifier mailNotifier;
 	private final SignupVerificationProperties signupVerificationProperties;
+	private final LoginMetricsService loginMetricsService;
 
 	public void checkEmailAvailability(String email) {
 		ensureEmailAvailable(email);
@@ -53,11 +58,11 @@ public class AuthService {
 		LocalDateTime expiresAt = calculateExpiresAt();
 
 		PendingSignup pendingSignup = pendingSignupRepository.findByEmail(email)
-			.map(existing -> {
-				existing.refreshVerification(codeHash, expiresAt);
-				return existing;
-			})
-			.orElseGet(() -> PendingSignup.create(email, codeHash, expiresAt));
+				.map(existing -> {
+					existing.refreshVerification(codeHash, expiresAt);
+					return existing;
+				})
+				.orElseGet(() -> PendingSignup.create(email, codeHash, expiresAt));
 
 		pendingSignupRepository.save(pendingSignup);
 		mailNotifier.enqueueSignupVerification(email, verificationCode, expiresAt);
@@ -68,7 +73,7 @@ public class AuthService {
 	@Transactional
 	public AuthTokenResponse completeSignup(String requestToken, String code, String email, String password, String name) {
 		PendingSignup pendingSignup = pendingSignupRepository.findByRequestToken(requestToken)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
+				.orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "회원가입 요청을 찾을 수 없습니다."));
 
 		if (!pendingSignup.getEmail().equals(email)) {
 			throw new BadRequestException(ErrorCode.INVALID_INPUT, "인증 요청 이메일과 일치하지 않습니다.");
@@ -78,14 +83,16 @@ public class AuthService {
 		ensureEmailAvailable(email);
 
 		User user = User.createLocalUser(
-			email,
-			Password.encode(password, passwordEncoder),
-			name
+				email,
+				Password.encode(password, passwordEncoder),
+				name
 		);
 		userRepository.save(user);
 		pendingSignupRepository.deleteByRequestToken(requestToken);
 
-		return issueTokens(user);
+		AuthTokenResponse tokens = issueTokens(user);
+		loginMetricsService.recordLogin(user.getId());
+		return tokens;
 	}
 
 	@Transactional
@@ -101,7 +108,7 @@ public class AuthService {
 	@Transactional
 	public AuthTokenResponse login(String email, String password) {
 		User user = userRepository.findByEmail(email)
-			.orElseThrow(() -> new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS));
+				.orElseThrow(() -> new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS));
 
 		if (user.getProvider() != AuthProvider.LOCAL) {
 			throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS);
@@ -111,7 +118,9 @@ public class AuthService {
 			throw new UnauthorizedException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
-		return issueTokens(user);
+		AuthTokenResponse tokens = issueTokens(user);
+		loginMetricsService.recordLogin(user.getId());
+		return tokens;
 	}
 
 	@Transactional
@@ -123,16 +132,18 @@ public class AuthService {
 
 	@Transactional
 	public User findOrCreateOAuthUser(String email, String name, String profileImageUrl,
-		AuthProvider provider, String providerId) {
+									  AuthProvider provider, String providerId) {
 		return userRepository.findByProviderAndProviderId(provider, providerId)
-			.orElseGet(() -> registerOAuthUser(email, name, profileImageUrl, provider, providerId));
+				.orElseGet(() -> registerOAuthUser(email, name, profileImageUrl, provider, providerId));
 	}
 
 	@Transactional
 	public AuthTokenResponse oauthLogin(Long userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-		return issueTokens(user);
+				.orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+		AuthTokenResponse tokens = issueTokens(user);
+		loginMetricsService.recordLogin(user.getId());
+		return tokens;
 	}
 
 	@Transactional
@@ -141,7 +152,7 @@ public class AuthService {
 	}
 
 	private User registerOAuthUser(String email, String name, String profileImageUrl,
-		AuthProvider provider, String providerId) {
+								   AuthProvider provider, String providerId) {
 		if (userRepository.existsByEmail(email)) {
 			throw new ConflictException(ErrorCode.OAUTH_ACCOUNT_EXISTS);
 		}
@@ -161,7 +172,7 @@ public class AuthService {
 
 	private AuthTokenResponse issueTokens(User user) {
 		String accessToken = jwtTokenProvider.createAccessToken(
-			user.getId(), user.getRole(), user.getName(), user.getEmail()
+				user.getId(), user.getRole(), user.getName(), user.getEmail()
 		);
 		String rawRefreshToken = refreshTokenService.issue(user);
 		return new AuthTokenResponse(accessToken, rawRefreshToken);

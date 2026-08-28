@@ -22,9 +22,6 @@ jobs:
       - name: Build JAR
         run: ./gradlew clean bootJar
 
-      - name: Patch Grafana Dashboard
-        run: python3 patch_dashboard.py
-
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
@@ -72,9 +69,6 @@ jobs:
           # 파일 전송
           scp $SSH_OPTS docker-compose.prod.yml $APP_HOST:$DEPLOY_DIR/
           scp $SSH_OPTS Dockerfile.prod $APP_HOST:$DEPLOY_DIR/
-          scp $SSH_OPTS prometheus.yml $APP_HOST:$DEPLOY_DIR/
-          scp $SSH_OPTS -r grafana $APP_HOST:$DEPLOY_DIR/
-          scp $SSH_OPTS promtail-config.yml $APP_HOST:$DEPLOY_DIR/
           scp $SSH_OPTS build/libs/*-SNAPSHOT.jar $APP_HOST:$DEPLOY_DIR/app.jar
           scp $SSH_OPTS .env $APP_HOST:$DEPLOY_DIR/.env
 
@@ -82,8 +76,11 @@ jobs:
           ssh $SSH_OPTS $APP_HOST << 'EOF'
             cd ~/ujax-deploy
             docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
             docker image prune -f
+            
+            # 기존 모니터링 볼륨 청소 (에러 무시)
+            docker volume rm ujax-deploy_grafana-data ujax-deploy_loki-data ujax-deploy_promtail-positions 2>/dev/null || true
           EOF
 
       - name: Check Judge0 Changes

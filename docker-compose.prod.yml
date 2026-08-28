@@ -18,6 +18,7 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx400m -XX:+UseG1GC"
       SPRING_DATASOURCE_URL: jdbc:mysql://app-mysql:3306/ujax?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-ujax}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-ujax_password_secure}
@@ -65,69 +66,23 @@ services:
     restart: always
     <<: *default-logging
 
-  # === Monitoring ===
+  # === Monitoring (Node Exporter — Grafana Alloy가 host에서 scrape) ===
   node-exporter:
     image: prom/node-exporter:latest
     container_name: ujax-node-exporter
     command:
       - '--path.rootfs=/host'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
     volumes:
       - /:/host:ro,rslave
     restart: always
     <<: *default-logging
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: ujax-prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-    restart: always
-    <<: *default-logging
-
-  # === Log Aggregation ===
-  loki:
-    image: grafana/loki:2.9.4
-    container_name: ujax-loki
-    command: -config.file=/etc/loki/local-config.yaml
-    volumes:
-      - loki-data:/loki
-    restart: always
-    <<: *default-logging
-
-  promtail:
-    image: grafana/promtail:2.9.4
-    container_name: ujax-promtail
-    volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - promtail-positions:/tmp
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-    restart: always
-    <<: *default-logging
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: ujax-grafana
-    ports:
-      - "80:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ujax1234
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    restart: always
-    <<: *default-logging
+  # prometheus, loki, promtail, grafana 컨테이너는 Grafana Cloud로 이전됨
+  # 메트릭/로그 수집은 EC2 호스트에 설치된 Grafana Alloy가 담당
 
 volumes:
   mysql-data:
   redis-data:
-  grafana-data:
-  loki-data:
-  promtail-positions:
